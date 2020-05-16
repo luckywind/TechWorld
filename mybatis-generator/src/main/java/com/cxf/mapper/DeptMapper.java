@@ -1,6 +1,6 @@
-package com.xiaomi.mapper;
+package com.cxf.mapper;
 
-import com.xiaomi.model.po.Dept;
+import com.cxf.model.po.Dept;
 
 public interface DeptMapper {
     int deleteByPrimaryKey(Integer deptid);

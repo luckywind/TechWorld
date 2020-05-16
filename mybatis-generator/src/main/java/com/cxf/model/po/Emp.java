@@ -1,4 +1,4 @@
-package com.xiaomi.model.po;
+package com.cxf.model.po;
 
 public class Emp {
     private Integer id;

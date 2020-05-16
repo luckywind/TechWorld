@@ -51,6 +51,35 @@
 
 `</table>`标签里是需要逆向的表，假设我的数据库里有三张表people,dept和emp三张表，我需要给它们生成相应代码。
 
+建表语句如下：
+
+```sql
+create table people(id int not null PRIMARY key,
+name VARCHAR(20) not null,
+sex char(1) DEFAULT 'm'
+);
+
+create table dept(
+deptid int,
+dname varchar(20),
+constraint dept_deptid_pk primary key(deptid)
+ );
+insert into dept(deptid,dname) values(10,'市场部');
+ insert into dept(deptid,dname) values(20,'销售部');
+
+create table emp(
+      id int,
+      name varchar(20),
+      deptid int,
+      constraint emp_id_pk primary key(id),
+      constraint emp_deptid_fk  foreign key(deptid)
+        references dept(deptid)
+				 on delete cascade --改变默认级联删除规则
+    ); 
+```
+
+
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE generatorConfiguration
@@ -76,12 +105,12 @@
             <property name="forceBigDecimals" value="false"/>
         </javaTypeResolver>
         <!--生成Model类存放位置-->
-        <javaModelGenerator targetPackage="com.xiaomi.model.po" targetProject="src/main/java">
+        <javaModelGenerator targetPackage="com.cxf.model.po" targetProject="src/main/java">
             <property name="enableSubPackages" value="true"/>
             <property name="trimStrings" value="true"/>
         </javaModelGenerator>
         <!--生成映射文件存放位置-->
-        <sqlMapGenerator targetPackage="com.xiaomi.mapper" targetProject="src/main/resources">
+        <sqlMapGenerator targetPackage="com.cxf.mapper" targetProject="src/main/resources">
             <property name="enableSubPackages" value="true"/>
         </sqlMapGenerator>
         <!--生成Dao类存放位置-->
@@ -90,7 +119,7 @@
                 type="MIXEDMAPPER",生成基于注解的Java Model 和相应的Mapper对象
                 type="XMLMAPPER",生成SQLMap XML文件和独立的Mapper接口
         -->
-        <javaClientGenerator type="XMLMAPPER" targetPackage="com.xiaomi.mapper" targetProject="src/main/java">
+        <javaClientGenerator type="XMLMAPPER" targetPackage="com.cxf.mapper" targetProject="src/main/java">
             <property name="enableSubPackages" value="true"/>
         </javaClientGenerator>
         <!--生成对应表及类名-->
@@ -120,7 +149,12 @@
 
 当然这里，我把数据库的连接信息放到db.properties文件里了，这里就不贴出来了。
 
+默认属性情况下：
 
+1. 会生成按照主键增删改查的接口
+2. 模糊查询的删改和count
+
+这里，我们在table标签里通过enablexxxByExample属性把模糊查询关闭了。下面看看都生成了哪些代码
 
 ## 生成代码
 
@@ -134,5 +168,48 @@
 
 <img src="https://tva1.sinaimg.cn/large/007S8ZIlgy1genegghl6rj30jy0lw0v0.jpg" alt="image-20200510154519312" style="zoom:50%;" />
 
+
+
+DeptMapper.java
+
+```java
+public interface DeptMapper {
+    int deleteByPrimaryKey(Integer deptid);
+
+    int insert(Dept record);
+
+    int insertSelective(Dept record);
+
+    Dept selectByPrimaryKey(Integer deptid);
+
+    int updateByPrimaryKeySelective(Dept record);
+
+    int updateByPrimaryKey(Dept record);
+}
+```
+
+EmpMapper.java
+
+```java
+public interface EmpMapper {
+    int deleteByPrimaryKey(Integer id);
+
+    int insert(Emp record);
+
+    int insertSelective(Emp record);
+
+    Emp selectByPrimaryKey(Integer id);
+
+    int updateByPrimaryKeySelective(Emp record);
+
+    int updateByPrimaryKey(Emp record);
+}
+```
+
+可以看到主键相关的增删改查接口都自动生成了，是不是很方便
+
 [完整项目地址](https://github.com/luckywind/TechWorld)
 
+最后，欢迎关注公众号
+
+![公众号二维码](https://tva1.sinaimg.cn/large/007S8ZIlgy1genl8zwck7j3076076wey.jpg)

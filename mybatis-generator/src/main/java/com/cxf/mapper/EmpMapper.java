@@ -1,6 +1,6 @@
-package com.xiaomi.mapper;
+package com.cxf.mapper;
 
-import com.xiaomi.model.po.Emp;
+import com.cxf.model.po.Emp;
 
 public interface EmpMapper {
     int deleteByPrimaryKey(Integer id);

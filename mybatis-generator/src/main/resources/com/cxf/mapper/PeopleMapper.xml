@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xiaomi.mapper.PeopleMapper">
-  <resultMap id="BaseResultMap" type="com.xiaomi.model.po.People">
+<mapper namespace="com.cxf.mapper.PeopleMapper">
+  <resultMap id="BaseResultMap" type="com.cxf.model.po.People">
     <id column="id" jdbcType="INTEGER" property="id" />
     <result column="name" jdbcType="VARCHAR" property="name" />
     <result column="sex" jdbcType="CHAR" property="sex" />
@@ -19,11 +19,11 @@
     delete from people
     where id = #{id,jdbcType=INTEGER}
   </delete>
-  <insert id="insert" parameterType="com.xiaomi.model.po.People">
+  <insert id="insert" parameterType="com.cxf.model.po.People">
     insert into people (id, name, sex)
     values (#{id,jdbcType=INTEGER}, #{name,jdbcType=VARCHAR}, #{sex,jdbcType=CHAR})
   </insert>
-  <insert id="insertSelective" parameterType="com.xiaomi.model.po.People">
+  <insert id="insertSelective" parameterType="com.cxf.model.po.People">
     insert into people
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="id != null">
@@ -48,7 +48,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.xiaomi.model.po.People">
+  <update id="updateByPrimaryKeySelective" parameterType="com.cxf.model.po.People">
     update people
     <set>
       <if test="name != null">
@@ -60,7 +60,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.xiaomi.model.po.People">
+  <update id="updateByPrimaryKey" parameterType="com.cxf.model.po.People">
     update people
     set name = #{name,jdbcType=VARCHAR},
       sex = #{sex,jdbcType=CHAR}

@@ -1,6 +1,6 @@
-package com.xiaomi.mapper;
+package com.cxf.mapper;
 
-import com.xiaomi.model.po.People;
+import com.cxf.model.po.People;
 
 public interface PeopleMapper {
     int deleteByPrimaryKey(Integer id);

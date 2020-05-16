@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.xiaomi.mapper.DeptMapper">
-  <resultMap id="BaseResultMap" type="com.xiaomi.model.po.Dept">
+<mapper namespace="com.cxf.mapper.DeptMapper">
+  <resultMap id="BaseResultMap" type="com.cxf.model.po.Dept">
     <id column="deptid" jdbcType="INTEGER" property="deptid" />
     <result column="dname" jdbcType="VARCHAR" property="dname" />
   </resultMap>
@@ -18,11 +18,11 @@
     delete from dept
     where deptid = #{deptid,jdbcType=INTEGER}
   </delete>
-  <insert id="insert" parameterType="com.xiaomi.model.po.Dept">
+  <insert id="insert" parameterType="com.cxf.model.po.Dept">
     insert into dept (deptid, dname)
     values (#{deptid,jdbcType=INTEGER}, #{dname,jdbcType=VARCHAR})
   </insert>
-  <insert id="insertSelective" parameterType="com.xiaomi.model.po.Dept">
+  <insert id="insertSelective" parameterType="com.cxf.model.po.Dept">
     insert into dept
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="deptid != null">
@@ -41,7 +41,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.xiaomi.model.po.Dept">
+  <update id="updateByPrimaryKeySelective" parameterType="com.cxf.model.po.Dept">
     update dept
     <set>
       <if test="dname != null">
@@ -50,7 +50,7 @@
     </set>
     where deptid = #{deptid,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.xiaomi.model.po.Dept">
+  <update id="updateByPrimaryKey" parameterType="com.cxf.model.po.Dept">
     update dept
     set dname = #{dname,jdbcType=VARCHAR}
     where deptid = #{deptid,jdbcType=INTEGER}
