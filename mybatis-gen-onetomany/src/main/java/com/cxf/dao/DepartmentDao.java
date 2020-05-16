@@ -93,14 +93,56 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int updateByPrimaryKey(Department record) {
-        return 0;
+        int update=0;
+        try {
+            sqlSession = mybatisUtils.getSqlSession();
+            DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
+            update = departmentMapper.updateByPrimaryKey(record);
+            sqlSession.commit();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        } finally {
+            if (sqlSession != null) {
+                sqlSession.close();
+            }
+        }
+        return update;
+
     }
 
     public int insertBatchSelective(List<Department> records) {
-        return 0;
+        int insert=0;
+        try {
+            sqlSession = mybatisUtils.getSqlSession();
+            DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
+            insert = departmentMapper.insertBatchSelective(records);
+            sqlSession.commit();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        } finally {
+            if (sqlSession != null) {
+                sqlSession.close();
+            }
+        }
+        return insert;
+
     }
 
     public int updateBatchByPrimaryKeySelective(List<Department> records) {
-        return 0;
+
+        int update=0;
+        try {
+            sqlSession = mybatisUtils.getSqlSession();
+            DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
+            update = departmentMapper.updateBatchByPrimaryKeySelective(records);
+            sqlSession.commit();
+        } catch (IOException e) {
+            log.error(e.getMessage());
+        } finally {
+            if (sqlSession != null) {
+                sqlSession.close();
+            }
+        }
+        return update;
     }
 }

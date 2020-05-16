@@ -1,8 +1,5 @@
 package com.cxf.dao;
 
-import com.cxf.mapper.DepartmentMapper;
-import com.cxf.mapper.EmployeeMapper;
-import com.cxf.model.Employee;
 import com.cxf.utils.MybatisUtils;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.log4j.Logger;

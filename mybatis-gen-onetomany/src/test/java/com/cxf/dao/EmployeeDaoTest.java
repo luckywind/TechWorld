@@ -1,6 +1,5 @@
 package com.cxf.dao;
 
-import com.cxf.model.Employee;
 import junit.framework.TestCase;
 
 /**

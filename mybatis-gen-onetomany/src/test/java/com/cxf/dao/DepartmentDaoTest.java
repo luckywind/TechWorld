@@ -1,6 +1,5 @@
-package com.cxf.mapper;
+package com.cxf.dao;
 
-import com.cxf.dao.DepartmentDao;
 import com.cxf.model.Department;
 import junit.framework.TestCase;
 
@@ -9,7 +8,7 @@ import junit.framework.TestCase;
  * Authors: chengxingfu <chengxingfu@xiaomi.com>
  * Date:2020-05-11
  */
-public class DepartmentMapperTest extends TestCase {
+public class DepartmentDaoTest extends TestCase {
     DepartmentDao dao = new DepartmentDao();
 
     public void setUp() throws Exception {
@@ -24,7 +23,7 @@ public class DepartmentMapperTest extends TestCase {
 
     public void testInsert() {
         Department department = new Department();
-        department.setId(1);
+//        department.setId(1);
         department.setName("财务");
         int insert = dao.insert(department);
         System.out.println(insert);
