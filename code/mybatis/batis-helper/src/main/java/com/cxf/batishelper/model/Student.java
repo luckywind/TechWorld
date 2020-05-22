@@ -1,11 +1,11 @@
-package com.cxf.batishelper.domain;
+package com.cxf.batishelper.model;
 
 import java.io.Serializable;
 
 /**
  * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
  * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-17
+ * Date:2020-05-19
  */
 public class Student implements Serializable {
     private Integer id;

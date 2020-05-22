@@ -2,7 +2,7 @@ package com.cxf.batishelper.service.impl;
 
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
-import com.cxf.batishelper.domain.Student;
+import com.cxf.batishelper.model.Student;
 import java.util.List;
 import com.cxf.batishelper.mapper.StudentMapper;
 import com.cxf.batishelper.service.StudentService;
@@ -72,6 +72,10 @@ public class StudentServiceImpl implements StudentService {
         return studentMapper.updateBatchSelective(list);
     }
 }
+
+
+
+
 
 
 

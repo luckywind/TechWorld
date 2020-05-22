@@ -1,6 +1,6 @@
 package com.cxf.batishelper.mapper;
 
-import com.cxf.batishelper.domain.Student;
+import com.cxf.batishelper.model.Student;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 import org.junit.BeforeClass;

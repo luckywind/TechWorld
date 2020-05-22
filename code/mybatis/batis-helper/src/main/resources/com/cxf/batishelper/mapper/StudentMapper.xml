@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cxf.batishelper.mapper.StudentMapper">
-  <resultMap id="BaseResultMap" type="com.cxf.batishelper.domain.Student">
+  <resultMap id="BaseResultMap" type="com.cxf.batishelper.model.Student">
     <!--@mbg.generated-->
     <!--@Table student-->
     <id column="id" jdbcType="INTEGER" property="id" />
@@ -24,12 +24,12 @@
     delete from student
     where id = #{id,jdbcType=INTEGER}
   </delete>
-  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.domain.Student" useGeneratedKeys="true">
+  <insert id="insert" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.model.Student" useGeneratedKeys="true">
     <!--@mbg.generated-->
     insert into student (`name`, age)
     values (#{name,jdbcType=VARCHAR}, #{age,jdbcType=INTEGER})
   </insert>
-  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.domain.Student" useGeneratedKeys="true">
+  <insert id="insertSelective" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.model.Student" useGeneratedKeys="true">
     <!--@mbg.generated-->
     insert into student
     <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -49,7 +49,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.cxf.batishelper.domain.Student">
+  <update id="updateByPrimaryKeySelective" parameterType="com.cxf.batishelper.model.Student">
     <!--@mbg.generated-->
     update student
     <set>
@@ -62,7 +62,7 @@
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.cxf.batishelper.domain.Student">
+  <update id="updateByPrimaryKey" parameterType="com.cxf.batishelper.model.Student">
     <!--@mbg.generated-->
     update student
     set `name` = #{name,jdbcType=VARCHAR},
@@ -122,7 +122,7 @@
       (#{item.name,jdbcType=VARCHAR}, #{item.age,jdbcType=INTEGER})
     </foreach>
   </insert>
-  <insert id="insertOrUpdate" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.domain.Student" useGeneratedKeys="true">
+  <insert id="insertOrUpdate" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.model.Student" useGeneratedKeys="true">
     <!--@mbg.generated-->
     insert into student
     <trim prefix="(" suffix=")" suffixOverrides=",">
@@ -149,7 +149,7 @@
       age = #{age,jdbcType=INTEGER},
     </trim>
   </insert>
-  <insert id="insertOrUpdateSelective" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.domain.Student" useGeneratedKeys="true">
+  <insert id="insertOrUpdateSelective" keyColumn="id" keyProperty="id" parameterType="com.cxf.batishelper.model.Student" useGeneratedKeys="true">
     <!--@mbg.generated-->
     insert into student
     <trim prefix="(" suffix=")" suffixOverrides=",">

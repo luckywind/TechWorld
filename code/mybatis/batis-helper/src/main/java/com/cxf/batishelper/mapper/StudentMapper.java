@@ -1,13 +1,13 @@
 package com.cxf.batishelper.mapper;
 
-import com.cxf.batishelper.domain.Student;
+import com.cxf.batishelper.model.Student;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
 /**
  * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
  * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-17
+ * Date:2020-05-19
  */
 public interface StudentMapper {
     int deleteByPrimaryKey(Integer id);

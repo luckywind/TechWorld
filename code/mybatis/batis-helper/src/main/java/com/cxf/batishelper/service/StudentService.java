@@ -1,6 +1,6 @@
 package com.cxf.batishelper.service;
 
-import com.cxf.batishelper.domain.Student;
+import com.cxf.batishelper.model.Student;
 import java.util.List;
 
 /**
@@ -33,6 +33,10 @@ public interface StudentService {
 
     int updateBatchSelective(List<Student> list);
 }
+
+
+
+
 
 
 
