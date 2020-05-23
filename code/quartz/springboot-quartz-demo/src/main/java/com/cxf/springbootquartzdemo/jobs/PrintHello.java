@@ -1,9 +1,11 @@
 package com.cxf.springbootquartzdemo.jobs;
 
+import com.cxf.springbootquartzdemo.service.MySerivce;
 import org.quartz.DisallowConcurrentExecution;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 
@@ -20,8 +22,11 @@ import java.time.LocalDateTime;
  */
 @DisallowConcurrentExecution
 public class PrintHello implements Job {
+    @Autowired
+    MySerivce mySerivce;
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-        System.out.println("hello"+ LocalDateTime.now());
+        System.out.println("hello" + LocalDateTime.now());
+        System.out.println(mySerivce.sayHello("cxf"));
     }
 }

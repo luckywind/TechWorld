@@ -26,6 +26,8 @@ spring.quartz.jdbc.initialize-schema=true
 
 quartz scheduler配置可以使用属性`spring.quartz.properties.*`自定义，也可以使用SchedulerFactoryBeanCustomizer通过编程方式自定义
 
+## 依赖bean的注入
+
 job可以定义setter方法来注入属性，或者其他bean
 
 ```java
