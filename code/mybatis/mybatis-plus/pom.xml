@@ -9,9 +9,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.cxf</groupId>
-    <artifactId>batis-helper</artifactId>
+    <artifactId>mybatis-plus</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>batis-helper</name>
+    <name>mybatis-plus</name>
     <description>Demo project for Spring Boot</description>
 
     <properties>
@@ -48,7 +48,7 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
+            <version>4.4</version>
         </dependency>
 
     </dependencies>

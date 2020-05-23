@@ -6,6 +6,19 @@
 
 通过resultType指定结果类型
 
+别名  映射的类型 
+
+date         Date
+decimal  BigDecimal
+bigdecimal BigDecimal
+object 	Object
+map 		Map
+hashmap HashMap
+list 			List
+arraylist 	ArrayList
+collection Collection
+iterator 	Iterator
+
 ### 映射到map
 
 ```xml
@@ -332,9 +345,10 @@
 2. 通过property子标签传参数
 
 ```xml
+代码段可以使用变量占位
 <sql id="userColumns"> ${alias}.id,${alias}.username,${alias}.password </sql>
 
-
+然后include标签可以给变量传值
 <select id="selectUsers" resultType="map">
   select
     <include refid="userColumns"><property name="alias" value="t1"/></include>,
@@ -391,6 +405,12 @@
 ```
 
 ## 字符串替换
+
+注意传参时， #和$得区别！据说面试常问
+
+`#`用于构造预编译语句占位的，
+
+`$`不转译的原生字符串替换
 
 默认情况下，使用 `#{}` 参数语法时，MyBatis 会创建 `PreparedStatement` 参数占位符，并通过占位符安全地设置参数（就像使用 ? 一样）。 这样做更安全，更迅速，通常也是首选做法，不过有时你就是想直接在 SQL 语句中直接插入一个不转义的字符串。 比如 ORDER BY 子句，这时候你可以：
 
@@ -450,7 +470,7 @@ ORDER BY ${columnName}
 
 ## trim、where、set
 
-1. *where* 元素只会在子元素返回任何内容的情况下才插入 “WHERE” 子句
+1. *where* 元素只会在子元素有返回内容的情况下才插入 “WHERE” 子句
 2. 若子句的开头为 “AND” 或 “OR”，*where* 元素也会将它们去除。
 
 ```xml
@@ -477,6 +497,7 @@ ORDER BY ${columnName}
 <trim prefix="WHERE" prefixOverrides="AND |OR ">
   ...
 </trim>
+我感觉是给我们的条件输入加一个prefix，也就是WHERE，如果有多个if，从第二个if块开始，其prefix会使用prefixOverrides替换
 ```
 
 *prefixOverrides* 属性会忽略通过管道符分隔的文本序列（注意此例中的空格是必要的）。上述例子会移除所有 *prefixOverrides* 属性中指定的内容，并且插入 *prefix* 属性中指定的内容。
@@ -487,7 +508,7 @@ ORDER BY ${columnName}
 
 用于动态更新语句的类似解决方案叫做 *set*。*set* 元素可以用于动态包含需要更新的列，忽略其它不更新的列。比如：
 
-*set* 元素会动态地在行首插入 SET 关键字，并会删掉额外的逗号
+***set* 元素会动态地在行首插入 SET 关键字，并会删掉额外的逗号**
 
 ```xml
 <update id="updateAuthorIfNecessary">
@@ -516,6 +537,33 @@ ORDER BY ${columnName}
 </select>
 ```
 
+## cdata
+
+- XML文件会在解析XML时将5种特殊字符进行转义，分别是&， <， >， “， ‘， 我们不希望语法被转义，就需要进行特别处理。
+- 有两种解决方法：其一，使用``标签来包含字符。其二，使用XML转义序列来表示这些字符。
+
+```xml
+<select id="userInfo" parameterType="java.util.HashMap" resultMap="user">   
+     SELECT id,newTitle, newsDay FROM newsTable WHERE 1=1  
+     AND  newsday <![CDATA[>=]]> #{startTime}
+     AND newsday <![CDATA[<= ]]>#{endTime}  
+  ]]>  
+ </select>  
+```
+
+在CDATA内部的所有内容都会被解析器忽略，保持原貌。所以在Mybatis配置文件中，要尽量缩小 ``
+的作用范围
+
+mybatisHelper可以使用cd快捷生成cdata
+
+其二就是使用xml的转译序列
+
+    特殊字符     转义序列
+    <           &lt;
+    >           &gt;
+    &           &amp;
+    "           &quot;
+    '           &apos;
 # insert和insertSelective的区别
 
 updateByPrimaryKey对你注入的字段全部更新（不判断是否为Null）
@@ -549,3 +597,4 @@ List<DorisConfig> selectByAll(DorisConfig dorisConfig);
 ## selectByAll
 
 其实是根据提供的对象的所有非空字段去查。 有个容易忽视的问题，就是时间戳字段，不要随便设置，否则查不到结果。
+
