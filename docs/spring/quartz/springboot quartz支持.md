@@ -303,8 +303,6 @@ public class QuartzSubmitJobs {
 2019-07-14 14:36:52.058  org.quartz.core.QuartzScheduler          : Scheduler MyInstanceName_$_Instance1 
 ```
 
-
-
-
+项目源码见项目:jpa-spec-with-quartz
 
 [原文](https://dzone.com/articles/adding-quartz-to-spring-boot)
