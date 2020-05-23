@@ -1,0 +1,45 @@
+spring:
+#    main:
+#        allow-bean-definition-overriding: true
+    profiles:
+        active: dev #spring.profiles.active#
+    quartz:
+        properties:
+            org:
+                quartz:
+                    scheduler:
+                        instanceName: quartzScheduler
+                        instanceId: AUTO
+                    jobStore:
+                        class: org.quartz.impl.jdbcjobstore.JobStoreTX
+                        driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+                        tablePrefix: QRTZ_
+                        isClustered: false
+                        clusterCheckinInterval: 10000
+                        useProperties: false
+                        dataSource: quartz_datasource
+                    threadPool:
+                        class: org.quartz.simpl.SimpleThreadPool
+                        threadCount: 300
+                        threadPriority: 5
+                        threadsInheritContextClassLoaderOfInitializingThread: true
+        #数据库方式
+        job-store-type: JDBC
+        wait-for-jobs-to-complete-on-shutdown: true
+        #初始化表结构
+        jdbc:
+            initialize-schema: NEVER
+
+
+mybatis:
+    mapper-locations: classpath:mapping/*.xml
+    type-aliases-package: com.cxf.springbootquartzdemo.model
+    configuration:
+        logImpl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+logging:
+    config: classpath:logback-spring.xml
+
+
+
+
