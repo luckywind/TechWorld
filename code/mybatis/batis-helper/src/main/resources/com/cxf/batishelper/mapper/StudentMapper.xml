@@ -200,4 +200,17 @@
         from student
         where `name`=#{name,jdbcType=VARCHAR}
     </select>
+    <select id="selectByNameAndAge" resultType="com.cxf.batishelper.model.Student">
+        select
+        <include refid="Base_Column_List"/>
+        from student
+            where name=#{name,jdbcType=VARCHAR}
+            and age=#{age,jdbcType=INTEGER}
+    </select>
+    <select id="selectByIdList" resultType="com.cxf.batishelper.model.Student">
+        select
+        <include refid="Base_Column_List"></include>
+        from student
+        where id in (#{list[0]},#{collection[1]})
+    </select>
 </mapper>

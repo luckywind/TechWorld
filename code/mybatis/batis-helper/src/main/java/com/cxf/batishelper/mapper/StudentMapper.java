@@ -2,6 +2,7 @@ package com.cxf.batishelper.mapper;
 
 import com.cxf.batishelper.model.Student;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Param;
@@ -35,4 +36,8 @@ public interface StudentMapper {
     int batchInsert(@Param("list") List<Student> list);
 
     List<Student> mySelectByName(@Param("name") String name);
+
+    List<Student> selectByNameAndAge(@Param("name") String name, @Param("age") Integer age);
+
+    List<Student> selectByIdList(@Param("idCollection") Collection<Integer> idCollection);
 }

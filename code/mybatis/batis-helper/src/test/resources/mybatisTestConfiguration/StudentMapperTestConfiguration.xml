@@ -18,6 +18,6 @@
 
 
     <mappers>
-        <mapper resource="com/cxf/batishelper/mapperxml/StudentMapper.xml"/>
+        <mapper resource="com/cxf/batishelper/mapper/StudentMapper.xml"/>
     </mappers>
 </configuration>

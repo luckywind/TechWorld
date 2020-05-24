@@ -5,5 +5,5 @@ spring:
     password: 12345678
 
 mybatis:
-  mapper-locations: com.cxf.batishelper.mapperxml/*.xml
+  mapper-locations: com.cxf.batishelper.mapper/*.xml
   type-aliases-package: com.cxf.batishelper.model
