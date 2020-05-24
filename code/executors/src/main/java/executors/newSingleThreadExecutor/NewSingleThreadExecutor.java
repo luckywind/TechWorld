@@ -14,7 +14,7 @@ public class NewSingleThreadExecutor {
         service.submit(new Runnable() {
             @Override
             public void run() {
-                for (int i = 0; i < 10 ; i++) {
+                for (int i = 0; i < 10; i++) {
                     System.out.println("sfsdfsdf");
                 }
             }

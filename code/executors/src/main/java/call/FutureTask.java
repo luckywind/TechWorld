@@ -16,20 +16,20 @@ public class FutureTask {
         service.execute(futureTask);
         service.execute(futureTask1); //执行任务
 
-        while (true){
+        while (true) {
             try {
-                if (futureTask.isDone()&&futureTask1.isDone()){
+                if (futureTask.isDone() && futureTask1.isDone()) {
                     System.out.println("Done");
                     service.shutdown();
                     return;
                 }
-                if (!futureTask.isDone()){
-                    System.out.println("FutureTask1 output"+futureTask.get());
+                if (!futureTask.isDone()) {
+                    System.out.println("FutureTask1 output" + futureTask.get());
 
                 }
                 System.out.println("Waitting for FutureTask to complete");
                 String s = futureTask1.get(200L, TimeUnit.MILLISECONDS);
-                if (s != null){
+                if (s != null) {
                     System.out.println("FutureTask2 output" + s);
                 }
 
@@ -37,7 +37,7 @@ public class FutureTask {
                 e.printStackTrace();
             } catch (ExecutionException e) {
                 e.printStackTrace();
-            }catch (TimeoutException e){
+            } catch (TimeoutException e) {
 
             }
 

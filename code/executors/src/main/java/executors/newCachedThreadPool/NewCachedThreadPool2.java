@@ -13,6 +13,7 @@ import java.util.concurrent.ThreadFactory;
 public class NewCachedThreadPool2 {
 
     private ThreadFactory threadFactory = new SimpleThreadFactory();
+
     public static void main(String[] args) {
 
         Executors.newCachedThreadPool();

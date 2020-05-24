@@ -1,92 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cxf.mapper.DeptMapper">
-  <resultMap id="BaseResultMap" type="com.cxf.model.po.Dept">
-    <id column="deptid" jdbcType="INTEGER" property="deptid" />
-    <result column="dname" jdbcType="VARCHAR" property="dname" />
-  </resultMap>
-  <sql id="Base_Column_List">
-    deptid, dname
-  </sql>
-  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select 'false' as QUERYID,
-    <include refid="Base_Column_List" />
-    from dept
-    where deptid = #{deptid,jdbcType=INTEGER}
-  </select>
-  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
-    delete from dept
-    where deptid = #{deptid,jdbcType=INTEGER}
-  </delete>
-  <insert id="insert" parameterType="com.cxf.model.po.Dept">
-    insert into dept (deptid, dname)
-    values (#{deptid,jdbcType=INTEGER}, #{dname,jdbcType=VARCHAR})
-  </insert>
-  <insert id="insertSelective" parameterType="com.cxf.model.po.Dept">
-    insert into dept
-    <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="deptid != null">
-        deptid,
-      </if>
-      <if test="dname != null">
-        dname,
-      </if>
-    </trim>
-    <trim prefix="values (" suffix=")" suffixOverrides=",">
-      <if test="deptid != null">
-        #{deptid,jdbcType=INTEGER},
-      </if>
-      <if test="dname != null">
-        #{dname,jdbcType=VARCHAR},
-      </if>
-    </trim>
-  </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.cxf.model.po.Dept">
-    update dept
-    <set>
-      <if test="dname != null">
-        dname = #{dname,jdbcType=VARCHAR},
-      </if>
-    </set>
-    where deptid = #{deptid,jdbcType=INTEGER}
-  </update>
-  <update id="updateByPrimaryKey" parameterType="com.cxf.model.po.Dept">
-    update dept
-    set dname = #{dname,jdbcType=VARCHAR}
-    where deptid = #{deptid,jdbcType=INTEGER}
-  </update>
-  <insert id="insertBatchSelective" parameterType="java.util.List">
-    insert into dept
-    <trim prefix="(" suffix=")" suffixOverrides=",">
-      <if test="list[0].deptid!=null">
-        deptid,
-      </if>
-      <if test="list[0].dname!=null">
-        dname,
-      </if>
-    </trim>
-     values 
-    <foreach collection="list" index="index" item="item" separator=",">
-      <trim prefix=" (" suffix=")" suffixOverrides=",">
-        <if test="item.deptid!=null">
-          #{item.deptid,jdbcType=INTEGER},
-        </if>
-        <if test="item.dname!=null">
-          #{item.dname,jdbcType=VARCHAR},
-        </if>
-      </trim>
-    </foreach>
-  </insert>
-  <update id="updateBatchByPrimaryKeySelective" parameterType="java.util.List">
-    <foreach collection="list" index="index" item="item" separator=";">
-      update dept
-      <set>
-        <if test="item.dname!=null">
-          dname=#{item.dname,jdbcType=VARCHAR},
-        </if>
-      </set>
-      where 
-      deptid = #{item.deptid,jdbcType=INTEGER}
-    </foreach>
-  </update>
+    <resultMap id="BaseResultMap" type="com.cxf.model.po.Dept">
+        <id column="deptid" jdbcType="INTEGER" property="deptid"/>
+        <result column="dname" jdbcType="VARCHAR" property="dname"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        deptid, dname
+    </sql>
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select 'false' as QUERYID,
+        <include refid="Base_Column_List"/>
+        from dept
+        where deptid = #{deptid,jdbcType=INTEGER}
+    </select>
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete from dept
+        where deptid = #{deptid,jdbcType=INTEGER}
+    </delete>
+    <insert id="insert" parameterType="com.cxf.model.po.Dept">
+        insert into dept (deptid, dname)
+        values (#{deptid,jdbcType=INTEGER}, #{dname,jdbcType=VARCHAR})
+    </insert>
+    <insert id="insertSelective" parameterType="com.cxf.model.po.Dept">
+        insert into dept
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="deptid != null">
+                deptid,
+            </if>
+            <if test="dname != null">
+                dname,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="deptid != null">
+                #{deptid,jdbcType=INTEGER},
+            </if>
+            <if test="dname != null">
+                #{dname,jdbcType=VARCHAR},
+            </if>
+        </trim>
+    </insert>
+    <update id="updateByPrimaryKeySelective" parameterType="com.cxf.model.po.Dept">
+        update dept
+        <set>
+            <if test="dname != null">
+                dname = #{dname,jdbcType=VARCHAR},
+            </if>
+        </set>
+        where deptid = #{deptid,jdbcType=INTEGER}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.cxf.model.po.Dept">
+        update dept
+        set dname = #{dname,jdbcType=VARCHAR}
+        where deptid = #{deptid,jdbcType=INTEGER}
+    </update>
+    <insert id="insertBatchSelective" parameterType="java.util.List">
+        insert into dept
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="list[0].deptid!=null">
+                deptid,
+            </if>
+            <if test="list[0].dname!=null">
+                dname,
+            </if>
+        </trim>
+        values
+        <foreach collection="list" index="index" item="item" separator=",">
+            <trim prefix=" (" suffix=")" suffixOverrides=",">
+                <if test="item.deptid!=null">
+                    #{item.deptid,jdbcType=INTEGER},
+                </if>
+                <if test="item.dname!=null">
+                    #{item.dname,jdbcType=VARCHAR},
+                </if>
+            </trim>
+        </foreach>
+    </insert>
+    <update id="updateBatchByPrimaryKeySelective" parameterType="java.util.List">
+        <foreach collection="list" index="index" item="item" separator=";">
+            update dept
+            <set>
+                <if test="item.dname!=null">
+                    dname=#{item.dname,jdbcType=VARCHAR},
+                </if>
+            </set>
+            where
+            deptid = #{item.deptid,jdbcType=INTEGER}
+        </foreach>
+    </update>
 </mapper>

@@ -10,21 +10,21 @@
         <plugin type="cc.bandaotixi.plugins.OneToOnePlugin"></plugin>
         <!-- 生成一对多配置 -->
         <plugin type="cc.bandaotixi.plugins.OneToManyPlugin"></plugin>
-<!--        批量插入和批量更新-->
+        <!--        批量插入和批量更新-->
         <plugin type="cc.bandaotixi.plugins.BatchInsertPlugin"></plugin>
         <plugin type="cc.bandaotixi.plugins.BatchUpdatePlugin"></plugin>
 
         <commentGenerator type="cc.bandaotixi.plugins.BDTCommentGenerator">
             <property name="javaFileEncoding" value="UTF-8"/>
             <property name="suppressDate" value="true"/>
-            <property name="suppressAllComments" value="false" />
+            <property name="suppressAllComments" value="false"/>
         </commentGenerator>
 
-<!--        <commentGenerator>
-            <property name="suppressDate" value="true"/>
-            &lt;!&ndash; 是否去除自动生成的注释 true：是 ： false:否 &ndash;&gt;
-            <property name="suppressAllComments" value="true"/>
-        </commentGenerator>-->
+        <!--        <commentGenerator>
+                    <property name="suppressDate" value="true"/>
+                    &lt;!&ndash; 是否去除自动生成的注释 true：是 ： false:否 &ndash;&gt;
+                    <property name="suppressAllComments" value="true"/>
+                </commentGenerator>-->
         <!--数据库链接地址账号密码-->
         <jdbcConnection driverClass="${jdbc.driverClass}"
                         connectionURL="${jdbc.connectionURL}"
@@ -56,10 +56,10 @@
         <!-- 指定数据库表，要生成哪些表，就写哪些表，要和数据库中对应，不能写错！ -->
         <!-- 数据表进行生成操作 schema:相当于库名; tableName:表名; domainObjectName:对应的DO -->
 
-<!--
-domainObjectName 必须填写不然会报空引用
-column是当前表中字段，joinColumn是关联表的字段
--->
+        <!--
+        domainObjectName 必须填写不然会报空引用
+        column是当前表中字段，joinColumn是关联表的字段
+        -->
         <table tableName="emp" domainObjectName="Emp"
                enableCountByExample="false" enableUpdateByExample="false"
                enableDeleteByExample="false" enableSelectByExample="false"
@@ -70,21 +70,21 @@ column是当前表中字段，joinColumn是关联表的字段
                 转为fileName -->
             <!--写法问题： mysql 数据库，字段区分大小写，驼峰写法：设置true时 字段名称正常写法 例如：fileName 转为fileName;
                 设置false 则是filename -->
-            <property name="useActualColumnNames" value="true" />
+            <property name="useActualColumnNames" value="true"/>
             <generatedKey column="id" sqlStatement="MySql"
-                          identity="true" />
-            <oneToOne mappingTable="dept" column="deptid" joinColumn="deptid" />
-            <oneToMany mappingTable="kpi" column="id" joinColumn="empId" />
+                          identity="true"/>
+            <oneToOne mappingTable="dept" column="deptid" joinColumn="deptid"/>
+            <oneToMany mappingTable="kpi" column="id" joinColumn="empId"/>
             <!-- 有对应实体的时候，把字段忽略生成 -->
-            <ignoreColumn column="dept" />
+            <ignoreColumn column="dept"/>
         </table>
         <table tableName="dept" domainObjectName="Dept"
                enableCountByExample="false" enableUpdateByExample="false"
                enableDeleteByExample="false" enableSelectByExample="false"
                selectByExampleQueryId="false" selectByPrimaryKeyQueryId="false">
-<!--            <generatedKey column="deptid" sqlStatement="MySql"-->
-<!--                          identity="true" />-->
+            <!--            <generatedKey column="deptid" sqlStatement="MySql"-->
+            <!--                          identity="true" />-->
         </table>
 
- </context>
+    </context>
 </generatorConfiguration>

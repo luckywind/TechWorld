@@ -1,25 +1,25 @@
 server:
-    port: 8088
+  port: 8088
 
 spring:
-    devtools:
-        livereload:
-            enabled: false
-    datasource:
-        name: quartz_datasource
-        url: jdbc:mysql://127.0.1:3306/quartz?useUnicode=true&characterEncoding=utf8
-        username: root
-        password: 12345678
-        type: com.zaxxer.hikari.HikariDataSource
-        driver-class-name: com.mysql.jdbc.Driver
-        hikari:
-            minimum-idle: 5
-            maximum-pool-size: 15
-            auto-commit: true
-            idle-timeout: 30000
-            pool-name: TaskMonitorHikariCP
-            max-lifetime: 1800000
-            connection-timeout: 30000
-            connection-test-query: SELECT 1
+  devtools:
+    livereload:
+      enabled: false
+  datasource:
+    name: quartz_datasource
+    url: jdbc:mysql://127.0.1:3306/quartz?useUnicode=true&characterEncoding=utf8
+    username: root
+    password: 12345678
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: com.mysql.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 15
+      auto-commit: true
+      idle-timeout: 30000
+      pool-name: TaskMonitorHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
 
 

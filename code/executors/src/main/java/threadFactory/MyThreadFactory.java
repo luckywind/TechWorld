@@ -8,8 +8,8 @@ import java.util.concurrent.ThreadFactory;
  */
 public class MyThreadFactory implements ThreadFactory {
 
-    private  int counter;
-    private  String name;
+    private int counter;
+    private String name;
     private List<String> stats;
 
     @Override

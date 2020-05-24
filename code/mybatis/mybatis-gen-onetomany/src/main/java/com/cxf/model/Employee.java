@@ -2,19 +2,16 @@ package com.cxf.model;
 
 public class Employee {
     /**
-     * 
      * 表字段 : employee.id
      */
     private Integer id;
 
     /**
-     * 
      * 表字段 : employee.name
      */
     private String name;
 
     /**
-     * 
      * 表字段 : employee.dpt_id
      */
     private Integer dpt_id;
@@ -24,7 +21,7 @@ public class Employee {
     /**
      * 获取  字段:employee.id
      *
-     * @return employee.id, 
+     * @return employee.id,
      */
     public Integer getId() {
         return id;
@@ -33,7 +30,7 @@ public class Employee {
     /**
      * 设置  字段:employee.id
      *
-     * @param id the value for employee.id, 
+     * @param id the value for employee.id,
      */
     public void setId(Integer id) {
         this.id = id;
@@ -42,7 +39,7 @@ public class Employee {
     /**
      * 获取  字段:employee.name
      *
-     * @return employee.name, 
+     * @return employee.name,
      */
     public String getName() {
         return name;
@@ -51,7 +48,7 @@ public class Employee {
     /**
      * 设置  字段:employee.name
      *
-     * @param name the value for employee.name, 
+     * @param name the value for employee.name,
      */
     public void setName(String name) {
         this.name = name == null ? null : name.trim();
@@ -60,7 +57,7 @@ public class Employee {
     /**
      * 获取  字段:employee.dpt_id
      *
-     * @return employee.dpt_id, 
+     * @return employee.dpt_id,
      */
     public Integer getDpt_id() {
         return dpt_id;
@@ -69,7 +66,7 @@ public class Employee {
     /**
      * 设置  字段:employee.dpt_id
      *
-     * @param dpt_id the value for employee.dpt_id, 
+     * @param dpt_id the value for employee.dpt_id,
      */
     public void setDpt_id(Integer dpt_id) {
         this.dpt_id = dpt_id;
@@ -80,6 +77,6 @@ public class Employee {
     }
 
     public void setDepartment(Department department) {
-        this.department=department;
+        this.department = department;
     }
 }

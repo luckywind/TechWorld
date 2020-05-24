@@ -37,7 +37,7 @@ public class QuartzConfig {
     @Bean
     public SchedulerFactoryBean scheduler(Trigger... triggers) {
         SchedulerFactoryBean schedulerFactory = new SchedulerFactoryBean();
-/*改成从配置文件读取*/
+        /*改成从配置文件读取*/
 //        Properties properties = new Properties();
 //        properties.setProperty("org.quartz.scheduler.instanceName", "MyInstanceName");
 //        properties.setProperty("org.quartz.scheduler.instanceId", "Instance1");

@@ -25,7 +25,7 @@ public class MemberClassService {
         this.memberRepository = memberRepository;
     }
 
-    @Transactional(propagation=Propagation.REQUIRED, readOnly=true)
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
     public void classStats() {
         List<MemberClass> memberClasses = classRepository.findAll();
 
@@ -47,7 +47,7 @@ public class MemberClassService {
 
         log.info("Class Statics:");
         log.info("=============");
-        memberClassesMap.forEach((k,v) -> log.info("{}: {}", k, v));
+        memberClassesMap.forEach((k, v) -> log.info("{}: {}", k, v));
         log.info("==========================");
     }
 }

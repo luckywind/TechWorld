@@ -22,7 +22,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(SpringRunner.class)
-@SpringBootTest(properties="spring.main.banner-mode=off")
+@SpringBootTest(properties = "spring.main.banner-mode=off")
 @Transactional
 public class JpaSpecWithQuartzApplicationTests {
 

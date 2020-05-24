@@ -14,5 +14,6 @@ public class MemberClass {
     private long id;
     private String name;
 
-    public MemberClass() { }
+    public MemberClass() {
+    }
 }

@@ -63,7 +63,7 @@ public class Test {
                 "                                        PROPERTIES (\n" +
                 "                                        \"storage_type\" = \"COLUMN\"\n" +
                 "                                        );";
-        System.out.println(String.format(sql,"tbname",dtf.format(today),dtf.format(tomorrow),20));
+        System.out.println(String.format(sql, "tbname", dtf.format(today), dtf.format(tomorrow), 20));
 
     }
 }

@@ -22,7 +22,8 @@ public class DeptDao implements DeptMapper {
     public static void main(String[] args) {
         DeptDao.testInsert();
     }
-    public static  void testInsert() {
+
+    public static void testInsert() {
         Dept dept = new Dept();
         dept.setDeptid(21);
         dept.setDname("HR");

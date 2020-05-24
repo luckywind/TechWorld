@@ -10,6 +10,7 @@ import junit.framework.TestCase;
  */
 public class EmployeeDaoTest extends TestCase {
     EmployeeDao dao = new EmployeeDao();
+
     public void testDeleteByPrimaryKey() {
     }
 

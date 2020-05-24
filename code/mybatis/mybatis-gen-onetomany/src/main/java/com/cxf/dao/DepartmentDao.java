@@ -17,7 +17,7 @@ import java.util.List;
 public class DepartmentDao implements DepartmentMapper {
     final Logger log = Logger.getLogger(DepartmentMapper.class);
     MybatisUtils mybatisUtils = new MybatisUtils();
-    SqlSession sqlSession =null;
+    SqlSession sqlSession = null;
 
     public int deleteByPrimaryKey(Integer id) {
 
@@ -25,14 +25,14 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int insert(Department record) {
-        int insert=0;
+        int insert = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
             insert = departmentMapper.insert(record);
             sqlSession.commit();
         } catch (IOException e) {
-           log.error(e.getMessage());
+            log.error(e.getMessage());
         } finally {
             if (sqlSession != null) {
                 sqlSession.close();
@@ -42,7 +42,7 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int insertSelective(Department record) {
-        int insert=0;
+        int insert = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
@@ -59,7 +59,7 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public Department selectByPrimaryKey(Integer id) {
-        Department department=null;
+        Department department = null;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
@@ -76,7 +76,7 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int updateByPrimaryKeySelective(Department record) {
-        int update=0;
+        int update = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
@@ -93,7 +93,7 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int updateByPrimaryKey(Department record) {
-        int update=0;
+        int update = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
@@ -111,7 +111,7 @@ public class DepartmentDao implements DepartmentMapper {
     }
 
     public int insertBatchSelective(List<Department> records) {
-        int insert=0;
+        int insert = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);
@@ -130,7 +130,7 @@ public class DepartmentDao implements DepartmentMapper {
 
     public int updateBatchByPrimaryKeySelective(List<Department> records) {
 
-        int update=0;
+        int update = 0;
         try {
             sqlSession = mybatisUtils.getSqlSession();
             DepartmentMapper departmentMapper = sqlSession.getMapper(DepartmentMapper.class);

@@ -16,6 +16,7 @@ public class EmployeeDao implements EmployeeMapper {
     final Logger log = Logger.getLogger(EmployeeDao.class);
     MybatisUtils mybatisUtils = new MybatisUtils();
     SqlSession sqlSession = null;
+
     @Override
     public int deleteByPrimaryKey(Integer id) {
         return 0;

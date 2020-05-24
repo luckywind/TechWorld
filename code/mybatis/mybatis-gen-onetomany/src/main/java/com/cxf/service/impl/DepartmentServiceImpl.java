@@ -1,7 +1,9 @@
 package com.cxf.service.impl;
 
 import org.springframework.stereotype.Service;
+
 import javax.annotation.Resource;
+
 import com.cxf.mapper.DepartmentMapper;
 import com.cxf.model.Department;
 import com.cxf.service.DepartmentService;

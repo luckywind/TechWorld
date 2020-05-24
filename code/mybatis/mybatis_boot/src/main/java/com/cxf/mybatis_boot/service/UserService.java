@@ -22,6 +22,7 @@ public class UserService {
     public User selectUserByName(String name) {
         return userDao.findUserByName(name);
     }
+
     /**
      * 查找所有用户
      */

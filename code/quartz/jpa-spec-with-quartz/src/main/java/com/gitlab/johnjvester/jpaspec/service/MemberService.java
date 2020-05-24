@@ -31,7 +31,7 @@ public class MemberService {
                 .and(memberSpecification.getFilter(filter)));
     }
 
-    @Transactional(propagation=Propagation.REQUIRED, readOnly=true)
+    @Transactional(propagation = Propagation.REQUIRED, readOnly = true)
     public void memberStats() {
         List<Member> members = memberRepository.findAll();
 

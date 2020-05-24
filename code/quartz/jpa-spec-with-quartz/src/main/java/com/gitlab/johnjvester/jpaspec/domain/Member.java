@@ -29,5 +29,6 @@ public class Member {
     @ManyToMany
     private Set<MemberClass> memberClasses;
 
-    public Member() { }
+    public Member() {
+    }
 }

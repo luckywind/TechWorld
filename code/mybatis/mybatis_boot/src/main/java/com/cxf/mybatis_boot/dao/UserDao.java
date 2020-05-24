@@ -14,6 +14,7 @@ import java.util.List;
 public interface UserDao {
     /**
      * 通过名字查询用户信息
+     *
      * @param name
      * @return
      */
@@ -22,6 +23,7 @@ public interface UserDao {
 
     @Select("select * from user")
     List<User> findAllUser();
+
     /**
      * 插入用户信息
      */
@@ -40,7 +42,6 @@ public interface UserDao {
      */
     @Delete("DELETE from user WHERE id = #{id}")
     void deleteUser(@Param("id") int id);
-
 
 
 }

@@ -7,5 +7,6 @@ public class FilterRequest {
     private Boolean active;
     private String zipFilter;
 
-    public FilterRequest() { }
+    public FilterRequest() {
+    }
 }

@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 public class WorkerPool {
 
-    public static void main(String args[]) throws InterruptedException{
+    public static void main(String args[]) throws InterruptedException {
         //RejectedExecutionHandler implementation
         RejectedExecutionHandlerImpl rejectionHandler = new RejectedExecutionHandlerImpl();
         //Get the ThreadFactory implementation to use
@@ -30,7 +30,7 @@ public class WorkerPool {
         Thread monitorThread = new Thread(monitor);
         monitorThread.start();
         //submit work to the thread pool
-        for(int i=0; i<10; i++){
+        for (int i = 0; i < 10; i++) {
             executorPool.execute(new Runnable() {
                 @Override
                 public void run() {
