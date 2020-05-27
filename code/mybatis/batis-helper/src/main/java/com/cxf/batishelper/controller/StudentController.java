@@ -30,4 +30,14 @@ public class StudentController {
         responseData.setSuccess(true);
         return responseData;
     }
+
+    @RequestMapping(value = "/first")
+    public ResponseData<Student> first() {
+        Student student = studentService.selectByPrimaryKey(1);
+        ResponseData<Student> responseData = new ResponseData<>();
+        responseData.setData(student);
+        responseData.setStatus(HttpStatus.OK.value());
+        responseData.setSuccess(true);
+        return responseData;
+    }
 }

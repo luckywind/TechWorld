@@ -91,7 +91,7 @@ iterator 	Iterator
   - 嵌套结果映射 – 关联可以是 resultMap 元素，或是对其它结果映射的引用
 - collection – 一个复杂类型的集合
   - 嵌套结果映射 – 集合可以是 resultMap 元素，或是对其它结果映射的引用
-- discriminator – 使用结果值来决定使用哪个 resultMap
+- discriminator –鉴别器， 使用结果值来决定使用哪个 resultMap
   - case – 基于某些值的结果映射
      嵌套结果映射 – case 也是一个结果映射，因此具有相同的结构和元素；或者引用其它的结果映射
 
@@ -597,4 +597,258 @@ List<DorisConfig> selectByAll(DorisConfig dorisConfig);
 ## selectByAll
 
 其实是根据提供的对象的所有非空字段去查。 有个容易忽视的问题，就是时间戳字段，不要随便设置，否则查不到结果。
+
+# 打印sql
+
+**方法一 properties：** 在application.properties配置文件中增加如下配置
+
+```
+logging.level.com.marvin.demo.dao=debug
+
+复制代码
+```
+
+【注】：logging.level.com后面的路径指的是Mybatis对应的方法接口所在的包,一般是*.dao所在的包，而并不是mapper.xml所在的包。 debug代表的是日志级别。
+
+**方法二 yml：** 在application.yml配置文件中增加如下配置
+
+```
+logging:
+  level:
+     com.marvin.demo.dao : debug
+```
+
+# 分页
+
+[三种分页方式](https://juejin.im/entry/59127ad4da2f6000536f64d8)
+
+## 查出所有数据后手动分页
+
+缺点：数据库查询并返回所有的数据，而我们需要的只是极少数符合要求的数据。当数据量少时，还可以接受。当数据库数据量过大时，每次查询对数据库和程序的性能都会产生极大的影响。
+
+```java
+@Override
+    public List<Student> queryStudentsByArray(int currPage, int pageSize) {
+        List<Student> students = studentMapper.queryStudentsByArray();//查出所有数据
+//        从第几条数据开始
+        int firstIndex = (currPage - 1) * pageSize;
+//        到第几条数据结束
+        int lastIndex = currPage * pageSize;
+        return students.subList(firstIndex, lastIndex);
+    }
+
+//controller
+ @ResponseBody
+    @RequestMapping("/student/array/{currPage}/{pageSize}")
+    public List<Student> getStudentByArray(@PathVariable("currPage") int currPage, @PathVariable("pageSize") int pageSize) {
+        List<Student> student = StuServiceIml.queryStudentsByArray(currPage, pageSize);
+        return student;
+ }
+
+```
+
+## 借助sql语句
+
+sql分页语句如下：`select * from table limit index, pageSize;`
+
+```java
+    public List<Student> queryStudentsBySql(int currPage, int pageSize) {
+        Map<String, Object> data = new HashedMap();
+        data.put("currIndex", (currPage-1)*pageSize);
+        data.put("pageSize", pageSize);
+        return studentMapper.queryStudentsBySql(data);
+    }
+```
+
+
+
+```xml
+ <select id="queryStudentsBySql" parameterType="map" resultMap="studentmapper">
+        select * from student limit #{currIndex} , #{pageSize}
+</select>
+```
+
+缺点：虽然这里实现了按需查找，每次检索得到的是指定的数据。但是每次在分页的时候都需要去编写limit语句，很冗余。而且不方便统一管理，维护性较差。所以我们希望能够有一种更方便的分页实现。
+
+## 拦截器分页
+
+​        利用拦截器达到分页的效果。**利用拦截器达到分页的效果。自定义拦截器实现了拦截所有以ByPage结尾的查询语句，并且利用获取到的分页相关参数统一在sql语句后面加上limit分页的相关语句，一劳永逸。不再需要在每个语句中单独去配置分页相关的参数了。。**，并且利用获取到的分页相关参数统一在sql语句后面加上limit分页的相关语句，一劳永逸。不再需要在每个语句中单独去配置分页相关的参数了。。
+
+​		首先我们看一下拦截器的具体实现，在这里我们需要拦截所有以ByPage结尾的所有查询语句，因此要使用该拦截器实现分页功能，那么再定义名称的时候需要满足它拦截的规则（以ByPage结尾）
+
+### 拦截器
+
+```java
+package com.cbg.interceptor;
+
+import org.apache.ibatis.executor.Executor;
+import org.apache.ibatis.executor.parameter.ParameterHandler;
+import org.apache.ibatis.executor.resultset.ResultSetHandler;
+import org.apache.ibatis.executor.statement.StatementHandler;
+import org.apache.ibatis.mapping.MappedStatement;
+import org.apache.ibatis.plugin.*;
+import org.apache.ibatis.reflection.MetaObject;
+import org.apache.ibatis.reflection.SystemMetaObject;
+
+import java.sql.Connection;
+import java.util.Map;
+import java.util.Properties;
+
+/**
+ * Created by chenboge on 2017/5/7.
+ * <p>
+ * Email:baigegechen@gmail.com
+ * <p>
+ * description:
+ */
+
+/**
+ * @Intercepts 说明是一个拦截器
+ * @Signature 拦截器的签名
+ * type 拦截的类型 四大对象之一( Executor,ResultSetHandler,ParameterHandler,StatementHandler)
+ * method 拦截的方法
+ * args 参数
+ */
+@Intercepts({@Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})})
+public class MyPageInterceptor implements Interceptor {
+
+//每页显示的条目数
+    private int pageSize;
+//当前现实的页数
+    private int currPage;
+
+    private String dbType;
+
+
+    @Override
+    public Object intercept(Invocation invocation) throws Throwable {
+        //获取StatementHandler，默认是RoutingStatementHandler
+        StatementHandler statementHandler = (StatementHandler) invocation.getTarget();
+        //获取statementHandler包装类
+        MetaObject MetaObjectHandler = SystemMetaObject.forObject(statementHandler);
+
+        //分离代理对象链
+        while (MetaObjectHandler.hasGetter("h")) {
+            Object obj = MetaObjectHandler.getValue("h");
+            MetaObjectHandler = SystemMetaObject.forObject(obj);
+        }
+
+        while (MetaObjectHandler.hasGetter("target")) {
+            Object obj = MetaObjectHandler.getValue("target");
+            MetaObjectHandler = SystemMetaObject.forObject(obj);
+        }
+
+        //获取连接对象
+        //Connection connection = (Connection) invocation.getArgs()[0];
+
+
+        //object.getValue("delegate");  获取StatementHandler的实现类
+
+        //获取查询接口映射的相关信息
+        MappedStatement mappedStatement = (MappedStatement) MetaObjectHandler.getValue("delegate.mappedStatement");
+        String mapId = mappedStatement.getId();
+
+        //statementHandler.getBoundSql().getParameterObject();
+
+        //拦截以.ByPage结尾的请求，分页功能的统一实现
+        if (mapId.matches(".+ByPage$")) {
+            //获取进行数据库操作时管理参数的handler
+            ParameterHandler parameterHandler = (ParameterHandler) MetaObjectHandler.getValue("delegate.parameterHandler");
+            //获取请求时的参数
+            Map<String, Object> paraObject = (Map<String, Object>) parameterHandler.getParameterObject();
+            //也可以这样获取
+            //paraObject = (Map<String, Object>) statementHandler.getBoundSql().getParameterObject();
+
+            //参数名称和在service中设置到map中的名称一致
+            currPage = (int) paraObject.get("currPage");
+            pageSize = (int) paraObject.get("pageSize");
+
+            String sql = (String) MetaObjectHandler.getValue("delegate.boundSql.sql");
+            //也可以通过statementHandler直接获取
+            //sql = statementHandler.getBoundSql().getSql();
+
+            //构建分页功能的sql语句
+            String limitSql;
+            sql = sql.trim();
+            limitSql = sql + " limit " + (currPage - 1) * pageSize + "," + pageSize;
+
+            //将构建完成的分页sql语句赋值个体'delegate.boundSql.sql'，偷天换日
+            MetaObjectHandler.setValue("delegate.boundSql.sql", limitSql);
+        }
+
+        return invocation.proceed();
+    }
+
+
+    //获取代理对象
+    @Override
+    public Object plugin(Object o) {
+        return Plugin.wrap(o, this);
+    }
+
+    //设置代理对象的参数
+    @Override
+    public void setProperties(Properties properties) {
+//如果项目中分页的pageSize是统一的，也可以在这里统一配置和获取，这样就不用每次请求都传递pageSize参数了。参数是在配置拦截器时配置的。
+        String limit1 = properties.getProperty("limit", "10");
+        this.pageSize = Integer.valueOf(limit1);
+        this.dbType = properties.getProperty("dbType", "mysql");
+    }
+}
+```
+
+上面即是拦截器功能的实现，在intercept方法中获取到select标签和sql语句的相关信息，拦截所有以ByPage结尾的select查询，并且统一在查询语句后面添加limit分页的相关语句，统一实现分页功能。
+
+### 注册拦截器
+
+编写好拦截器后，需要注册到项目中，才能发挥它的作用。在mybatis的配置文件中，添加如下代码：
+
+```xml
+  <plugins>
+        <plugin interceptor="com.cbg.interceptor.MyPageInterceptor">
+            <property name="limit" value="10"/>
+            <property name="dbType" value="mysql"/>
+        </plugin>
+    </plugins>
+```
+
+如上所示，还能在里面配置一些属性，在拦截器的setProperties方法中可以获取配置好的属性值。如项目分页的pageSize参数的值固定，我们就可以配置在这里了，以后就不需要每次传入pageSize了。
+
+### 使用
+
+首先还是添加dao层的方法和xml文件的sql语句配置，注意项目中拦截的是以ByPage结尾的请求，所以在这里，我们的方法名称也以此结尾：
+
+```xml
+方法
+List<Student> queryStudentsByPage(Map<String,Object> data);
+
+xml文件的select语句
+    <select id="queryStudentsByPage" parameterType="map" resultMap="studentmapper">
+        select * from student
+    </select>
+```
+
+service层代码
+
+```java
+方法：
+List<Student> queryStudentsByPage(int currPage,int pageSize);
+
+实现：
+ @Override
+    public List<Student> queryStudentsByPage(int currPage, int pageSize) {
+        Map<String, Object> data = new HashedMap();
+        data.put("currPage", currPage);
+        data.put("pageSize", pageSize);
+        return studentMapper.queryStudentsByPage(data);
+    }
+```
+
+这里我们虽然传入了currPage和pageSize两个参数，但是在sql的xml文件中并没有使用，直接在拦截器中获取到统一使用。
+
+通过拦截器的实现方式是最简便的，只需一次编写，所有的分页方法共同使用，还可以避免多次配置时的出错机率，需要修改时也只需要修改这一个文件，一劳永逸。当然这也是我们推荐的使用方式。
+
+### springboot中配置插件
+
+[springboot自定义mybatis插件](https://www.iteye.com/blog/412887952-qq-com-2409334)
 
