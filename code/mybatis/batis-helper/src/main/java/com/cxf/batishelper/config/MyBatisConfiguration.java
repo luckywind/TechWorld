@@ -20,4 +20,14 @@ public class MyBatisConfiguration {
         sqlStatsInterceptor.setProperties(properties);
         return sqlStatsInterceptor;
     }
+
+    @Bean
+    MyPageInterceptor pageInterceptor() {
+        MyPageInterceptor myPageInterceptor = new MyPageInterceptor();
+        Properties properties = new Properties();
+        properties.setProperty("limit", "2");
+        properties.setProperty("dbType", "mysql");
+        myPageInterceptor.setProperties(properties);
+        return myPageInterceptor;
+    }
 }

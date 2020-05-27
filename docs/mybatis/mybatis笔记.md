@@ -755,13 +755,13 @@ public class MyPageInterceptor implements Interceptor {
             //获取进行数据库操作时管理参数的handler
             ParameterHandler parameterHandler = (ParameterHandler) MetaObjectHandler.getValue("delegate.parameterHandler");
             //获取请求时的参数
-            Map<String, Object> paraObject = (Map<String, Object>) parameterHandler.getParameterObject();
+   Map<String, Map<String,Object>> paraObject = (Map<String, Map<String,Object>>) parameterHandler.getParameterObject();
             //也可以这样获取
             //paraObject = (Map<String, Object>) statementHandler.getBoundSql().getParameterObject();
 
             //参数名称和在service中设置到map中的名称一致
-            currPage = (int) paraObject.get("currPage");
-            pageSize = (int) paraObject.get("pageSize");
+            currPage = (int) paraObject.get("param").get("currPage");
+            pageSize = (int) paraObject.get("param").get("pageSize");
 
             String sql = (String) MetaObjectHandler.getValue("delegate.boundSql.sql");
             //也可以通过statementHandler直接获取

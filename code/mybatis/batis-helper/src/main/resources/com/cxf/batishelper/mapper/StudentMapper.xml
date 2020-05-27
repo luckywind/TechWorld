@@ -213,4 +213,22 @@
         from student
         where id in (#{list[0]},#{collection[1]})
     </select>
+    <select id="selectByPage" resultType="com.cxf.batishelper.model.Student">
+        select
+        <include refid="Base_Column_List"></include>
+        from student
+    </select>
+    <select id="selectByMap" resultType="com.cxf.batishelper.model.Student">
+        select
+        <include refid="Base_Column_List"></include>
+        from student
+        WHERE id=#{id} OR name = #{name}
+    </select>
+    <select id="selectByidAndName" resultType="com.cxf.batishelper.model.Student">
+        select
+        <include refid="Base_Column_List"></include>
+        from student
+        WHERE id=#{id} OR name = #{name}
+    </select>
+
 </mapper>

@@ -3,6 +3,7 @@ package com.cxf.batishelper.service;
 import com.cxf.batishelper.model.Student;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
@@ -33,6 +34,8 @@ public interface StudentService {
     int batchInsert(List<Student> list);
 
     int updateBatchSelective(List<Student> list);
+
+    List<Student> selectByPage(int currPage, int pageSize);
 }
 
 

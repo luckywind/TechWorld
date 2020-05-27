@@ -6,7 +6,9 @@ import javax.annotation.Resource;
 
 import com.cxf.batishelper.model.Student;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.cxf.batishelper.mapper.StudentMapper;
 import com.cxf.batishelper.service.StudentService;
@@ -74,6 +76,14 @@ public class StudentServiceImpl implements StudentService {
 
     public int updateBatchSelective(List<Student> list) {
         return studentMapper.updateBatchSelective(list);
+    }
+
+    @Override
+    public List<Student> selectByPage(int currPage,int pageSize) {
+        HashMap<String, Integer> param = new HashMap<>();
+        param.put("currPage", currPage);
+        param.put("pageSize", pageSize);
+        return studentMapper.selectByPage(param);
     }
 }
 
