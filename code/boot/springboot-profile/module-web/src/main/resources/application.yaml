@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: @env@
+
+mybatis:
+  mapper-locations: classpath:mapping/*.xml
+  type-aliases-package: com.xiaomi.data.model
+
+

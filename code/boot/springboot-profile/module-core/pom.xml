@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>springboot-profile</artifactId>
+        <groupId>com.cxf</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.cxf</groupId>
+    <artifactId>module-core</artifactId>
+    <version>1.0</version>
+
+    <build>
+        <filters>
+            <!-- 这里的文件名必须与多环境配置文件的文件名相同, ${env} 会动态获取不同环境 -->
+            <!-- 假如激活 dev 环境, 这时对应的文件就是 src/main/properties/application-dev.properties -->
+            <filter>src/main/properties/application-${env}.properties</filter>
+        </filters>
+        <resources>
+            <resource>
+                <!-- 可以理解为真正的配置文件所在的目录 -->
+                <directory>src/main/resources</directory>
+                <!-- 是否替换资源中的属性, 设置为 true 才能实现动态替换 -->
+                <filtering>true</filtering>
+            </resource>
+        </resources>
+    </build>
+    <profiles>
+        <!-- 环境一 -->
+        <profile>
+            <!-- 使用 mvn package 打包时, -P 指定 profile 的输入值就是此 id -->
+            <!-- id 可以随便命名, 不能重复, 可以与 env 相同, 这里演示特意与 env 不同 -->
+            <id>develop</id>
+            <properties>
+                <!-- env 必须与文件的后缀一致(application-${env}.properties) -->
+                <!-- 其中 env 这个标签也可以自定义, 没有强制要求必须是 env,
+                     但必须与上面 application-${env}.properties 的 ${} 里的值一致 -->
+                <env>dev</env>
+            </properties>
+            <!-- 不指定环境则默认 dev 环境, 可以放在任一个环境下, 但不能在多个环境中指定 -->
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+
+        <!-- 环境二 -->
+        <profile>
+            <id>product</id>
+            <properties>
+                <env>prod</env>
+            </properties>
+        </profile>
+    </profiles>
+
+</project>

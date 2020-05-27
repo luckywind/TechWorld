@@ -141,3 +141,5 @@ public interface ResultContext<T> {
 `ResultContext`接口有一个实现类`org.apache.ibatis.executor.result.DefaultResultContext`，mybatis中默认会使用这个类。
 
 感觉用处不大，没有测试。
+
+源码参见:https://github.com/luckywind/TechWorld/blob/master/code/mybatis/batis-helper/
