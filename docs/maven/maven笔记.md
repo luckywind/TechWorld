@@ -92,13 +92,13 @@ application.name=application-prod
 
 
 
-## 打包
+## 打包时指定环境
 
 mvn clean package -Pproduct
 
 mvn clean package -Pdevelop
 
-完整源码见
+完整源码见https://github.com/luckywind/TechWorld/blob/master/code/boot/springboot-profile/
 
 
 
@@ -152,11 +152,20 @@ spring:
     active: @env@
 ```
 
-## 切换不同环境
+## 开发中切换不同环境
 
-在idea的侧边栏可以找到Profiles，想启用哪个环境，勾选即可
+在idea的侧边栏可以找到Profiles，想启用哪个环境，勾选即可，默认勾选dev
 
 ![image-20200527235516266](maven笔记.assets/image-20200527235516266.png)
 
 可以发现 Spring Boot 的 pom 文件不需要配置 `build` 标签就可以工作，比普通 Maven 工程更友好
 
+## 运行时指定环境
+
+```shell
+mvn clean package打包
+```
+
+直接执行java -jar module-web-0.0.1-SNAPSHOT.jar默认使用dev环境
+
+参数--spring.profiles.active=prod可以切换到prod环境
