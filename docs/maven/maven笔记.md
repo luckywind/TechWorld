@@ -140,6 +140,8 @@ https://blog.csdn.net/top_code/article/details/78570047
 
 ```
 
+可以发现 Spring Boot 的 pom 文件不需要配置 `build` 标签就可以工作，比普通 Maven 工程更友好
+
 ## yaml文件
 
 三个配置文件，application-dev.yml、application-prod.yml和主配置文件
@@ -158,7 +160,7 @@ spring:
 
 ![image-20200527235516266](maven笔记.assets/image-20200527235516266.png)
 
-可以发现 Spring Boot 的 pom 文件不需要配置 `build` 标签就可以工作，比普通 Maven 工程更友好
+
 
 ## 运行时指定环境
 
@@ -169,3 +171,13 @@ mvn clean package打包
 直接执行java -jar module-web-0.0.1-SNAPSHOT.jar默认使用dev环境
 
 参数--spring.profiles.active=prod可以切换到prod环境
+
+# 总结
+
+通过实践
+
+1. 普通maven项目，打包时可以通过参数切换不同环境
+
+1. springboot项目打包和运行时都可以通过参数自由切换多环境
+
+多模块工程情况下，我们想要实现这么一个效果： 在运行时通过命令行参数同时切换该模块和它依赖的模块的环境，目前还没找到比较好的办法

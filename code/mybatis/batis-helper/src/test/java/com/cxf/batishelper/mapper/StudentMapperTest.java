@@ -77,4 +77,15 @@ public class StudentMapperTest {
         }
     }
 
+    @Test
+    public void testInsertOrUpdate() {
+        Student student = new Student();
+        student.setId(11);
+        student.setAge(12);
+        student.setName("ahah");
+        mapper.insertOrUpdate(student);
+    }
+
+
+
 }

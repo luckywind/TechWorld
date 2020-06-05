@@ -100,6 +100,8 @@ Options:
 
 #### -pl,--projects <arg>
 
+project location
+
 构件指定的模块，arg表示多个模块，之间用逗号分开，模块有两种写法
 
 ```

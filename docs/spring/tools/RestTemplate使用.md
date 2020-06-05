@@ -2,6 +2,8 @@
 
 [使用请参考resttemplate使用](https://juejin.im/post/5cd680eff265da037b612e28)
 
+[教程](https://attacomsian.com/blog/http-requests-resttemplate-spring-boot)
+
 `RestTemplate` 类是在 Spring Framework 3.0 开始引入的，
 
 默认的构造器使用java.net.HttpURLConnection执行请求，可以切换到不同的实现ClientHttpRequestFactory的HTTP库。内置的有：
@@ -35,7 +37,7 @@ String result = restTemplate.getForObject(
 可以使用exchange()方法指定请求header，例如：
 
 ```java
-//URI构造器
+//URI构造器:  构造路径参数
 String uriTemplate = "https://example.com/hotels/{hotel}";
 URI uri = UriComponentsBuilder.fromUriString(uriTemplate).build(42);
 //请求实体requestEntity构造器

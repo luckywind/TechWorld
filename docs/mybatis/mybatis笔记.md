@@ -1,5 +1,21 @@
 [中文官方文档](https://mybatis.org/mybatis-3/zh/sqlmap-xml.html)
 
+# 问题记录
+
+## 驼峰映射失败
+
+一次遇到驼峰字段全部为空，猜想驼峰映射失效了，于是有了下面这段配置
+
+```yaml
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true  # 开启驼峰命名
+```
+
+
+
+
+
 # xml映射文件
 
 ## 结果映射
