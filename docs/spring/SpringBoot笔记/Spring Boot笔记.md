@@ -316,6 +316,14 @@ IDE都支持使用Spring的项目创建向导快速创建一个Spring Boot项目
 
 ## 1、配置文件
 
+
+
+
+
+**在yaml里，用on、1、true来表示true，off、0、false来表示false**
+
+
+
 SpringBoot使用一个全局的配置文件，配置文件名是固定的；
 
 •application.properties

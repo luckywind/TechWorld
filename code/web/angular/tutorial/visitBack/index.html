@@ -1,0 +1,29 @@
+<!doctype html>
+<html ng-app="invoice3">
+  <head>
+    <script src="http://code.angularjs.org/1.2.25/angular.min.js"></script>
+    <script src="invoice3.js"></script>
+    <script src="finance3.js"></script>
+  </head>
+  <body>
+    <div ng-controller="InvoiceController as invoice">
+      <b>订单:</b>
+      <div>
+        数量: <input type="number" ng-model="invoice.qty" required >
+      </div>
+      <div>
+        单价: <input type="number" ng-model="invoice.cost" required >
+        <select ng-model="invoice.inCurr">
+          <option ng-repeat="c in invoice.currencies">{{c}}</option>
+        </select>
+      </div>
+      <div>
+        <b>总价:</b>
+        <span ng-repeat="c in invoice.currencies">
+              {{invoice.total(c) | currency:c}}
+        </span>
+        <button class="btn" ng-click="invoice.pay()">Pay</button>
+      </div>
+    </div>
+  </body>
+</html>

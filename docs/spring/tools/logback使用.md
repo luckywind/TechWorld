@@ -25,11 +25,13 @@
 
 # 知识点
 
-1. root是根logger, 是一个特殊的logger,不能有name和additivity属性，只有一个level
+1. logger, 用来约束某个包或者某个类如何打印日志的，它自动继承root的appender。additivity属性表示要不要使用rootLogger配置的appender进行输出
 
-2. appender是一个日志打印组件，必须用某个logger的appender-ref指定它，它才会生效
+2. root是根logger, 是一个特殊的logger,不能有name和additivity属性，只有一个level
 
-   它让我们的应用知道怎么打、打到哪里、打印成什么样。logger是告诉应用哪些可以这么打
+3. appender是一个日志打印组件，必须用某个logger的appender-ref指定它，它才会生效
+
+它让我们的应用知道怎么打、打到哪里、打印成什么样。logger是告诉应用哪些可以这么打
 
 ## appender
 
@@ -62,7 +64,7 @@
 ```
 
 1. name 指定受此logger约束的包或者类
-2. Additivity：是否向上级logger传递打印信息，默认true
+2. Additivity：是否向上级logger传递打印信息，默认true。所有logger继承自root
 
 # 案例
 
