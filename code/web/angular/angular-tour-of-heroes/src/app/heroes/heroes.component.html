@@ -12,15 +12,15 @@
   <h2>My Heroes</h2>
 <ul class="heroes">
 
-  <!-- <li *ngFor="let hero of heroes"> -->
 
-    <!-- <li *ngFor="let hero of heroes" (click)="onSelect(hero)">
-    <span class="badge">{{hero.id}}</span> {{hero.name}}
-  </li> -->
-
+<!-- 1.  Angular 的 CSS 类绑定机制让根据条件添加或移除一个 CSS 类变得很容易。
+只要把 [class.some-css-class]="some-condition" 添加到你要施加样式的元素上就可以了。
+     2.  click 外面的圆括号会让 Angular 监听这个 <li> 元素的 click 事件
+-->
   <li *ngFor="let hero of heroes"
   [class.selected]="hero === selectedHero"
   (click)="onSelect(hero)">
+
   <span class="badge">{{hero.id}}</span> {{hero.name}}
 </li>
 </ul>
@@ -29,6 +29,6 @@
     这里通过HeroDetailComponent组件的选择器app-hero-detail把英雄详情显示到那里
 
     这是一种单向数据绑定。从 HeroesComponent 的 selectedHero 属性绑定到目标元素的 hero 属性，
-    并映射到了 HeroDetailComponent 的 hero 属性。
+     HeroDetailComponent 的 hero 属性需要input注解。
 -->
 <app-hero-detail [hero]="selectedHero"></app-hero-detail>

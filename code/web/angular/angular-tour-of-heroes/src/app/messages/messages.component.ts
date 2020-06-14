@@ -9,9 +9,9 @@ import {MessageService} from '../message.service';
 })
 export class MessagesComponent implements OnInit {
 
-  //Angular 只会绑定到组件的公共属性。
-  //模版中要绑定messageService,所以必须为public
-  constructor(public messageService:MessageService) { }
+  // Angular 只会绑定到组件的公共属性。
+  // 模版中要绑定messageService,所以必须为public
+  constructor(public messageService: MessageService) { }
 
   ngOnInit(): void {
   }
