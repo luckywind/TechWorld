@@ -34,6 +34,20 @@ MyBatisCodeHelper-Pro是IDEA下的一个插件，功能类似mybatis plugin。
 
 
 
+## 生成insertOrUpdate
+
+勾选insertOnDuplicate会生成下面两个方法
+
+```java
+int insertOrUpdate(OdcDpWorkflow record);
+
+int insertOrUpdateSelective(OdcDpWorkflow record);
+```
+
+![image-20200618083215825](mybatisHelperPro.assets/image-20200618083215825.png)
+
+
+
 # 遇到的问题
 
 ## idea不显示表名
