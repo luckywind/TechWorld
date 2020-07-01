@@ -436,6 +436,39 @@ ORDER BY ${columnName}
 
 这样，MyBatis 就不会修改或转义该字符串了。
 
+## 两个内置参数
+
+两个内置参数：
+	 	不只是方法传递过来的参数可以被用来判断，取值。。。
+	 	mybatis默认还有两个内置参数：
+
+	_parameter:代表整个参数
+		 		单个参数：_parameter就是这个参数
+		 		多个参数：参数会被封装为一个map；_parameter就是代表这个map
+	_databaseId:如果配置了databaseIdProvider标签。
+	 		_databaseId就是代表当前数据库的别名oracle
+```xml
+ <!--public List<Employee> getEmpsTestInnerParameter(Employee employee);  -->
+	  <select id="getEmpsTestInnerParameter" resultType="com.atguigu.mybatis.bean.Employee">
+	  		<!-- bind：可以将OGNL表达式的值绑定到一个变量中，方便后来引用这个变量的值 -->
+	  		<bind name="_lastName" value="'%'+lastName+'%'"/>
+	  		<if test="_databaseId=='mysql'">
+	  			select * from tbl_employee
+	  			<if test="_parameter!=null">
+	  				where last_name like #{lastName}
+	  			</if>
+	  		</if>
+	  		<if test="_databaseId=='oracle'">
+	  			select * from employees
+	  			<if test="_parameter!=null">
+	  				where last_name like #{_parameter.lastName}
+	  			</if>
+	  		</if>
+	  </select>
+```
+
+
+
 # 动态sql
 
 动态sql的支持依赖于以下四个元素
@@ -580,6 +613,47 @@ mybatisHelper可以使用cd快捷生成cdata
     &           &amp;
     "           &quot;
     '           &apos;
+## bind
+
+bind 元素可以从 OGNL 表达式中创建一个变量并
+将其绑定到上下文。比如
+
+```xml
+	  <select id="getEmpsTestInnerParameter" resultType="com.atguigu.mybatis.bean.Employee">
+	  		<!-- bind：可以将OGNL表达式的值绑定到一个变量中，方便后来引用这个变量的值 -->
+	  		<bind myname="_lastName" value="'%'+lastName+'%'"/>
+	  			select * from tbl_employee
+	  			<if test="_parameter!=null">
+	  				where last_name like #{myname}
+	  			</if>
+	  </select>
+	  
+```
+
+
+
+> OGNL（ Object Graph Navigation Language ） 对象图导航语言， 这是一种强大的
+> 表达式语言，通过它可以非常方便的来操作对象属性。 类似于我们的EL， SpEL等
+>
+> 访问对象属性： person.name
+> 调用方法： person.getName()
+> 调用静态属性/方法： @java.lang.Math@PI
+> @java.util.UUID@randomUUID()
+> 调用构造方法： new com.atguigu.bean.Person(‘admin’).name
+> 运算符： +,-*,/,%
+> 逻辑运算符： in,not in,>,>=,<,<=,==,!=
+> 注意： xml中特殊符号如”,>,<等这些都需要使用转义字符
+>
+> 类型              伪属性           伪属性对应的 Java 方法
+> List、 Set、 Map  size、 isEmpty  List/Set/Map.size(),List/Set/Map.isEmpty()
+> List、 Set        iterator 	  List.iterator()、 Set.iterator()
+> Map              keys、 values   Map.keySet()、 Map.values()
+> Iterator         next、 hasNext  Iterator.next()、 Iterator.hasNext()
+
+
+
+
+
 # insert和insertSelective的区别
 
 updateByPrimaryKey对你注入的字段全部更新（不判断是否为Null）
@@ -867,4 +941,85 @@ List<Student> queryStudentsByPage(int currPage,int pageSize);
 ### springboot中配置插件
 
 [springboot自定义mybatis插件](https://www.iteye.com/blog/412887952-qq-com-2409334)
+
+# 缓存
+
+## 一级缓存
+
+MyBatis系统中默认定义了两级缓存。
+• 一级缓存和二级缓存。
+– 1、默认情况下，只有一级缓存（ SqlSession级别的缓存，
+也称为本地缓存）开启。
+– 2、二级缓存需要手动开启和配置，他是基于namespace级
+别的缓存。
+– 3、为了提高扩展性。 MyBatis定义了缓存接口Cache。我们
+可以通过实现Cache接口来自定义二级缓存
+
+一级缓存(local cache), 即本地缓存, 作用域默认
+为sqlSession。当 Session flush 或 close 后, 该
+Session 中的所有 Cache 将被清空。
+• 本地缓存不能被关闭, 但可以调用 clearCache()
+来清空本地缓存, 或者改变缓存的作用域
+
+```java
+ * 一级缓存：（本地缓存）：sqlSession级别的缓存。一级缓存是一直开启的；SqlSession级别的一个Map
+	 * 		与数据库同一次会话期间查询到的数据会放在本地缓存中。
+	 * 		以后如果需要获取相同的数据，直接从缓存中拿，没必要再去查询数据库；
+	 * 
+	 * 		一级缓存失效情况（没有使用到当前一级缓存的情况，效果就是，还需要再向数据库发出查询）：
+	 * 		1、sqlSession不同。
+	 * 		2、sqlSession相同，查询条件不同.(当前一级缓存中还没有这个数据)
+	 * 		3、sqlSession相同，两次查询之间执行了增删改操作(这次增删改可能对当前数据有影响)
+	 * 		4、sqlSession相同，手动清除了一级缓存（缓存清空）
+```
+
+## 二级缓存
+
+```java
+	 * 二级缓存：（全局缓存）：基于namespace级别的缓存：一个namespace对应一个二级缓存：
+	 * 		工作机制：
+	 * 		1、一个会话，查询一条数据，这个数据就会被放在当前会话的一级缓存中；
+	 * 		2、如果会话关闭；一级缓存中的数据会被保存到二级缓存中；新的会话查询信息，就可以参照二级缓存中的内容；
+	 * 		3、sqlSession===EmployeeMapper==>Employee
+	 * 						DepartmentMapper===>Department
+	 * 			不同namespace查出的数据会放在自己对应的缓存中（map）
+	 * 			效果：数据会从二级缓存中获取
+	 * 				查出的数据都会被默认先放在一级缓存中。
+	 * 				只有会话提交或者关闭以后，一级缓存中的数据才会转移到二级缓存中
+	 * 		使用：
+	 * 			1）、开启全局二级缓存配置：<setting name="cacheEnabled" value="true"/>
+	 * 			2）、去mapper.xml中配置使用二级缓存：
+	 * 				<cache></cache>
+	 * 			3）、我们的POJO需要实现序列化接口
+```
+
+二级缓存(second level cache)，全局作用域缓存
+• 二级缓存默认不开启，需要手动配置
+• MyBatis提供二级缓存的接口以及实现，缓存实现要求
+POJO实现Serializable接口
+• 二级缓存在 SqlSession 关闭或提交之后才会生效
+• 使用步骤
+– 1、全局配置文件中开启二级缓存
+• <setting name="cacheEnabled" value="true"/>
+– 2、需要使用二级缓存的映射文件处使用cache配置缓存
+• <cache />
+– 3、注意： POJO需要实现Serializable接口
+
+### 缓存相关属性
+
+- eviction=“FIFO”： 缓存回收策略：
+   LRU – 最近最少使用的：移除最长时间不被使用的对象。
+   FIFO – 先进先出：按对象进入缓存的顺序来移除它们。
+   SOFT – 软引用：移除基于垃圾回收器状态和软引用规则的对象。
+   WEAK – 弱引用：更积极地移除基于垃圾收集器状态和弱引用规则的对象。
+   默认的是 LRU。
+-  flushInterval： 刷新间隔，单位毫秒
+   默认情况是不设置，也就是没有刷新间隔，缓存仅仅调用语句时刷新
+- size： 引用数目，正整数
+   代表缓存最多可以存储多少个对象，太大容易导致内存溢出
+- readOnly： 只读， true/false
+   true：只读缓存；会给所有调用者返回缓存对象的相同实例。 因此这些对象
+  不能被修改。这提供了很重要的性能优势。
+   false：读写缓存； 会返回缓存对象的拷贝（通过序列化）。这会慢一些，
+  但是安全，因此默认是 false。
 

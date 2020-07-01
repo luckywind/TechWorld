@@ -11,6 +11,7 @@
     <modules>
         <module>b2b-account</module>
         <module>b2b-order</module>
+        <module>b2b-item</module>
     </modules>
 
 

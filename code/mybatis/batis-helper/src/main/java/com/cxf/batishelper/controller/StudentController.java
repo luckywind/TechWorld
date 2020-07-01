@@ -21,11 +21,65 @@ public class StudentController {
     @Autowired
     StudentService studentService;
 
+    /**
+     * 增
+     * @param student
+     * @return
+     */
     @PostMapping(value = "/insert")
     public ResponseData<Integer> insert(@RequestBody Student student) {
         int insert = studentService.insert(student);
         ResponseData<Integer> responseData = new ResponseData<>();
         responseData.setData(insert);
+        responseData.setStatus(HttpStatus.OK.value());
+        responseData.setSuccess(true);
+        return responseData;
+    }
+
+    /**
+     * 删
+     * @param id
+     * @return
+     */
+    @RequestMapping(value = "/{id}",method = RequestMethod.DELETE,produces = "application/json")
+    public ResponseData<Object> delStudent(@PathVariable Integer id) {
+        int i = studentService.deleteByPrimaryKey(id);
+        ResponseData<Object> responseData = new ResponseData<>();
+        responseData.setData(i);
+        responseData.setStatus(HttpStatus.OK.value());
+        responseData.setSuccess(true);
+        return responseData;
+    }
+
+    /**
+     * 改
+     * @param id
+     * @param student
+     * @return
+     */
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT, produces = "application/json")
+    public ResponseData<Integer> update(@PathVariable Integer id, @RequestBody Student student) {
+        student.setId(id);
+        int insert = studentService.insertOrUpdateSelective(student);
+        ResponseData<Integer> responseData = new ResponseData<>();
+        responseData.setData(insert);
+        responseData.setStatus(HttpStatus.OK.value());
+        responseData.setSuccess(true);
+        return responseData;
+    }
+
+
+
+    /**
+     * 查
+     * @param id
+     * @return
+     */
+    @RequestMapping(value = "/{id}",method = RequestMethod.GET,produces = "application/json")
+    public ResponseData<Student> getStudent(@PathVariable Integer id) {
+        Student student = studentService.selectByPrimaryKey(id);
+        ResponseData<Student> responseData = new ResponseData<>();
+        responseData.setData(student);
         responseData.setStatus(HttpStatus.OK.value());
         responseData.setSuccess(true);
         return responseData;
