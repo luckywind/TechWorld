@@ -1,11 +1,9 @@
 package com.cxf.mp.service.impl;
 
+import com.cxf.mp.domain.User;
 import org.springframework.stereotype.Service;
-import javax.annotation.Resource;
-import java.util.List;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cxf.mp.mapper.UserMapper;
-import com.cxf.mp.domain.User;
 import com.cxf.mp.service.UserService;
 
 /**
@@ -17,4 +15,8 @@ import com.cxf.mp.service.UserService;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
 }
+
+
+
+
 

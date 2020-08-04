@@ -16,17 +16,18 @@ import org.springframework.test.context.junit4.SpringRunner;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class UserMapperTest {
+public class FillTest {
 
   @Autowired
   private UserMapper userMapper;
 
   @Test
-  public void testSelect() {
-    List<User> userList = userMapper.selectList(null);
-    for (User user : userList) {
-      System.out.println(user);
-    }
+  public void testinsert() {
+    User u = new User();
+    u.setUsername("zhangsan");
+    u.setPassword("124335");
+    int insert = userMapper.insert(u);
+    System.out.println(insert);
   }
 
   @Test

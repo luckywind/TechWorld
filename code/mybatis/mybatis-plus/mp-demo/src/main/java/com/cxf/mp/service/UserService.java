@@ -1,7 +1,7 @@
 package com.cxf.mp.service;
 
-import com.cxf.mp.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.cxf.mp.domain.User;
 
 /**
  * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
@@ -12,4 +12,8 @@ public interface UserService extends IService<User> {
 
 
 }
+
+
+
+
 
