@@ -1,7 +1,7 @@
 package com.cxf.mp.mapper;
 
-import static org.junit.jupiter.api.Assertions.*;
-
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.cxf.mp.domain.User;
 import java.util.List;
 import org.junit.Test;
@@ -28,5 +28,22 @@ public class UserMapperTest {
     for (User user : userList) {
       System.out.println(user);
     }
+  }
+
+  @Test
+  public void testupdate() {
+    User u = new User();
+    u.setId(1);
+    u.setUsername("cxf");
+    int i = userMapper.updateById(u);
+    System.out.println(i);
+  }
+
+  @Test
+  public void mySelectTest() {
+    List<User> userList = userMapper.mySelectList(Wrappers.<User>lambdaQuery()
+        .eq(User::getPassword,"45")
+        .eq(User::getDeleted,0));
+    userList.forEach(System.out::println);
   }
 }

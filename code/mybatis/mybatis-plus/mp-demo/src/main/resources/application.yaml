@@ -14,3 +14,10 @@ mybatis-plus:
   mapper-locations: classpath:mappers/*.xml # 指定mapper文件所在的位置
     #configuration:
   #database-id: ${database-id} #指定数据库为 oracle
+logging:
+  level:
+    root: warn
+    com.cxf.mp.mapper: trace
+  pattern:
+    console: '%p%m%n'
+
