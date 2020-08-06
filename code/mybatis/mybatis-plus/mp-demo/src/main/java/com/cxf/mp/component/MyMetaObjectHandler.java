@@ -15,8 +15,11 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 
   @Override
   public void insertFill(MetaObject metaObject) {
-    //fieldName填实体类的属性名，不是数据库字段名
-    setFieldValByName("createTime", LocalDateTime.now(), metaObject);
+    boolean hasSetter = metaObject.hasSetter("createTime");
+    if (hasSetter) {
+      //fieldName填实体类的属性名，不是数据库字段名
+      setFieldValByName("createTime", LocalDateTime.now(), metaObject);
+    }
 
   }
 

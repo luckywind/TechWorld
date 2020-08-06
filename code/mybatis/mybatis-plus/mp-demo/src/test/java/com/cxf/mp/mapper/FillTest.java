@@ -26,6 +26,7 @@ public class FillTest {
     User u = new User();
     u.setUsername("zhangsan");
     u.setPassword("124335");
+    u.setId(8);//插入时会忽略id
     int insert = userMapper.insert(u);
     System.out.println(insert);
   }
