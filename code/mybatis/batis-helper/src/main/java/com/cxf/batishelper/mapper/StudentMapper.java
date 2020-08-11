@@ -48,4 +48,5 @@ public interface StudentMapper {
     List<Student> selectByIdList(@Param("idCollection") Collection<Integer> idCollection);
 
     List<Student> selectByPage(@Param("param") Map param);
+
 }
