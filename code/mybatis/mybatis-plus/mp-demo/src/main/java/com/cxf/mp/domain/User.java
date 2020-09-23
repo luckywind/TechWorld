@@ -17,7 +17,7 @@ import lombok.Data;
 @ApiModel(value = "com-cxf-mp-domain-User")
 @Data
 @TableName(value = "`user`")
-public class User {
+public class User extends BasePO{
 
   @TableId(value = "id", type = IdType.AUTO)
   @ApiModelProperty(value = "")
@@ -38,11 +38,4 @@ public class User {
   @ApiModelProperty(value = "逻辑删除")
   private Integer deleted;
 
-  @TableField(value = "create_time")
-  @ApiModelProperty(value = "")
-  private Date createTime;
-
-  @TableField(value = "update_time")
-  @ApiModelProperty(value = "")
-  private Date updateTime;
 }

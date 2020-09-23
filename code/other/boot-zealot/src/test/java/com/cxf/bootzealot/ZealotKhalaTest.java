@@ -547,6 +547,7 @@ public class ZealotKhalaTest {
                 .orderBy("d.birthday").desc()
                 .end();
         String sql = sqlInfo.getSql();
+        System.out.println(sql);
         Object[] arr = sqlInfo.getParamsArr();
 
         // 断言并输出sql信息

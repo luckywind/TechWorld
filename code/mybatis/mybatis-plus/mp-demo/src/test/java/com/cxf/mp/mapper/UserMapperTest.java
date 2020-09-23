@@ -21,6 +21,10 @@ public class UserMapperTest {
   @Autowired
   private UserMapper userMapper;
 
+  /**
+   * selectList
+   * 查询所有，包括逻辑删除的
+   */
   @Test
   public void testSelect() {
     List<User> userList = userMapper.selectList(null);

@@ -307,3 +307,90 @@ public class RestTemplateTests {
 
 ```
 
+# 用例
+
+## PostJson
+
+```java
+    public void testPostJson() {
+        String url = "http://localhost:8081/product/post_product2";
+        HttpHeaders headers = new HttpHeaders();
+        MediaType type = MediaType.parseMediaType("application/json; charset=UTF-8");
+        headers.setContentType(type);
+        String requestJson = "{\n" +
+                "  \"id\":1,\n" +
+                "\"name\":\"xiaoming\"\n" +
+                "}";
+        HttpEntity<String> entity = new HttpEntity<String>(requestJson,headers);
+        String result = restTemplate.postForObject(url, entity, String.class);
+        System.out.println(result);
+    }
+```
+
+## 带参数get
+
+```java
+    public void getObjectWithParam() {
+        // 方式一：将参数的值存在可变长度参数里，按照顺序进行参数匹配
+        String url = "http://localhost:8081/product/get_product2?id={id}";
+        ResponseEntity<Product> responseEntity = restTemplate.getForEntity(url, Product.class, 101);
+        System.out.println(responseEntity);
+        isTrue(responseEntity.getStatusCode().equals(HttpStatus.OK), "get_product2 请求不成功");
+        Assert.notNull(responseEntity.getBody().getId(), "get_product2  传递参数不成功");
+      
+      
+        //方式二：将请求参数以键值对形式存储到 Map 集合中，用于请求时URL上的拼接
+        Map<String, Object> uriVariables = new HashMap<>();
+        uriVariables.put("id", 101);
+        Product result = restTemplate.getForObject(url, Product.class, uriVariables);
+        System.out.println(result);
+        Assert.notNull(result.getId(), "get_product2  传递参数不成功");
+    }
+```
+
+## 带参数post
+
+```java
+    public void paramMapPostForString() {
+        //方式二： 将请求参数值以 K=V 方式用 & 拼接，发送请求使用
+        String url = "http://localhost:8081/product/post_product1";
+        MultiValueMap<String, String> header = new LinkedMultiValueMap();
+        header.add(HttpHeaders.CONTENT_TYPE, (MediaType.APPLICATION_FORM_URLENCODED_VALUE));
+        Product product = new Product(201, "Macbook", BigDecimal.valueOf(10000));
+        String productStr = "id=" + product.getId() + "&name=" + product.getName() + "&price=" + product.getPrice();
+        HttpEntity<String> request = new HttpEntity<>(productStr, header);
+        ResponseEntity<String> exchangeResult = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+        System.out.println("post_product1: " + exchangeResult);
+        System.out.println(exchangeResult.getBody());
+        Assert.isTrue(exchangeResult.getStatusCode().equals(HttpStatus.OK), "post_product1 请求不成功");
+
+        //方式一： 将请求参数以键值对形式存储在 MultiValueMap 集合，发送请求时使用
+        MultiValueMap<String, Object> map = new LinkedMultiValueMap();
+        map.add("id", (product.getId()));
+        map.add("name", (product.getName()));
+        map.add("price", (product.getPrice()));
+        HttpEntity<MultiValueMap> request2 = new HttpEntity<>(map, header);
+        ResponseEntity<String> exchangeResult2 = restTemplate.exchange(url, HttpMethod.POST, request2, String.class);
+        System.out.println("post_product1： " + exchangeResult2);
+        Assert.isTrue(exchangeResult.getStatusCode().equals(HttpStatus.OK), "post_product1 请求不成功");
+    }
+```
+
+## 带header post获取对象
+
+```java
+    public void ObjectPostForObjectWithHeader() {
+        String url = "http://localhost:8081/product/post_product3";
+        MultiValueMap<String, String> header = new LinkedMultiValueMap();
+        // 设置请求的 Content-Type 为 application/json
+        header.put(HttpHeaders.CONTENT_TYPE, Arrays.asList(MediaType.APPLICATION_JSON_VALUE));
+        // 设置 Accept 向服务器表明客户端可处理的内容类型
+        header.put(HttpHeaders.ACCEPT, Arrays.asList(MediaType.APPLICATION_JSON_VALUE));
+        HttpEntity<Product> request = new HttpEntity<>(new Product(2, "Macbook", BigDecimal.valueOf(10000)), header);
+        ResponseEntity<Product> exchangeResult = restTemplate.exchange(url, HttpMethod.POST, request, Product.class);
+        System.out.println("post_product2: " + exchangeResult);
+        Assert.isTrue(exchangeResult.getStatusCode().equals(HttpStatus.OK), "post_product2 请求不成功");
+    }
+
+```
+
