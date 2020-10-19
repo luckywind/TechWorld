@@ -70,6 +70,15 @@ fruits -= ("Banana", "Orange")
 fruits --= Seq("Kiwi", "Pineapple")
 // 最后转成List
 val fruitsList = fruits.toList
+
+//list转成ListBuffer
+scala> val l = List(1,2,3)
+l: List[Int] = List(1, 2, 3)
+scala> l.to[ListBuffer]
+res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
+//2.10以下可以用
+scala> ListBuffer.empty ++= l
+res1: scala.collection.mutable.ListBuffer[Int] = ListBuffer(1, 2, 3)
 ```
 
 ## list添加元素

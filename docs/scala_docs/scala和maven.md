@@ -4,6 +4,8 @@ maven是一个基于插件的框架，使得新增库和模块到已有项目非
 
  Scala Maven Plugin ([GitHub repo](https://github.com/davidB/scala-maven-plugin), [website](https://davidb.github.io/scala-maven-plugin)) 目前是scala项目的主导插件，它包含了scala,因此可以不用安装scala，来编译项目。这个插件用于在maven里编译、测试、运行scala代码的。
 
+有了这个插件，idea才可以选择创建scala类
+
 # 使用示例
 
 ```xml

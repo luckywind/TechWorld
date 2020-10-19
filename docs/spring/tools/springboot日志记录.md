@@ -212,3 +212,57 @@ public class LombokLoggingController {
 }   
 ```
 
+# 使用Application.properties/yaml
+
+[参考](https://www.jianshu.com/p/f67c721eea1b)
+
+## 文件输出
+
+默认情况下，Spring Boot将日志输出到控制台，不会写到日志文件。
+
+使用`Spring Boot`喜欢在`application.properties`或`application.yml`配置，这样只能配置简单的场景，保存路径、日志格式等，复杂的场景（区分 info 和 error 的日志、每天产生一个日志文件等）满足不了，只能自定义配置
+
+### 文件名
+
+```
+logging.file和logging.path
+```
+
+> 注：二者不能同时使用，如若同时使用，则只有`logging.file`生效
+> 默认情况下，日志文件的大小达到`10MB`时会切分一次，产生新的日志文件，默认级别为：`ERROR、WARN、INFO`
+
+### 级别控制
+
+格式为：`'logging.level.* = LEVEL'`
+
+```
+logging.level`：日志级别控制前缀，*为包名或Logger名
+ `LEVEL`：选项`TRACE, DEBUG, INFO, WARN, ERROR, FATAL, OFF
+```
+
+举例：
+
+```properties
+logging.level.com.dudu=DEBUG：com.dudu包下所有class以DEBUG级别输出
+logging.level.root=WARN：root日志以WARN级别输出
+```
+
+### 自定义日志配置
+
+根据不同的日志系统，你可以按如下规则组织配置文件名，就能被正确加载：
+
+- Logback：`logback-spring.xml, logback-spring.groovy, logback.xml, logback.groovy`
+- Log4j：`log4j-spring.properties, log4j-spring.xml, log4j.properties, log4j.xml`
+- Log4j2：`log4j2-spring.xml, log4j2.xml`
+- JDK (Java Util Logging)：`logging.properties`
+
+但我们也可以在yaml文件中指定自定义名字：
+
+```yaml
+logging.config=classpath:logging-config.xml
+```
+
+这在多环境场景中很有用
+
+一般不需要这个属性，而是直接在`logback-spring.xml`中使用`springProfile`配置，不需要`logging.config`指定不同环境使用不同配置文件。`springProfile`配置在下面介绍。
+
