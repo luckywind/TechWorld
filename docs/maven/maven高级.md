@@ -192,6 +192,44 @@ mvn clean install -pl :b2b-account-api,:b2b-order-service
 
 exclusions中可以有多个`exclusion`元素，可以排除一个或者多个依赖的传递，声明exclusion时只需要写上groupId、artifactId就可以了，version可以省略。
 
+## 安装jar到本地仓库
+
+```shell
+mvn install:install-file -Dfile=<path-to-file> -DgroupId=<group-id> -DartifactId=<artifact-id> -Dversion=<version> -Dpackaging=<packaging>
+```
+
+
+
+## 重新下载依赖
+
+[dependency:purge-local-repository](https://maven.apache.org/plugins/maven-dependency-plugin/purge-local-repository-mojo.html)
+
+```shell
+ mvn dependency:purge-local-repository  清空并重新下载本项目所有依赖
+```
+
+参数
+
+excludes:   groupId:artifactId列表，指定无需删除/更新的依赖
+
+includes： groupId:artifactId列表，指定需要删除/更新的依赖 
+
+例如：
+
+```shell
+mvn dependency:purge-local-repository -Dincludes=
+```
+
+
+
+## 安装jar到本地仓库
+
+```shell
+mvn install:install-file -Dfile=/Users/chengxingfu/code/mi/miuser/lib/neo4j-spark-connector-2.4.0-M6.jar -DgroupId=neo4j-contrib -DartifactId=neo4j-spark-connector -Dversion=2.4.0-M6 -Dpackaging=jar
+```
+
+
+
 # 生命周期和插件
 
 我们开发一个项目的时候，通常有这些环节：创建项目、编写代码、清理已编译的代码、编译代码、执行单元测试、打包、集成测试、验证、部署、生成站点等，这些环节组成了项目的生命周期，这些过程也叫做项目的**构建过程**
@@ -561,6 +599,25 @@ source:jar-no-fork
 上面自定义了一个绑定，在clean周期的`pre-clean`阶段绑定了插件`maven-surefire-plugin`的两个目标`test和help`，`execution`元素没有指定`id`，所以默认id是`default`。
 
 运行 `mvn pre-clean`测试效果
+
+# 运行某个类
+
+## 多模块场景
+
+[参考3种方式运行主类](http://www.vineetmanohar.com/2009/11/3-ways-to-run-java-main-from-maven/)
+
+[多模块运行主类](https://stackoverflow.com/questions/3459928/running-a-specific-maven-plugin-goal-from-the-command-line-in-a-sub-module-of-a/3460241#3460241)
+
+```shell
+mvn compile
+mvn  exec:java -pl people-id-etl -Dexec.mainClass="com.xiaomi.bigdata.people.id.etl.App" -X
+```
+
+
+
+
+
+
 
 
 

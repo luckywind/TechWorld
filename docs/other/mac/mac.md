@@ -28,3 +28,11 @@ cd ~/Downloads && git clone https://github.com/CodeTips/BaiduNetdiskPlugin-macOS
 cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 ```
 
+# 通知条持续时间
+
+[修改通知条](https://howchoo.com/mac/how-to-change-the-duration-of-notifications-on-macos)
+
+# 安装多个版本Java
+
+[mac配置多版本java](https://segmentfault.com/a/1190000013131276)
+

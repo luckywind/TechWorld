@@ -28,3 +28,54 @@ Tools->Create Command-line Launcher
 idea .
 ```
 
+# idea运行跳过错误
+
+Run-Edit Configurations -Before launch里面，把Build换成Build ,no error check就可以了。如果提示找不到主类，可先执行mvn clean compile。
+
+
+
+# object in compiler mirror not found
+
+```scala
+Error:scalac: Error: object scala.$less$colon$less in compiler mirror not found.
+scala.reflect.internal.MissingRequirementError: object scala.$less$colon$less in compiler mirror not found.
+	at scala.reflect.internal.MissingRequirementError$.notFound(MissingRequirementError.scala:24)
+	at scala.reflect.internal.Mirrors$RootsBase.$anonfun$getModuleOrClass$6(Mirrors.scala:66)
+	at scala.reflect.internal.Mirrors$RootsBase.getModuleByName(Mirrors.scala:66)
+	at scala.reflect.internal.Mirrors$RootsBase.getRequiredModule(Mirrors.scala:163)
+	at scala.reflect.internal.Mirrors$RootsBase.requiredModule(Mirrors.scala:173)
+	at scala.reflect.internal.Definitions$DefinitionsClass$RunDefinitions.SubTypeModule$lzycompute(Definitions.scala:1672)
+	at scala.reflect.internal.Definitions$DefinitionsClass$RunDefinitions.SubTypeModule(Definitions.scala:1672)
+	at scala.reflect.internal.Definitions$DefinitionsClass$RunDefinitions.SubType_refl$lzycompute(Definitions.scala:1673)
+	at scala.reflect.internal.Definitions$DefinitionsClass$RunDefinitions.SubType_refl(Definitions.scala:1673)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch$ImplicitComputation.isIneligible(Implicits.scala:1022)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch$ImplicitComputation.survives(Implicits.scala:1029)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch$ImplicitComputation.eligibleNew(Implicits.scala:1116)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch$ImplicitComputation.<init>(Implicits.scala:1171)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch.searchImplicit(Implicits.scala:1305)
+	at scala.tools.nsc.typechecker.Implicits$ImplicitSearch.bestImplicit(Implicits.scala:1704)
+	at scala.tools.nsc.typechecker.Implicits.inferImplicit1(Implicits.scala:112)
+	at scala.tools.nsc.typechecker.Implicits.inferImplicit(Implicits.scala:91)
+	at scala.tools.nsc.typechecker.Implicits.inferImplicit$(Implicits.scala:88)
+	at scala.tools.nsc.Global$$anon$5.inferImplicit(Global.scala:483)
+	at scala.tools.nsc.typechecker.Implicits.inferImplicitView(Implicits.scala:50)
+	at scala.tools.nsc.typechecker.Implicits.inferImplicitView$(Implicits.scala:49)
+	at scala.tools.nsc.Global$$anon$5.inferImplicitView(Global.scala:483)
+	at scala.tools.nsc.typechecker.Typers$Typer.inferView(Typers.scala:336)
+	at scala.tools.nsc.typechecker.Typers$Typer.viewExists(Typers.scala:306)
+	at scala.tools.nsc.typechecker.Typers$Typer$$anon$1.$anonfun$isCoercible$1(Typers.scala:219)
+	at scala.runtime.java8.JFunction0$mcZ$sp.apply(JFunction0$mcZ$sp.scala:17)
+	at scala.reflect.internal.tpe.TypeConstraints$UndoLog.undo(TypeConstraints.scala:68)
+	at scala.tools.nsc.typechecker.Typers$Typer$$anon$1.isCoercible(Typers.scala:219)
+	at scala.tools.nsc.typechecker.Infer$Inferencer.isCompatible(Infer.scala:345)
+	at scala.tools.nsc.typechecker.Infer$Inferencer.$anonfun$isCompatibleArgs$1(Infer.scala:353)
+	at scala.tools.nsc.typechecker.Infer$Inferencer.$anonfun$isCompatibleArgs$1$adapted(Infer.scala:353)
+	at scala.collection.immutabl
+```
+
+
+
+网上普遍说是jdk的问题，切换成jdk8就解决，还有说是maven依赖问题，删除重新下载就解决。但两种方法我都尝试了，依然没有解决。
+
+最后，在Project Structure->Global Libraries里通过maven下载的scala全删了， 使用brew下载了scala2.11.12（brew install scala@2.11）并选择它，就ok了。scala-2.13是不行的，可能是2.13依赖了更高版本的jdk。
+

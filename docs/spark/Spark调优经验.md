@@ -17,3 +17,4 @@
 合并写入变为并行写入，通过修改目录名称实现数据替换，去掉了回写步骤
 
 使用coalesce代替repartition，这俩函数用于改变分区数，但coalesce跨分区移动的数据会比repartition少。
+
