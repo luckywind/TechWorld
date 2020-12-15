@@ -36,3 +36,7 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 [mac配置多版本java](https://segmentfault.com/a/1190000013131276)
 
+# git中文乱码
+
+[解决中文乱码](https://www.cnblogs.com/ayseeing/p/4268655.html)
+
