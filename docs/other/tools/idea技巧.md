@@ -79,3 +79,4 @@ scala.reflect.internal.MissingRequirementError: object scala.$less$colon$less in
 
 最后，在Project Structure->Global Libraries里通过maven下载的scala全删了， 使用brew下载了scala2.11.12（brew install scala@2.11）并选择它，就ok了。scala-2.13是不行的，可能是2.13依赖了更高版本的jdk。
 
+遇到问题，先clean，再reimport,   scala sdk选择时，要继续定位到lib目录，不包含idea目录

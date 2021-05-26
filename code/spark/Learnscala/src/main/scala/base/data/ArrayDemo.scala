@@ -15,6 +15,5 @@ object ArrayDemo {
     println(init.mkString(","))
     val tab: Array[Int] = Array.tabulate(5)(n=>n*n)
     println(tab.mkString(","))
-    new Horse
   }
 }

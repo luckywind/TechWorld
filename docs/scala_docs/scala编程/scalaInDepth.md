@@ -66,7 +66,22 @@ Option最大的特点是可以当作集合使用，即可以执行map/flatMap/fo
 
 3. 
 
+# 使用面向对象
 
+1. 对象/特质体内的代码是初始化逻辑。
+
+   ```scala
+   trait Application {
+             def main(args: Array[String]): Unit = {}
+   }
+   
+   
+   object Test extends Application {
+             println("Hello, World!")
+   }
+   ```
+
+   编译特质时，scala创建一个接口/实现对儿，
 
 
 

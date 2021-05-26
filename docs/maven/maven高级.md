@@ -217,7 +217,9 @@ includes： groupId:artifactId列表，指定需要删除/更新的依赖
 例如：
 
 ```shell
-mvn dependency:purge-local-repository -Dincludes=
+mvn org.apache.maven.plugins:maven-dependency-plugin:2.1:get \
+    -DrepoUrl=https://pkgs.d.xiaomi.net:443/artifactory/maven-release-virtual \
+    -Dartifact=com.xiaomi.data:data-platform-spec-tmp:0.0.1-SNAPSHOT
 ```
 
 

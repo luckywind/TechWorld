@@ -32,6 +32,12 @@ Qauntiles segments = WrappedArray(-27.0, 2.0, 4443.0)
 // 从seq创建
 val donuts = Seq(("plain donut", 1.50), ("vanilla donut", 2.0), ("glazed donut", 2.50))
 val df= sparkSession.createDataFrame(donuts).toDF("Donut Name","Price")
+
+val rdd=spark.sparkContext.parallelize(Seq(("Java", 20000), 
+  ("Python", 100000), ("Scala", 3000)))
+rdd.foreach(println)
+
+
 // 从json
   val tagsDF = sparkSession.read
     .option("multiLine", true)

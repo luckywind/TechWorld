@@ -259,3 +259,6 @@ scala> List.range(2, 6,-1)
 res6: List[Int] = List()
 ```
 
+[Scala ArrayBuffer/ListBuffer vs Java ArrayList](https://www.jianshu.com/p/87b75cf513aa)
+
+在Scala中，ArrayBuffer就是ArrayList的另一个版本，而ListBuffer就是LinkedList的另一个版本
