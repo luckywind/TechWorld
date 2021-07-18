@@ -14,3 +14,34 @@ Map("china"->"beijing","US"->"Washington").apply("US")  //查找  输出Washingt
 
 
 
+# 日期范围
+
+```scala
+    def loadXActiveBetween(curStart: DateTime, curEnd: DateTime):RDD[DwmDvcOtDeviceActiveChain] = {
+        val days = Days.daysBetween(curStart,curEnd).getDays
+        val rddList = (0 until days).map(curStart.plusDays(_).toString(DateUtils.DATE_FORMAT)).map(loadXActive(_)).filter(_!=null)
+        rddList.reduce(_ union _)
+    }
+```
+
+
+
+# while循环
+
+```scala
+    var real="-2621139991315662769"
+    var uuid=""
+    import scala.util.control._
+    val loop = new Breaks;
+    loop.breakable {
+      while (true) {
+        uuid = calUuid(OneIdType.MID.getValue, "16953773").toString
+        println(uuid)
+        if (!uuid.eq(real)) {
+          loop.break()
+          println(uuid)
+        }
+      }
+    }
+```
+

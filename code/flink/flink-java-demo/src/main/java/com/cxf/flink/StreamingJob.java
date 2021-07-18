@@ -21,6 +21,7 @@ package com.cxf.flink;
 import com.cxf.flink.function.IncrementMapFunction;
 import com.cxf.flink.source.RandomLongSource;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -51,6 +52,11 @@ public class StreamingJob {
   public void execute() throws Exception {
 		StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment();
+
+
+/*		Configuration conf = new Configuration();
+		StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironmentWithWebUI(conf);*/
+
 		DataStream<Long> LongStream = env.addSource(source)
 				.returns(TypeInformation.of(Long.class));
 

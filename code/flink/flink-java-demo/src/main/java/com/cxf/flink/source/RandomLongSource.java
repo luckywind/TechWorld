@@ -13,7 +13,7 @@ import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunctio
  */
 public class RandomLongSource extends RichParallelSourceFunction {
 
-  private volatile boolean cancelled = false;
+  private volatile boolean cancelled = false; //注意volatile修饰
   private Random random;
 
   @Override
@@ -25,6 +25,7 @@ public class RandomLongSource extends RichParallelSourceFunction {
   @Override
   public void run(SourceContext sourceContext) throws Exception {
     while (!cancelled) {
+      Thread.sleep(1000);
       long nextLong = random.nextLong();
       synchronized (sourceContext.getCheckpointLock()) {
         sourceContext.collect(nextLong);

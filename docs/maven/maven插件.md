@@ -55,3 +55,213 @@ mvn archetype:generate
 ## exec-maven-plugin
 
 [参考](https://www.cnblogs.com/zz0412/tag/Maven/)
+
+## maven-shade-plugin
+
+[官网](http://maven.apache.org/plugins/maven-shade-plugin/index.html)
+
+[入门指南](https://www.jianshu.com/p/7a0e20b30401)
+
+[使用指南](https://developer.aliyun.com/article/632130)
+
+### Why?
+
+通过 maven-shade-plugin 生成一个 uber-jar，它包含所有的依赖 jar 包。
+
+### Goals
+
+| Goal                                                         | Description                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| [shade:help](https://links.jianshu.com/go?to=http%3A%2F%2Fmaven.apache.org%2Fplugins%2Fmaven-shade-plugin%2Fhelp-mojo.html) | mvn shade:help -Ddetail=true -Dgoal=<goal-name> 查看参数详情 |
+| [shade:shade](https://links.jianshu.com/go?to=http%3A%2F%2Fmaven.apache.org%2Fplugins%2Fmaven-shade-plugin%2Fshade-mojo.html) | Mojo that performs shading delegating to the Shader component. |
+
+
+
+### 使用
+
+1. maven-shade-plugin 将 goal shade:shade 绑定到 phase package 上。
+
+```xml
+ <build>
+     <plugins>
+         <plugin>
+             <groupId>org.apache.maven.plugins</groupId>
+             <artifactId>maven-shade-plugin</artifactId>
+             <version>2.4.3</version>
+             <configuration>
+                <!-- put your configurations here -->
+             </configuration>
+             <executions>
+                 <execution>
+                     <phase>package</phase>
+                     <goals>
+                        <goal>shade</goal>
+                     </goals>
+                 </execution>
+             </executions>
+         </plugin>
+     </plugins>
+ </build>
+```
+
+#### 例子
+
+##### 选择jar
+
+```xml
+<build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <excludes>
+                  <exclude>classworlds:classworlds</exclude>
+                  <exclude>junit:junit</exclude>
+                  <exclude>jmock:*</exclude>
+                  <exclude>*:xml-apis</exclude>
+                  <exclude>org.apache.maven:lib:tests</exclude>
+                  <exclude>log4j:log4j:jar:</exclude>
+                </excludes>
+              </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+</build>
+```
+
+##### 将依赖的某个jar内部的资源include/exclude掉
+
+```xml
+<build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <filters>
+                <filter>
+                  <artifact>junit:junit</artifact>
+                  <includes>
+                    <include>junit/framework/**</include>
+                    <include>org/junit/**</include>
+                  </includes>
+                  <excludes>
+                    <exclude>org/junit/experimental/**</exclude>
+                    <exclude>org/junit/runners/**</exclude>
+                  </excludes>
+                </filter>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+</build>
+```
+
+##### 自动 排除不使用的类
+
+```xml
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <minimizeJar>true</minimizeJar>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+```
+
+##### 默认会生成一个Jar包和一个以 "-shaded"为结尾的uber-jar包，可以通过配置来指定uber-jar的后缀名。
+
+```xml
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>jackofall</shadedClassifierName> <!-- Any name that makes sense -->
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+```
+
+##### 可执行jar
+
+```xml
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>2.4.3</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>org.sonatype.haven.HavenCli</mainClass>
+                </transformer>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+```
+

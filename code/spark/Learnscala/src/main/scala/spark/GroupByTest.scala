@@ -20,6 +20,7 @@ package spark
 
 import java.util.Random
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
 /**
@@ -50,8 +51,11 @@ object GroupByTest {
     // Enforce that everything has been calculated and in cache
     pairs1.count()
 
-    println(pairs1.groupByKey(numReducers).count())
+    val res: RDD[(Int, Iterable[Array[Byte]])] = pairs1.groupByKey(numReducers)
+    println(res.toDebugString)
+    println(res.count())
 
+    Thread.sleep(1000000)
     spark.stop()
   }
 }

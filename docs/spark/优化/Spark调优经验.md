@@ -18,3 +18,7 @@
 
 使用coalesce代替repartition，这俩函数用于改变分区数，但coalesce跨分区移动的数据会比repartition少。
 
+## 小表
+
+[小表join大表](https://www.cnblogs.com/wwcom123/p/10586607.html)
+
