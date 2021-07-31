@@ -4,7 +4,7 @@
 
 相同key的数据一定在一个节点上，内存放不下就存到磁盘
 
-![shuffle](https://gitee.com/luckywind/PigGo/raw/master/image/shuffle.png)
+![image-20210719100823183](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210719100823183.png)
 
 # Spark架构:shuffle
 
@@ -72,4 +72,8 @@ Cons:
 但这种方式无法利用mapper端的预排序优势，且貌似不稳定。图示如下：
 
 ![spark_tungsten_sort_shuffle](https://gitee.com/luckywind/PigGo/raw/master/image/spark_tungsten_sort_shuffle-1024x457.png)
+
+# Spark shuffle vs MR shuffle
+
+[Spark的Shuffle和MR的Shuffle异同](https://zhuanlan.zhihu.com/p/136466667)
 

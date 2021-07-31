@@ -105,3 +105,36 @@ initcap
 split
 ```
 
+# df->rdd
+
+```scala
+  val frame: DataFrame = spark.read.parquet(idMappingConfig.DWM_DVC_DEVICE_CHAIN + suffix) //.na.drop()
+   val res: DataFrame = frame.select("origin_device_id", "user_id", "start_day", "prod_cat_name", "sn", "del_flg").na.fill("")
+ res.rdd.map {
+                    case Row(origin_device_id: String,user_id: Long,start_day: Long,prod_cat_name: String,sn: String,del_flg: Int) => {
+                        DVC_OT_CHAIN(origin_device_id, user_id, start_day.toString, prod_cat_name, end_day, sn, del_flg)
+                    }
+                }
+```
+
+# 小表join优化
+
+```scala
+    val  dimDF = ot_dim_df.rdd.map{
+      case Row(prod_cat_name:String,prod_cat_id:Int)=>{
+        (prod_cat_name,prod_cat_id)
+      }
+    }.repartition(partitionNum).collectAsMap()
+    val brodDimDF: Broadcast[collection.Map[String, Int]] = getSparkContext.broadcast(dimDF)
+
+    val final_increament= increament_edge.map(
+      edge=>{
+        val prod_cat_name: String = if (edge.extend_map != null) edge.extend_map.getOrDefault("prod_cat_name", "") else ""
+        if (brodDimDF.value.contains(prod_cat_name)) {
+          edge.putToExtend_map(KeyConstant.PROD_CAT_ID,brodDimDF.value.get(prod_cat_name).get.toString)
+        }
+        edge
+      }
+    )
+```
+

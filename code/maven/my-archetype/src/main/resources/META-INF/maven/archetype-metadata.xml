@@ -1,0 +1,25 @@
+<archetype-descriptor
+  xmlns="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/plugins/maven-archetype-plugin/archetype-descriptor/1.1.0 https://maven.apache.org/xsd/archetype-descriptor-1.1.0.xsd"
+  name="my-archetype">
+  <!-- 注意这个name和项目的artifactId要一样-->
+
+  <requiredProperties>  <!--一些属性-->
+    <requiredProperty key="keya">
+    <defaultValue/>
+      <!--<validationRegex/>  属性校验正则表达式-->
+  </requiredProperty>
+</requiredProperties>
+
+
+  <fileSets>
+    <fileSet filtered="true" packaged="false">
+      <directory>src/main/java</directory>
+    </fileSet>
+    <fileSet filtered="true" packaged="false">
+      <directory>src/test/java</directory>
+    </fileSet>
+  </fileSets>
+
+
+</archetype-descriptor>

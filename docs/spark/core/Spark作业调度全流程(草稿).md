@@ -571,9 +571,8 @@ ShuffleMapTask:
       // 通过shuffleManager的getWriter()方法，获得shuffle的writer
       // 启动的partitionId表示的是当前RDD的某个partition,也就是说write操作作用于partition之上
       writer = manager.getWriter[Any, Any](dep.shuffleHandle, partitionId, context)
-      // 针对RDD中的分区<span style="font-family: Arial, Helvetica, sans-serif;">partition</span>
-      // <span style="font-family: Arial, Helvetica, sans-serif;">，调用rdd的iterator()方法后，再调
-      // 用writer的write()方法，写数据</span>
+      // 针对RDD中的分区调用rdd的iterator()方法后，再调
+      // 用writer的write()方法，写数据
       writer.write(rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
       // 停止writer，并返回标志位
       writer.stop(success = true).get

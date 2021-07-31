@@ -32,7 +32,9 @@ idea .
 
 Run-Edit Configurations -Before launch里面，把Build换成Build ,no error check就可以了。如果提示找不到主类，可先执行mvn clean compile。
 
+# 展开目录
 
+![image-20210731221941738](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210731221941738.png)
 
 # object in compiler mirror not found
 
@@ -86,3 +88,4 @@ scala.reflect.internal.MissingRequirementError: object scala.$less$colon$less in
 command+alt+B
 
 ![image-20210709225127815](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709225127815.png)
+
