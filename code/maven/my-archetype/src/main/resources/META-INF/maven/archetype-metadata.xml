@@ -4,11 +4,11 @@
   name="my-archetype">
   <!-- 注意这个name和项目的artifactId要一样-->
 
-  <requiredProperties>  <!--一些属性-->
-    <requiredProperty key="keya">
+ <requiredProperties>  <!--一些属性-->
+<!--    <requiredProperty key="keya">
     <defaultValue/>
-      <!--<validationRegex/>  属性校验正则表达式-->
-  </requiredProperty>
+      &lt;!&ndash;<validationRegex/>  属性校验正则表达式&ndash;&gt;
+  </requiredProperty>-->
 </requiredProperties>
 
 
@@ -18,6 +18,9 @@
     </fileSet>
     <fileSet filtered="true" packaged="false">
       <directory>src/test/java</directory>
+    </fileSet>
+    <fileSet filtered="false" packaged="false">
+      <directory>src/main/resources</directory>
     </fileSet>
   </fileSets>
 

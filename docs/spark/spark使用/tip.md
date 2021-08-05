@@ -138,3 +138,28 @@ split
     )
 ```
 
+# dataframe处理
+
+## 转rdd
+
+1. 按下标获取字段: get(index) 从1开始
+2. `getAs[类型](字段名称) ` 强转，例如null强转Long会转成0
+3. getString/getLong等，当无法转换时会报错，例如null不能转成Long，但可以转成string(值为null)
+
+```scala
+res.rdd.map{
+      e=>
+         val value: Any = e.get(1)
+        println(value) //null
+        if (value == null) {
+          println("=====")
+          val tmp: Long = e.getAs[Long]("user_id")
+          println(tmp)  //0
+          val getstring: String = e.getString(1)
+          println(getstring)   //null
+//          println(e.getLong(1))//会报错java.lang.NullPointerException: Value at index 1 is null
+        }
+        e.getAs[Long]("user_id")
+    }
+```
+

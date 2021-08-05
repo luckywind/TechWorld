@@ -1,4 +1,4 @@
-package ${package};
+package com.cxf;
 
 /**
  * Hello world!
