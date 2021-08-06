@@ -22,7 +22,7 @@ public class Watiao {
      if (map.containsKey(n)) {
        return map.get(n);
      } else {
-       map.put(n, numWays(n - 1) + numWays(n - 2));
+       map.put(n,  (numWays(n - 1) + numWays(n - 2)) % 1000000007);
        return map.get(n);
      }
   }

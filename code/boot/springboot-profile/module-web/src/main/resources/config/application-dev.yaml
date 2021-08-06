@@ -5,8 +5,8 @@ spring:
     datasource:
         name: data_quality
         url: jdbc:mysql://localhost:3306/batis-helper?useUnicode=true&characterEncoding=utf8
-        username: root
-        password: 12345678
+        xxxxxxx: xxxxxxxx
+        xxxxxxx: xxxxxxxx
         type: com.zaxxer.hikari.HikariDataSource
         driver-class-name: com.mysql.jdbc.Driver
         hikari:
