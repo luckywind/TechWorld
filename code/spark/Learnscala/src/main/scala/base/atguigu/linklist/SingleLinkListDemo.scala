@@ -1,9 +1,9 @@
 package base.atguigu.linklist
 import scala.util.control.Breaks._
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved. 
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2020-12-18  
  * @Desc
  * 单向链表技巧：

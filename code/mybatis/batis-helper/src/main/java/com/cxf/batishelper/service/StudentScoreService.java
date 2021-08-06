@@ -3,8 +3,8 @@ package com.cxf.batishelper.service;
 import java.util.List;
 import com.cxf.batishelper.model.StudentScore;
     /** 
-* Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
-* Authors: chengxingfu <chengxingfu@xiaomi.com>
+* Copyright (c) 2015 xxx Inc. All Rights Reserved. 
+* Authors: chengxingfu <chengxingfu@xxx.com>
 * Date:2020-06-05 
 */
 public interface StudentScoreService{

@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.Properties;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-05-27
  */
 @Intercepts({@Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})})

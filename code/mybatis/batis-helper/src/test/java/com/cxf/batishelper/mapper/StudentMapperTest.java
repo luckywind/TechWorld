@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-05-17
  */
 public class StudentMapperTest {
@@ -34,9 +34,9 @@ public class StudentMapperTest {
 
     @Test
     public void testMySelectByName() throws FileNotFoundException {
-        List<Student> xiaoming =
-                mapper.mySelectByName("xiaoming");
-        for (Student student : xiaoming) {
+        List<Student> xxxng =
+                mapper.mySelectByName("xxxng");
+        for (Student student : xxxng) {
             System.out.println(student);
         }
     }
@@ -46,7 +46,7 @@ public class StudentMapperTest {
     public void testSelectByMap()  {
         HashMap<String , Object> mapParam = new HashMap<>();
         mapParam.put("id", 1);
-        mapParam.put("name", "xiaoming");
+        mapParam.put("name", "xxxng");
         List<Student> students = mapper.selectByMap(mapParam);
         for (Student student : students) {
             System.out.println(student);
@@ -56,7 +56,7 @@ public class StudentMapperTest {
 
     @Test
     public void testSelectByIdAndName()  {
-        List<Student> students = mapper.selectByidAndName(1,"xiaoming");
+        List<Student> students = mapper.selectByidAndName(1,"xxxng");
         for (Student student : students) {
             System.out.println(student);
         }

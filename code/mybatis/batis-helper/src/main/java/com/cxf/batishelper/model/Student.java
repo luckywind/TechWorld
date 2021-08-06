@@ -3,8 +3,8 @@ package com.cxf.batishelper.model;
 import java.io.Serializable;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-05-19
  */
 public class Student implements Serializable {

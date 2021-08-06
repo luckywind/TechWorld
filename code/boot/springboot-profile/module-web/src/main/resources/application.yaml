@@ -4,6 +4,6 @@ spring:
 
 mybatis:
   mapper-locations: classpath:mapping/*.xml
-  type-aliases-package: com.xiaomi.data.model
+  type-aliases-package: com.xxx.data.model
 
 

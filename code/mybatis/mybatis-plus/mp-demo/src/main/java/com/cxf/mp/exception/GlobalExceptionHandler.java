@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2020-09-19
  * @Desc
  */

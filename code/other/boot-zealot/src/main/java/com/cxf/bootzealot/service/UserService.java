@@ -5,8 +5,8 @@ import javax.annotation.Resource;
 import com.cxf.bootzealot.model.User;
 import com.cxf.bootzealot.mapper.UserMapper;
 /** 
-* Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
-* Authors: chengxingfu <chengxingfu@xiaomi.com>
+* Copyright (c) 2015 xxx Inc. All Rights Reserved. 
+* Authors: chengxingfu <chengxingfu@xxx.com>
 * Date:2020-07-14 
 */
 @Service

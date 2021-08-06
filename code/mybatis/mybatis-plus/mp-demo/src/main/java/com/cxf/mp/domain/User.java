@@ -10,8 +10,8 @@ import java.util.Date;
 import lombok.Data;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-08-05
  */
 @ApiModel(value = "com-cxf-mp-domain-User")

@@ -10,8 +10,8 @@ import org.mapstruct.example.po.Person;
 import org.mapstruct.factory.Mappers;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-08-19
  */
 @Mapper

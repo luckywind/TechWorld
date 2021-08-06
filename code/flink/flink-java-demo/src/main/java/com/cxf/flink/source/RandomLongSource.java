@@ -5,9 +5,9 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2021-05-28
  * @Desc
  */

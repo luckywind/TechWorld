@@ -3,9 +3,9 @@ package Demo;
 import java.util.HashMap;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2021-07-27
  * @Desc
  */

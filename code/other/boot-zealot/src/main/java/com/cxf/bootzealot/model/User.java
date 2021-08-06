@@ -1,8 +1,8 @@
 package com.cxf.bootzealot.model;
 
 /** 
-* Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
-* Authors: chengxingfu <chengxingfu@xiaomi.com>
+* Copyright (c) 2015 xxx Inc. All Rights Reserved. 
+* Authors: chengxingfu <chengxingfu@xxx.com>
 * Date:2020-07-14 
 */
 public class User {

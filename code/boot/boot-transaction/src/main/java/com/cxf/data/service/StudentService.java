@@ -2,8 +2,8 @@ package com.cxf.data.service;
 
 import com.cxf.data.model.Student;
     /** 
-* Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
-* Authors: chengxingfu <chengxingfu@xiaomi.com>
+* Copyright (c) 2015 xxx Inc. All Rights Reserved. 
+* Authors: chengxingfu <chengxingfu@xxx.com>
 * Date:2020-07-18 
 */
 public interface StudentService{

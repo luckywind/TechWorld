@@ -3,8 +3,8 @@ package com.cxf.bootzealot.mapper;
 import com.cxf.bootzealot.model.User;
 
 /** 
-* Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
-* Authors: chengxingfu <chengxingfu@xiaomi.com>
+* Copyright (c) 2015 xxx Inc. All Rights Reserved. 
+* Authors: chengxingfu <chengxingfu@xxx.com>
 * Date:2020-07-14 
 */
 public interface UserMapper {

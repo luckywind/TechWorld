@@ -10,8 +10,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.session.ResultHandler;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-05-19
  */
 public interface StudentMapper {

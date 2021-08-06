@@ -1,9 +1,9 @@
 package com.cxf;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2021-08-01
  * @Desc 给定一个字符串 s ，请你找出其中不含有重复字符的 最长子串 的长度。
  */

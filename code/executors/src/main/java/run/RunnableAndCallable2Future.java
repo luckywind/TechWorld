@@ -1,8 +1,8 @@
 package run;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
+ * Authors: chengxingfu <chengxingfu@xxx.com>
  * Date:2020-05-12
  * <p>
  * 通过简单的测试程序来试验Runnable、Callable通过Executor来调度的时候与Future的关系

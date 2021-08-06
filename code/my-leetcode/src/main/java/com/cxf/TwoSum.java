@@ -5,9 +5,9 @@ import java.util.Collections;
 import java.util.HashMap;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
+ * Copyright (c) 2015 xxx Inc. All Rights Reserved.
  *
- * @author chengxingfu <chengxingfu@xiaomi.com>
+ * @author chengxingfu <chengxingfu@xxx.com>
  * @Date 2021-08-01
  * @Desc
  * 题目要返回两数下标，map里的值是下标，key是数字，
