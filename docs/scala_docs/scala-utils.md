@@ -36,7 +36,7 @@ val daysCount = Days.daysBetween(start, end).getDays()
 
 # 读写数据文件错误
 
-https://xiaomi.f.mioffice.cn/docs/dock4KdAQKgIxSXRKcW0JHr92vg
+https://.f.mioffice.cn/docs/dock4KdAQKgIxSXRKcW0JHr92vg
 
 ## ParquetDecodingException: Can not read value at 0 in block -1 in file 
 

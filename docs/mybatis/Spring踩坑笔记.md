@@ -5,11 +5,7 @@
 ```java
 package com.cxf.data.utils;
 
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-14
- */
+
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;

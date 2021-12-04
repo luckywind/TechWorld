@@ -8,7 +8,7 @@ xml文件
 
 ```xml
   <select id="findByMap" parameterType="java.util.Map" resultMap="BaseResultMap"
-    resultType="com.xiaomi.data.datapi.domain.DwSysBusiness">
+    resultType="com..data.datapi.domain.DwSysBusiness">
     select <include refid="Base_Column_List"></include> from dw_sys_business t where
     <choose>
       <when test="map.keys.size > 0">

@@ -6,11 +6,7 @@ import org.apache.spark.sql.SparkSession
 import  spark.sql
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
- *
- * @author chengxingfu <chengxingfu@xiaomi.com>
- * @Date 2021-10-08  
- * @Desc
+
  */
 object JoinImpl {
   def main(args: Array[String]): Unit = {

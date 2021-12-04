@@ -6,7 +6,7 @@
 # 拦截器
 
 ```java
-package com.xiaomi.data.config;
+package com..data.config;
 
 import org.apache.ibatis.executor.statement.StatementHandler;
 import org.apache.ibatis.mapping.BoundSql;
@@ -14,11 +14,7 @@ import org.apache.ibatis.plugin.*;
 
 import java.sql.Connection;
 import java.util.Properties;
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-27
- */
+
 
 /**
  * 打印sql语句的插件
@@ -73,11 +69,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.Properties;
 
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-27
- */
+
 @Configuration
 public class MyBatisConfiguration {
     @Bean
@@ -108,11 +100,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-06-17
- */
+
 @RunWith(SpringRunner.class)
 @SpringBootTest
 @ActiveProfiles("dev")

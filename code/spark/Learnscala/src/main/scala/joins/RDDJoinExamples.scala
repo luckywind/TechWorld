@@ -5,11 +5,7 @@ import org.apache.spark.rdd.RDD
 import scala.collection.Map
 import scala.reflect.ClassTag
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved. 
- *
- * @author chengxingfu <chengxingfu@xiaomi.com>
- * @Date 2021-10-09  
- * @Desc
+
  */
 object RDDJoinExamples {
 

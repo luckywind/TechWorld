@@ -41,5 +41,5 @@ is the size of the serialized form of the data on disk after we spill it. This i
 
 [Spark报错与日志问题查询姿势指南](Spark报错与日志问题查询姿势指南)
 
-[UI分析](https://xiaomi.f.mioffice.cn/docs/dock48t38NuarkrNLW3J27F1H2c)
+[UI分析](https://.f.mioffice.cn/docs/dock48t38NuarkrNLW3J27F1H2c)
 

@@ -28,11 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-18
- */
+
 @RestController
 @RequestMapping(value = "student")
 public class StudentController {

@@ -22,11 +22,7 @@ import java.sql.Connection;
 import java.util.Map;
 import java.util.Properties;
 
-/**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-27
- */
+
 @Intercepts({@Signature(type = StatementHandler.class, method = "prepare", args = {Connection.class, Integer.class})})
 public class MyPageInterceptor implements Interceptor {
 
@@ -126,9 +122,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Properties;
 
 /**
- * Copyright (c) 2015 XiaoMi Inc. All Rights Reserved.
- * Authors: chengxingfu <chengxingfu@xiaomi.com>
- * Date:2020-05-27
+
  */
 @Configuration
 public class MyBatisConfiguration {

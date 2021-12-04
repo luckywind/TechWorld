@@ -5,13 +5,11 @@ DwmOneTrackAppUsage
 ```
 
 ```scala
-package com.xiaomi.onedata.onetrack.offline.dwm
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
-import com.xiaomi.onedata.onetrack.offline.monitor.monitorJob._
-import com.xiaomi.onedata.onetrack.utils.HDFSUtils
+
 import org.apache.log4j.Logger
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._

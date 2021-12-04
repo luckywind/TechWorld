@@ -62,7 +62,7 @@ public class Swagger2 {
                 .title("RESTful APIs")
                 .description("")
                 .termsOfServiceUrl("")
-                .contact(new Contact("chengxingfu","","chengxingfu@xiaomi.com"))
+                .contact(new Contact("","","@.com"))
                 .version("1.0")
                 .build();
     }
