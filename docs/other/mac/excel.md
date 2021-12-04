@@ -12,3 +12,11 @@
 1. 定制横坐标轴数据
 
 横坐标轴选择数据->水平(分类)轴标签->选择数据即可
+
+[有了这个神技能，再复杂的Excel图表也能灵活得像个300斤的胖子](https://cloud.tencent.com/developer/news/643600)
+
+[excel函数](https://zhuanlan.zhihu.com/p/79423328)
+
+alt+F1快速插入图表
+
+[需要熟练掌握](https://www.zhihu.com/question/21758700)

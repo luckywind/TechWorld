@@ -242,13 +242,15 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 ## spark.yarn.executor.memoryOverhead” 与spark.memory.offHeap.size
 
+> spark.yarn.executor.memoryOverhead已废弃，被spark.executor.memoryOverhead代替了
+
 [参考](https://stackoverflow.com/questions/58666517/difference-between-spark-yarn-executor-memoryoverhead-and-spark-memory-offhea/61723456#61723456)
 
 spark.executor.memoryOverhead是YARN等资源管理器使用的，而spark.memory.offHeap.size是Spark core的内存管理模块使用的。
 
 1. spark2.4.5之前
 
-   spark.executor.memoryOverhead一定要大于spark.memory.offHeap.size，这意味着如果你制定了spark.memory.offHeap.size，则必须手动把这部分内存加到memoryOverhead上，因为YARN请求资源时对spark.memory.offHeap.size一无所知
+   spark.executor.memoryOverhead一定要大于spark.memory.offHeap.size，这意味着如果你指定了spark.memory.offHeap.size，则必须手动把这部分内存加到memoryOverhead上，因为YARN请求资源时对spark.memory.offHeap.size一无所知
 
    ```scala
    private[yarn] val resource = Resource.newInstance(
@@ -258,9 +260,54 @@ spark.executor.memoryOverhead是YARN等资源管理器使用的，而spark.memor
 
 2. spark3.0之后，我们就不必手动加了，Yarn会自动感知
 
+## spark.executor.memoryOverhead与spark.memory.offHeap.size的区别
+
+```shell
+spark.storage.memoryFraction 0.6(默认 )
+spark.storage.safetyFraction 0.5(默认 )
+
+Executor内存(GB)=
+(spark.executor.memory*1024*1024*1024 - 300*1024*1024) //spark可用内存
+*spark.memory.fraction         //统一内存
+/1000/1000/1000
+```
+
+因为动态占用机制，UI显示的 storage memory = 执行内存 + 存储内存
+
+[参考](https://blog.csdn.net/lquarius/article/details/106698097)
+
+设置堆外内存的参数为spark.executor.memoryOverhead与spark.memory.offHeap.size(需要与 spark.memory.offHeap.enabled同时使用)，其中这两个都是描述堆外内存的，但是它们有什么区别么？
+
+spark.memory.offHeap.size 真正作用于spark executor的堆外内存
+spark.executor.memoryOverhead 作用于yarn，通知yarn我要使用堆外内存和使用内存的大小，相当于spark.memory.offHeap.size +  spark.memory.offHeap.enabled，设置参数的大小并非实际使用内存大小
+
+使用时 spark.executor.memoryOverhead设置最好大于等于 spark.memory.offHeap.size
 
 
 
+spark.executor.memoryOverhead官网介绍
+
+> 每个executor分配的堆外内存，默认单位是M。 这部分内存用于如 VM overheads，interned strings, other native overheads。
+>
+> 可以理解为jvm本身维持运行所需要的额外内存。  通常占executor大小的6-10%，默认是executor大小的10%，且最小是384M。为JVM进程中除Java堆以外占用的空间大小，包括方法区（永久代）、Java虚拟机栈、本地方法栈、JVM进程本身所用的内存、堆外内存（Direct Memory）等
+
+spark.memory.offHeap.enabled
+
+默认false, true时，spark将尝试使用堆外内存
+
+spark.memory.offHeap.size：
+
+>  用于堆外内存分配，不影响堆内内存。 通过unsafeApi申请的系统内存，表示rdd计算执行和数据存储使用的offheap
+
+## Direct buffer与memoryOverhead
+
+memoryOverhead: jvm 本身维持运行所需要的的额外内存, 
+
+Direct Buffer: NIO 使用的channel 缓冲区, 在 memoryOverHead 内存中分配direct buffer.
+
+spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
+
+![image-20211123175623588](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211123175623588.png)
 
 # MemoryStore
 
@@ -414,7 +461,7 @@ Executor堆外内存的配置需要在spark-submit脚本里配置，
 
 [](https://blog.csdn.net/pre_tender/article/details/101517789)
 
-堆内内存优缺点分析
+**堆内内存优缺点分析**
 我们知道，堆内内存采用JVM来进行管理。而JVM的对象可以以序列化的方式存储，序列化的过程是将对象转换为二进制字节流，本质上可以理解为将非连续空间的链式存储转化为连续空间或块存储，在访问时则需要进行序列化的逆过程——反序列化，将字节流转化为对象，序列化的方式可以节省存储空间，但增加了存储和读取时候的计算开销。
 
 对于Spark中序列化的对象，由于是字节流的形式，其占用的内存大小可直接计算。
@@ -423,4 +470,3 @@ Executor堆外内存的配置需要在spark-submit脚本里配置，
 1. **降低了时间开销但是有可能误差较大，导致某一时刻的实际内存有可能远远超出预期**
 2. 此外，在被Spark标记为释放的对象实例，很有可能在实际上并没有被JVM回收，导致实际可用的内存小于Spark记录的可用内存。所以Spark并不能准确记录实际可用的堆内内存，从而也就无法完全避免内存溢出（OOM, Out of Memory）的异常。
    虽然不能精准控制堆内内存的申请和释放，但Spark通过对存储内存和执行内存各自独立的规划管理，可以决定是否要在存储内存里缓存新的RDD，以及是否为新的任务分配执行内存，在一定程度上可以提升内存的利用率，减少异常的出现。
-   

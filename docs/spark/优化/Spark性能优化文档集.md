@@ -2,6 +2,12 @@
 
 [性能优化总结](https://mp.weixin.qq.com/s/pBArMxoQ0G9NXu_3dFpa4Q)
 
+[Spark开发中十一种调优的思路](https://blog.51cto.com/u_15294184/3052733#RDD_3)
+
+[spark 分区调优](https://luminousmen.com/post/spark-tips-partition-tuning)
+
+[spark调优](https://miracle-xing.github.io/2019/08/02/Spark-%E8%B0%83%E4%BC%98/)
+
 # 基础篇
 
 ## 动态资源分配

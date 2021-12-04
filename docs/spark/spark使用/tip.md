@@ -163,3 +163,54 @@ res.rdd.map{
     }
 ```
 
+# 语法
+
+数组展开
+
+```scala
+filter($"event_name".isin(List("onetrack_upgrade", "onetrack_pa"): _*)
+```
+
+别名
+
+```scala
+$"properties.type".as("pa_type")
+```
+
+保存
+
+```scala
+.repartition(5)
+.write.partitionBy("app_id") //分区
+.mode(SaveMode.Overwrite)
+.parquet(outputPath)
+```
+
+生成字段
+
+```scala
+lit(sdf.format(Calendar.getInstance().getTimeInMillis)).as("etl_tm")
+
+.withColumn("stat", statEvents($"events"))
+```
+
+# rdd工具
+
+## 查看分区元素数
+
+```scala
+object RDDUtils {
+  def getPartitionCounts[T](sc : SparkContext, rdd : RDD[T]) : Array[Long] = {
+    sc.runJob(rdd, getIteratorSize _)
+  }
+  def getIteratorSize[T](iterator: Iterator[T]): Long = {
+    var count = 0L
+    while (iterator.hasNext) {
+      count += 1L
+      iterator.next()
+    }
+    count
+  }
+}
+```
+

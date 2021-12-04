@@ -78,7 +78,7 @@ executor默认的永久代内存是64K，永久代使用率长时间比较高，
 spark.storage.memoryFraction该参数用于设置RDD持久化数据在Executor内存中能占的比例，默认是0.6。也就是说，默认Executor 60%的内存，可以用来保存持久化的RDD数据。
 spark.storage.safetyFraction：Spark1.5.1进程的默认堆空间是1g，为了安全考虑同时避免OOM,Spark只允许利用90%的堆空间，spark中使用spark.storage.safetyFraction用来配置该值（默认是0.9).
 (spark.shuffle.memoryFraction该参数用于设置shuffle过程中一个task拉取到上个stage的task的输出后，进行聚合操作时能够使用的Executor内存的比例，默认是0.2。)
-2、 emoryOverhead是JVM进程中除Java堆以外占用的空间大小，包括方法区（永久代）、Java虚拟机栈、本地方法栈、JVM进程本身所用的内存、直接内存（Direct Memory）等。 通过spark.yarn.executor.memoryOverhead设置，单位MB。如果Java堆或者永久代的内存不足，则会产生各种OOM异常，executor会被结束。 在Java堆以外的JVM进程内存占用较多的情况下，应该将MemoryOverhead设置为一个足够大的值，以防JVM进程因实际占用的内存超标而被kill。
+2、 MemoryOverhead是JVM进程中除Java堆以外占用的空间大小，包括方法区（永久代）、Java虚拟机栈、本地方法栈、JVM进程本身所用的内存、直接内存（Direct Memory）等。 通过spark.yarn.executor.memoryOverhead设置，单位MB。如果Java堆或者永久代的内存不足，则会产生各种OOM异常，executor会被结束。 在Java堆以外的JVM进程内存占用较多的情况下，应该将MemoryOverhead设置为一个足够大的值，以防JVM进程因实际占用的内存超标而被kill。
 
 当在YARN上运行Spark作业，每个Spark executor作为一个YARN容器运行。Spark可以使得多个Tasks在同一个容器里面运行。 同样，实际运行过程中ExecutorMemory+MemoryOverhead之和（JVM进程总内存）超过container的容量。YARN会直接杀死container。
 
@@ -135,7 +135,7 @@ GC优化前，最好是把gc日志打出来，便于我们进行调试。
 
 
 
- 通过看gc日志，我们发现一个case，特定时间段内，堆内存其实很闲，堆内存使用率也就5%左右，长时间不进行full gc，导致Direct Memory一直不进行回收，一直在飙升。所以，我们的目标是让full gc更频繁些，多触发一些Direct Memory回收。 第一，可以减少整个堆内存的大小，当然也不能太小，否则堆内存也会报OOM。这里，我配置了1G的最大堆内存。 第二，可以让年轻代的对象尽快进入年老代，增加年老代的内存。这里我使用了-Xmn100m，将年轻代大小设置为100M。另外，年轻代的对象默认会在young gc 15次后进入年老代，这会造成年轻代使用率比较大，young gc比较多，但是年老代使用率低，full gc比较少，通过配置-XX:MaxTenuringThreshold=1，年轻代的对象经过一次young gc后就进入年老代，加快年老代full gc的频率。 第三，可以让年老代更频繁的进行full gc。一般年老代gc策略我们主要有-XX:+UseParallelOldGC和-XX:+UseConcMarkSweepGC这两种，ParallelOldGC吞吐率较大，ConcMarkSweepGC延迟较低。我们希望父gc频繁些，对吞吐率要求较低，而且ConcMarkSweepGC可以设置-XX:CMSInitiatingOccupancyFraction，即年老代内存使用率达到什么比例时触发CMS。我们决定使用CMS，并设置-XX:CMSInitiatingOccupancyFraction=10，即年老代使用率10%时触发父gc。 
+ 通过看gc日志，我们发现一个case，特定时间段内，堆内存其实很闲，堆内存使用率也就5%左右，长时间不进行full gc，导致Direct Memory一直不进行回收，一直在飙升。所以，我们的目标是让full gc更频繁些，多触发一些Direct Memory回收。 第一，可以减少整个堆内存的大小，当然也不能太小，否则堆内存也会报OOM。这里，我配置了1G的最大堆内存。 第二，可以让年轻代的对象尽快进入年老代，增加年老代的内存。这里我使用了-Xmn100m，将年轻代大小设置为100M。另外，年轻代的对象默认会在young gc 15次后进入年老代，这会造成年轻代使用率比较大，young gc比较多，但是年老代使用率低，full gc比较少，通过配置-XX:MaxTenuringThreshold=1，年轻代的对象经过一次young gc后就进入年老代，加快年老代full gc的频率。 第三，可以让年老代更频繁的进行full gc。一般年老代gc策略我们主要有-XX:+UseParallelOldGC和-XX:+UseConcMarkSweepGC这两种，ParallelOldGC吞吐率较大，ConcMarkSweepGC延迟较低。我们希望full gc频繁些，对吞吐率要求较低，而且ConcMarkSweepGC可以设置-XX:CMSInitiatingOccupancyFraction，即年老代内存使用率达到什么比例时触发CMS。我们决定使用CMS，并设置-XX:CMSInitiatingOccupancyFraction=10，即年老代使用率10%时触发父gc。 
 通过对GC策略的配置，我们发现父gc进行的频率加快了，带来好处就是Direct Memory能够尽快进行回收，当然也有坏处，就是gc时间增加了，cpu使用率也有所增加。 最终我们对executor的配置如下： 
 
 ```shell
@@ -163,5 +163,60 @@ GC优化前，最好是把gc日志打出来，便于我们进行调试。
 
 
 
+# oneid
 
+1. 增加executor数量**executor越多，spark任务并行能力越强**
+   executor为3，core为2，则同一时间可以同时执行6个task
+   executor为6，core为2，则同一时间可以同时执行12个task
 
+2. 增加core数量
+
+   **core越多，spark任务并行执行能力越强**
+   executor为3，core为2，则同一时间可以同时执行6个task
+   executor为3，core为4，则同一时间可以同时执行12个task
+
+3. 增加executor内存
+
+- 可以cache更多的数据到内存，提高读性能
+- shuffle操作聚合时，若内存不足也会写到磁盘，影响性能
+- task执行过程会创建很多对象，若内存不足会频繁GC，影响性能
+
+4. 增加driver内存
+
+如果spark任务中有collect或者广播变量比较大时，可以适当调大该值避免OOM
+
+5. 广播变量的使用如果执行任务的过程中，依赖的外部中间数据比较大，或者执行任务的task数量比较大，可以考虑采用广播变量
+
+   采用广播变量后，数据不再加载`dataNum *taskNum ,而是仅加载 dataNum* ExecutorNum`
+   减少内存使用量以及提高spark任务的性能
+
+   如果每个task都加载一份占用大量内存，会直接导致
+
+   - 持久化到内存的RDD会被溢写到磁盘，无法在提升读性能
+   - 导致频繁的GC
+   - 涉及到大量的网络传输
+
+6. 避免shuffle
+   reduceByKey代替groupByKey
+
+   因为前两者会在shuffle上游对数据先做一次预聚合，这个操作的好处有
+
+   - 大大减少shuffle阶段网络传输的数据
+   - 上游先做一次预聚合，会大大减小下游做聚合时的计算时间
+
+7. 采用Kryo序列化提供序列化性能
+
+   Kryo比Java原生的序列化方式要快，且序列化之后的数据仅为Java的1/10
+
+   带来的好处有
+
+   - 优化读取外部数据性能
+     序列化后的数据量变少，提高网络传输效率
+   - 缓存时采用序列化
+     持久化的RDD占用内存更少，task执行过程中GC的频率也会下降
+   - shuffle阶段性能提升
+     网络传输的性能提升
+
+8. 调节数据本地化等待时长
+
+9. 多个RDD进行union操作时，避免使用rdd.union(rdd).union(rdd).union(rdd)这种多重union，rdd.union只适合2个RDD合并，合并多个时采用SparkContext.union(Array(RDD))，避免union嵌套层数太多，导致的调用链路太长，耗时太久，且容易引发StackOverFlow

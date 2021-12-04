@@ -138,7 +138,7 @@ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
 
 从上面的源码可以看出，MapPartitionsRDD中的f函数就是用户给定的function. 
 
-所以这是一个逐层嵌套的rdd.iterator方法调用，子rdd调用父rdd的iterator方法并在其结果之上调用scala.collection.Iterator的map函数以执行用户给定的function，逐层调用，直到调用到最初的iterator（比如hadoopRDD partition的iterator）。
+所以这是一个逐层嵌套的rdd.iterator方法调用，子rdd调用父rdd的iterator方法并在其结果之上调用scala.collection.Iterator的map/flatmap/filter函数以执行用户给定的function，逐层调用，直到调用到最初的iterator（比如hadoopRDD partition的iterator）。
 
 现在，我们最初的问题：“多个连续的spark map operators是如何pipeline起来执行的？” 就转化成了“scala.collection.Iterator的多个连续map操作是如何pipeline起来的？”
 
@@ -171,4 +171,19 @@ flatMap和filter函数稍微复杂些，但本质上一样，都是通过调用s
 # 总结
 
 1. task通过调用对应rdd的iterator方法获取对应partition的数据，而这个iterator方法又会逐层调用父rdd的iterator方法获取数据。所以这个过程是一个嵌套迭代的过程，最终实现是scala.collection.iterator的嵌套，而这个scala.collection.iteratorde 嵌套通过覆写scala.collection.iterator的hasNext和next方法实现的。
+
 2. RDD/DataFrame上的连续的map, filter, flatMap函数会自动构成operator pipeline一起对每个data element进行处理，单次循环即可完成多个map operators, 无需多次遍历。
+
+3. pipeline管道计算模式,pipeline只是一种计算思想，模式。
+
+   每个task相当于执行了一个高阶函数，f4（f3（f2（f1（“.....”）））），这种模式就称为pipeline管道计算模式。
+
+   MapReduce 是每一步都要disk io. Spark 都过pipeline 模式进行内存迭代计算
+
+<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211123164407843.png" alt="image-20211123164407843" style="zoom:50%;" />
+
+Task的使用 rdd.iterator 获得迭代器, iterator方法调用compute, compute的输入参数是父RDD的Iterator, 因此调用 父RDD.iterator,  继续递归获得祖父rdd的Iterator
+
+shufflemapTask 通过 shuffleManager 获得shuffleWriter, writer使用iterator方法获得自己的Iterator进行 drop to disk 落盘操作. Iterator 触发父rdd们的递归调用自己的iterator方法
+
+shufflemapTask 和 ResultTask 通过 shuffleManager 获得shuffleReader, Reader 调用 ShuffledRDD的iterator 方法, 通过网络fetch远程的block. 这些block 在map阶段被写入磁盘.

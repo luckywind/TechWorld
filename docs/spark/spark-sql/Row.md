@@ -24,7 +24,9 @@ Row.fromTuple((0, "hello"))
 
 ```scala
 row.get(0)        //返回Any类型
-row.getAs[Int/String...](0) //返回指定类型，类型不匹配时报错。 null不会报错，但转成Int时是0，转成String时是null
+row.getAs[Int/String...](0) 
+//返回指定类型，类型不匹配时报错。 null值不会报错，但转成Int时默认0，转成String时默认"null"
+//如果不想要默认值，就需要r.getAs[Any]然后判空，再做处理
 ```
 
 3. schema

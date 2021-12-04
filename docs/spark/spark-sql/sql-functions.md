@@ -187,3 +187,26 @@ insert  overwrite  a   select xxx  from t1,t2
 insert overwrite  b  select  yyyy from t1, t2;
 ```
 
+# udf
+
+[[Spark DataFrame 使用UDF实现UDAF的一种方法](https://segmentfault.com/a/1190000014088377)](https://segmentfault.com/a/1190000014088377)
+
+[udaf](https://www.cnblogs.com/cc11001100/p/9471859.html)
+
+## udf
+
+```scala
+// Create cubed function
+val cubed = (s: Long) => {
+  s * s * s
+}
+ 
+// Register UDF
+spark.udf.register("cubed", cubed)
+ 
+// Create temporary view
+spark.range(1, 9).createOrReplaceTempView("udf_test")
+cubed: Long => Long = $Lambda$8102/576597740@65ee6c72
+spark.sql("SELECT id, cubed(id) AS id_cubed FROM udf_test").show()
+```
+
