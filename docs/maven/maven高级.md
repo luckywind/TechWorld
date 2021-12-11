@@ -621,6 +621,14 @@ mvn  exec:java -pl people-id-etl -Dexec.mainClass="com.xiaomi.bigdata.people.id.
 
 
 
+# 命令
+
+## 查看依赖数
+
+```shell
+mvn dependency:tree >>dep.txt
+```
+
 
 
 # 未完待续

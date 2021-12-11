@@ -1,0 +1,24 @@
+[参考](https://blog.51cto.com/davidwang456/3085815)
+
+BlockManager是一个分布式组件，主要负责Spark集群运行时的数据读写与存储。集群中的每个工作节点上都有BlockManager。其内部的主要组件包括：MemoryStore、DiskStore、BlockTransferService以及ConnectionManager。
+
+MemoryStore：负责对内存中的数据进行操作。
+
+> 使用LinkeHashMap保存块ID及其内存占用
+
+DiskStore：负责对磁盘上的数据进行处理。
+
+BlockTransferService：负责对远程节点上的数据进行读写操作。例如，当执行ShuffleRead时，如数据在远程节点，则会通过该服务拉取所需数据。
+
+ConnectionManager：负责创建当前节点BlockManager到远程其他节点的网络连接。
+
+此外在Driver进行中包含BlockManagerMaster组件，其功能主要是负责对各个节点上的BlockManager元数据进行统一维护与管理。
+
+![image-20211209163827644](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211209163827644.png)从Job运行角度来看，BlockManager工作流程如下：
+
+1.当BlockManager创建之后，首先向Driver所在的BlockManagerMaster注册，此时BlockManagerMaster会为该BlockManager创建对应的BlockManagerInfo。BlockManagerInfo管理集群中每个Executor中的 BlockManager元数据信息，并存储到BlockStatus对象中。
+
+2.当使用BlockManager执行写操作时，例如持久化RDD计算过程中的中间数据，此时会优先将数据写入内存中，如果内存不足且支持磁盘存储则会将数据写入磁盘。如果指定Replica主备模式，则会将数据通过BlockTransferService同步到其他节点。
+
+3.当使用BlockManager执行了数据变更操作，则需要将BlockStatus信息同步到BlockManagerMaster节点上，并在对应的BlockManagerInfo更新BlockStatus对象，实现全局元数据的维护。
+

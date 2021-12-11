@@ -45,3 +45,8 @@ Map("china"->"beijing","US"->"Washington").apply("US")  //查找  输出Washingt
     }
 ```
 
+# 查看scala源码
+
+[参考](https://stackoverflow.com/questions/13520532/attaching-sources-in-intellij-idea-for-scala-project)
+
+![image-20211206222614684](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211206222614684.png)
