@@ -1,7 +1,0 @@
-Welcome to Scala
-Type in expressions for evaluation. Or try :help.
-
-scala> Console println Try(8)
-Success(8)
-
-scala> :quit

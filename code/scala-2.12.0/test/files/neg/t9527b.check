@@ -1,4 +1,0 @@
-t9527b.scala:6: error: msg A=Nothing
-    implicitly[Int => String]
-              ^
-one error found

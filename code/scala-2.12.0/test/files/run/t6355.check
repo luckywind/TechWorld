@@ -1,2 +1,0 @@
-bippy(x: Int) called with x = 42
-bippy(x: String) called with x = "42"

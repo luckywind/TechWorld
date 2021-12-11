@@ -1,4 +1,0 @@
-sammy_error_exist_no_crash.scala:5: error: value parseInt is not a member of String
-  bar(_.parseInt)
-        ^
-one error found

@@ -1,5 +1,0 @@
-
-scala> object A
-defined object A
-
-scala> :quit

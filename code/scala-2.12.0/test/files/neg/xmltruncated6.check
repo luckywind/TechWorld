@@ -1,4 +1,0 @@
-xmltruncated6.scala:2: error: in XML literal:  expected end of Scala block
-  val stuff = <a>{ "no closing brace"
-                                     ^
-one error found

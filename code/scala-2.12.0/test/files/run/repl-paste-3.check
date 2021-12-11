@@ -1,8 +1,0 @@
-
-scala> println(3)
-3
-
-scala>   List(1,2)
-res1: List[Int] = List(1, 2)
-
-scala> :quit

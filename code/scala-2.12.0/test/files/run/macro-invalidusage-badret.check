@@ -1,5 +1,0 @@
-reflective compilation has failed:
-
-type mismatch;
- found   : Int
- required: String

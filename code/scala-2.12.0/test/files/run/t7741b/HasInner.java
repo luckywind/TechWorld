@@ -1,3 +1,0 @@
-class HasInner {
-    class Inner {}
-}

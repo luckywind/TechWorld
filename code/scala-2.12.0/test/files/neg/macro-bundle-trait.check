@@ -1,4 +1,0 @@
-macro-bundle-trait.scala:10: error: not found: value Bundle
-  def foo = macro Bundle.impl
-                  ^
-one error found

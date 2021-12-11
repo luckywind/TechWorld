@@ -1,5 +1,0 @@
-
-object Main extends Runnable with App {
-  def run() = println("Test ran.")
-  run()
-}
