@@ -80,3 +80,14 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 https://www.macwk.com/soft/all/p1
 
+## 打不开无法检查
+
+[打开任意](https://www.yaxi.net/2020-05-09/1990.html)
+
+```shell
+打开显示“任何来源”
+sudo spctl --master-disable
+关闭显示“任何来源”
+sudo spctl --master-enable
+```
+

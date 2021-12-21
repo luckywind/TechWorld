@@ -49,12 +49,13 @@ MEMORY_AND_DISK的意思就是，内存能放得下就放内存，放不下就�
 
 */
 
-    wordsRDD.saveAsTextFile("checkpoint/file/")
+    println(wordsRDD.count())
 
-    wordsRDD.unpersist();//无论是什么方式，都可以使用unpersist这个API进行删除所有的持久化。
+//    wordsRDD.unpersist();//无论是什么方式，都可以使用unpersist这个API进行删除所有的持久化。
 
     wordsRDD.checkpoint();
 
+    Thread.sleep(1000*1000)
 
   }
 
