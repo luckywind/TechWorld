@@ -117,6 +117,19 @@ FROM dwm.lateral_explode_tmp;
 
 
 变成多行,explode把一列展开，其他字段复制,⚠️，被展开的字段不再可用，且空值记录会丢失(可用nvl把空值替换为一个特殊值或者使用下面的outer关键字保留)
+SELECT pageid, adid
+FROM dwm.lateral_explode_tmp a LATERAL VIEW explode(adid_list)  AS adid;
+
+SELECT pageid, explode(adid_list)
+FROM dwm.lateral_explode_tmp;
+|    pageid     | col  |
++---------------+------+--+
+| contact_page  | 3    |
+| contact_page  | 4    |
+| contact_page  | 5    |
+| front_page    | 1    |
+| front_page    | 2    |
+| front_page    | 3    |
 SELECT pageid,b.*, adid
 FROM dwm.lateral_explode_tmp a LATERAL VIEW explode(adid_list) b AS adid;
 -- ⚠️这里explode后的表名b可省略
