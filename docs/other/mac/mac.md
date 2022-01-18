@@ -91,3 +91,6 @@ sudo spctl --master-disable
 sudo spctl --master-enable
 ```
 
+# word图片乱码
+
+可用预览打开

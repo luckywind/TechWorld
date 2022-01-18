@@ -387,3 +387,9 @@ spring:
 1. springboot项目打包和运行时都可以通过参数自由切换多环境
 
 本文完整源码见https://github.com/luckywind/TechWorld/blob/master/code/boot/springboot-profile/
+
+# 无法解析一个provided依赖
+
+ Could not resolve following dependencies: [org.apache.logging.log4j:log4j-core:jar:2.11.1 (provided)]
+
+这时去看下pom.xml哪个依赖的范围是provided， 找到它后，把无法解析的那个依赖给排除掉即可
