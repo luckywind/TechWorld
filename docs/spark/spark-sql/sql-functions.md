@@ -111,6 +111,10 @@ windowSpec.rangeBetween(start, end)
 
 # tips 
 
+## 分区字段可查
+
+## 参数解构
+
 list: _* 告诉解释器把list拆开作为参数，而不是把list作为一个参数
 
 ```scala

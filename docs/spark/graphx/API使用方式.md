@@ -33,17 +33,24 @@
         Edge(2L, 5L, "colleague"), Edge(5L, 7L, "pi"),
         Edge(4L, 0L, "student"),   Edge(5L, 0L, "colleague")))
     // Define a default user in case there are relationship with missing user
-    // 边相关点的默认属性(这里默认一个user)
+    // 边相关点的默认属性(如果一个user只出现在边里，即只有vid,它的属性就是这个默认值)
     val defaultUser = ("John Doe", "Missing")
     // Build the initial Graph
     val graph = Graph(users, relationships, defaultUser)   
-val ccGraph = graph.connectedComponents() // No longer contains missing field
+val ccGraph = graph.connectedComponents() 
     println("包含缺失点的连通图-----")
     ccGraph.vertices.collect.foreach(println(_))
+    
+val validGraph = graph.subgraph(vpred = (id, attr) => attr._2 != "Missing")
+    // 4,5与0的关系都会被删除
+     println("子图----")
+    validGraph.vertices.collect.foreach(println(_)
     // Restrict the answer to the valid subgraph
     val validCCGraph = ccGraph.mask(validGraph)
     println("validCCGraph-----")
     validCCGraph.vertices.collect.foreach(println(_))
+
+                                        
 包含缺失点的连通图-----
 (4,0)
 (0,0)
@@ -51,6 +58,13 @@ val ccGraph = graph.connectedComponents() // No longer contains missing field
 (7,0)
 (5,0)
 (2,0)
+子图----
+(4,(peter,student))
+(3,(rxin,student))
+(7,(jgonzal,postdoc))
+(5,(franklin,prof))
+(2,(istoica,prof))   
+                                        
 validCCGraph-----
 (4,0)
 (3,0)
@@ -59,11 +73,19 @@ validCCGraph-----
 (2,0)
 ```
 
-
+![image-20220119184225141](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220119184225141.png)
 
 ## groupEdges
 
-`groupEdges`操作合并多重图中的并行边(如顶点对之间重复的边)。在大量的应用程序中，并行的边可以合并（它们的权重合并）为一条边从而降低图的大小。
+`groupEdges`操作合并多重图中的并行边(如顶点对之间重复的边)。在大量的应用程序中，并行的边可以合并（它们的权重合并）为一条边从而**降低图的大小**。
+
+注意： 为了结果的正确性，在合并边之前确保已经调用partitionBy进行过分区
+
+```scala
+    graph.partitionBy(partitionStrategy = RandomVertexCut)
+        .groupEdges((e1,e2)=>(e1+e2))
+        .edges.foreach(println(_))
+```
 
 
 
@@ -83,6 +105,12 @@ validCCGraph-----
 1. vertices
 
 实际是一个tuple类型，key为所有顶点id， value为key所在连通体id(连通体中顶点id最小值)
+
+**实现原理：**
+
+其实就是每个点找自己能连通到的最小的ID.
+
+
 
 # Join操作
 
@@ -318,3 +346,80 @@ Pregel API 就是用来进行迭代计算的
 
 
 
+## 实现原理
+
+```scala
+ // compute the messages
+    var messages = GraphXUtils.mapReduceTriplets(g, sendMsg, mergeMsg)
+    val messageCheckpointer = new PeriodicRDDCheckpointer[(VertexId, A)](
+      checkpointInterval, graph.vertices.sparkContext)
+    messageCheckpointer.update(messages.asInstanceOf[RDD[(VertexId, A)]])
+    var activeMessages = messages.count()
+
+    // Loop
+    var prevG: Graph[VD, ED] = null
+    var i = 0
+    while (activeMessages > 0 && i < maxIterations) {
+      // Receive the messages and update the vertices.
+      prevG = g
+      g = g.joinVertices(messages)(vprog)
+      graphCheckpointer.update(g)
+
+      val oldMessages = messages
+      // Send new messages, skipping edges where neither side received a message. We must cache
+      // messages so it can be materialized on the next line, allowing us to uncache the previous
+      // iteration.
+      messages = GraphXUtils.mapReduceTriplets(
+        g, sendMsg, mergeMsg, Some((oldMessages, activeDirection)))
+      // The call to count() materializes `messages` and the vertices of `g`. This hides oldMessages
+      // (depended on by the vertices of g) and the vertices of prevG (depended on by oldMessages
+      // and the vertices of g).
+      messageCheckpointer.update(messages.asInstanceOf[RDD[(VertexId, A)]])
+      activeMessages = messages.count()
+
+      logInfo("Pregel finished iteration " + i)
+
+      // Unpersist the RDDs hidden by newly-materialized RDDs
+      oldMessages.unpersist(blocking = false)
+      prevG.unpersistVertices(blocking = false)
+      prevG.edges.unpersist(blocking = false)
+      // count the iteration
+      i += 1
+    }
+    messageCheckpointer.unpersistDataSet()
+    graphCheckpointer.deleteAllCheckpoints()
+    messageCheckpointer.deleteAllCheckpoints()
+    g
+```
+
+### mapReduceTriplets
+
+# 分区策略
+
+
+
+## EdgePartition2D
+
+边基于两个端点的分区方式
+
+点副本数上限2 * sqrt(numParts)
+
+## EdgePartition1D
+
+只根据源点分区
+
+## RandomVertexCut
+
+从实现来看，相同方向的边会分到一起
+
+```scala
+  case object RandomVertexCut extends PartitionStrategy {
+    override def getPartition(src: VertexId, dst: VertexId, numParts: PartitionID): PartitionID = {
+      math.abs((src, dst).hashCode()) % numParts
+    }
+  }
+```
+
+## CanonicalRandomVertexCut
+
+两个点之间的所有边放到一起

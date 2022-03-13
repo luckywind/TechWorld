@@ -265,3 +265,4 @@ mvn archetype:generate
   </build>
 ```
 
+## Scala-maven-plugin

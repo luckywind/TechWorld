@@ -24,6 +24,8 @@ GraphX的核心抽象是Resilient Distributed Property Graph，一种点和边�
 
 ## GraphX存储模式
 
+[参考](https://www.jianshu.com/p/ad5cedc30ba4)
+
 Graphx借鉴PowerGraph，使用的是Vertex-Cut(点分割)方式存储图，用三个RDD存储图数据信息：
 
 **VertexTable(id, data)**：id为Vertex id，data为Edge data
@@ -33,6 +35,35 @@ Graphx借鉴PowerGraph，使用的是Vertex-Cut(点分割)方式存储图，用�
 **RoutingTable(id, pid)**：id为Vertex id，pid为Partion id
 
 ![clip_image014](https://gitee.com/luckywind/PigGo/raw/master/image/211422562851210.jpg)
+
+### 路由表
+
+顶点 RDD 中还拥有顶点到边 RDD 分区的路由信息——路由表．路由表存在顶点 RDD 的分区中，它记录**分区内顶点跟所有边 RDD 分区的关系**．在边 RDD 需要顶点数据时（如构造边三元组），顶点 RDD 会根据路由表把顶点数据发送至边 RDD 分区。
+
+如下图按顶点分割方法将图分解后得到顶点 RDD、边 RDD 和路由表：
+
+![img](https://gitee.com/luckywind/PigGo/raw/master/image/3521279-4e0c8b27c944f1fb.png)
+
+路由表的分区和顶点RDD的分区一一对应，顶点分区A内有三个点，路由表记录了每个边分区包含该分区的哪些点，例如边分区A中包含顶点分区A的1/2/3三个顶点，边分区B/C分别包含顶点分区A的顶点1
+
+### 重复顶点视图
+
+GraphX 会依据路由表，从顶点 RDD 中生成与边 RDD 分区相对应的重复顶点视图（ ReplicatedVertexView），它的作用是作为中间 RDD，将顶点数据传送至边 RDD 分区。重复顶点视图按边 RDD 分区并携带顶点数据的 RDD，如图下图所示，重复顶点分区 A 中便携了带边 RDD 分区 A 中的所有的顶点，它与边 RDD 中的顶点是 co-partition（即分区个数相同，且分区方法相同），**在图计算时， GraphX 将重复顶点视图和边 RDD 按分区进行拉链（ zipPartition）操作，即将重复顶点视图和边 RDD 的分区一一对应地组合起来，从而将边与顶点数据连接起来，使边分区拥有顶点数据**。在整个形成边三元组过程中，只有在顶点 RDD 形成的重复顶点视图中存在分区间数据移动，拉链操作不需要移动顶点数据和边数据．由于顶点数据一般比边数据要少的多，而且随着迭代次数的增加，需要更新的顶点数目也越来越少，重复顶点视图中携带的顶点数据也会相应减少，这样就可以大大减少集群中数据的移动量，加快执行速度。
+
+![img](https://gitee.com/luckywind/PigGo/raw/master/image/3521279-82d656fc7e78971f.png)
+
+重复顶点视图有四种模式
+ （1）bothAttr: 计算中需要每条边的源顶点和目的顶点的数据
+ （2）srcAttrOnly：计算中只需要每条边的源顶点的数据
+ （3）destAttrOnly：计算中只需要每条边的目的顶点的数据
+ （4）noAttr：计算中不需要顶点的数据
+
+重复顶点视图创建之后就会被加载到内存，因为图计算过程中，他可能会被多次使用，如果程序不再使用重复顶点视图，那么就需要手动调用GraphImpl中的unpersistVertices，将其从内存中删除。
+ 生成重复顶点视图时，在边RDD的每个分区中创建集合，存储该分区包含的源顶点和目的顶点的ID集合，该集合被称作**本地顶点ID映射**（local VertexId Map），在生成重复顶点视图时，若重复顶点视图是第一次被创建，则把本地顶点ID映射和发送给边RDD各分区的顶点数据组合起来，在每个分区中以分区的本地顶点ID映射为索引存储顶点数据，生成新的顶点分区，最后得到一个新的顶点RDD，若重复顶点视图不是第一次被创建，则使用之前重复顶点视图创建的顶点RDD预发送给边RDD各分区的带你更新数据进行连接（join）操作，更新顶点RDD中顶点的数据，生成新的顶点RDD。
+
+GraphX 在顶点 RDD 和边 RDD 的分区中以数组形式存储顶点数据和边数据，目的是为了不损失元素访问性能。同时，GraphX 在分区里建立了众多索引结构，高效地实现快速访问顶点数据或边数据。在迭代过程中，图的结构不会发生变化，因而顶点 RDD、边 RDD 以及重复顶点视图中的索引结构全部可以重用，当由一个图生成另一个图时，只须更新顶点 RDD 和边 RDD 的数据存储数组，因此，索引结构的重用保持了GraphX 高性能，也是相对于原生 RDD 实现图模型性能能够大幅提高的主要原因。
+
+
 
 ## 图计算模式
 
