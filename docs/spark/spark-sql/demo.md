@@ -107,3 +107,22 @@ object DwmOneTrackAppUsage {
 
 ```
 
+
+
+可取之处：
+
+1. struct可把多个字段组合成一个struct字段
+2. Collect_list可聚合多个Row为一个list字段
+3. withColumn可新增字段，这里可用udf生成新字段，udf可处理list字段，并返回一个tuple，后续可用._x的方式获取指定元素
+4. lit可产生常量字段
+5. list.: _* 可把list拆分为多个参数
+
+
+
+由于是运行时检查，编译时可能隐藏问题：
+
+1. Row.getXXX注意类型一定匹配, count()返回Long类型，可参考这里使用Try(xxx).getOrElse(xxx)
+2. sql相关问题，例如join时，共有字段要带表名
+3. 时间戳一定要注意
+4. 所有字符串比对，统一大小写
+
