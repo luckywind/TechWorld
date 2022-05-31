@@ -1,6 +1,6 @@
 我们知道rdd的transformation operators最终都会被转化成shuffle map task或者result task，然后分配到exectuor端去执行。那么这些map operators是怎么被pipeline起来执行的呢？也就是说shuffle map task和result task是怎么把这些operators串联起来的呢？
 
-![image-20210727223458133](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210727223458133.png)
+![image-20210727223458133](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210727223458133.png)
 
 # Task逻辑
 
@@ -180,7 +180,7 @@ flatMap和filter函数稍微复杂些，但本质上一样，都是通过调用s
 
    MapReduce 是每一步都要disk io. Spark 都过pipeline 模式进行内存迭代计算
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211123164407843.png" alt="image-20211123164407843" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211123164407843.png" alt="image-20211123164407843" style="zoom:50%;" />
 
 Task的使用 rdd.iterator 获得迭代器, iterator方法调用compute, compute的输入参数是父RDD的Iterator, 因此调用 父RDD.iterator,  继续递归获得祖父rdd的Iterator
 

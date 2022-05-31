@@ -18,7 +18,7 @@ private static final Logger logger = LoggerFactory.getLogger($className$.class);
 
 ## scala文件
 
-![image-20220406102059026](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220406102059026.png)
+![image-20220406102059026](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220406102059026.png)
 
 
 
@@ -32,7 +32,7 @@ idea每次打开项目要用鼠标点击好几次，甚是麻烦。于是google�
 
 Tools->Create Command-line Launcher
 
-![image-20200727195159666](https://gitee.com/luckywind/PigGo/raw/master/image/image-20200727195159666.png)
+![image-20200727195159666](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20200727195159666.png)
 
 然后cd 到项目根目录,一个命令打开项目！简直爽爆！
 
@@ -46,7 +46,7 @@ Run-Edit Configurations -Before launch里面，把Build换成Build ,no error che
 
 # 展开目录
 
-![image-20210731221941738](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210731221941738.png)
+![image-20210731221941738](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210731221941738.png)
 
 # object in compiler mirror not found
 
@@ -99,10 +99,10 @@ scala.reflect.internal.MissingRequirementError: object scala.$less$colon$less in
 
 command+alt+B
 
-![image-20210709225127815](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709225127815.png)
+![image-20210709225127815](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709225127815.png)
 
 # 快速定位文件在左侧文件夹的位置
 
 点击左侧雷达
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/20200227145007996.png)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20200227145007996.png)

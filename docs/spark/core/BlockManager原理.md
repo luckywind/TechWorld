@@ -14,7 +14,7 @@ ConnectionManager：负责创建当前节点BlockManager到远程其他节点的
 
 此外在Driver进行中包含BlockManagerMaster组件，其功能主要是负责对各个节点上的BlockManager元数据进行统一维护与管理。
 
-![image-20211209163827644](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211209163827644.png)从Job运行角度来看，BlockManager工作流程如下：
+![image-20211209163827644](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211209163827644.png)从Job运行角度来看，BlockManager工作流程如下：
 
 1.当BlockManager创建之后，首先向Driver所在的BlockManagerMaster注册，此时BlockManagerMaster会为该BlockManager创建对应的BlockManagerInfo。BlockManagerInfo管理集群中每个Executor中的 BlockManager元数据信息，并存储到BlockStatus对象中。
 

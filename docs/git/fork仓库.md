@@ -71,7 +71,7 @@ $git merge upstream/master
 
 upstream与origin是并列的关系，他们都是远程仓库的名字，只不过origin是你所克隆的原始仓库的默认名字，upstream是fork的原项目的远程仓库的默认名字。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211128103033628.png" alt="image-20211128103033628" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211128103033628.png" alt="image-20211128103033628" style="zoom:50%;" />
 
 
 

@@ -28,7 +28,7 @@
 
 发现它接受一个BinaryClassificationMetricComputer类型的参数，实际上上面三个参数类型都是它的子类型:
 
-![image-20220524100513681](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220524100513681.png)
+![image-20220524100513681](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220524100513681.png)
 
 另外，从它的实现上来看，confusions转换一下就的到结果，s就是Threadshold, y(c)就是指标。
 

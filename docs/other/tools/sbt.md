@@ -109,7 +109,7 @@ lazy val root = (project in file("."))
 
 DSL结构
 
-![image-20200923143530697](https://gitee.com/luckywind/PigGo/raw/master/image/image-20200923143530697.png)
+![image-20200923143530697](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20200923143530697.png)
 
 key是SettingKey[T],TaskKey[T]或者InputKey[T]的实例。
 

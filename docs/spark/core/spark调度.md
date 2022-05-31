@@ -7,7 +7,7 @@
 
 stage重试： 节点失败
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211204155728792.png" alt="image-20211204155728792" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211204155728792.png" alt="image-20211204155728792" style="zoom:50%;" />
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211204155751613.png" alt="image-20211204155751613" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211204155751613.png" alt="image-20211204155751613" style="zoom:50%;" />
 

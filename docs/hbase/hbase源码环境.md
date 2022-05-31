@@ -6,4 +6,4 @@ git checkout -b hbase_cxf
 mvn clean install -DskipTests assembly:single
 ```
 
-![image-20211218120433654](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211218120433654.png)
+![image-20211218120433654](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211218120433654.png)

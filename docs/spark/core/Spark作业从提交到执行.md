@@ -97,7 +97,7 @@ object GroupByTest {
 
 我们头脑中RDD的逻辑执行图应该是下面这样：
 
-![image-20210717085538976](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210717085538976.png)
+![image-20210717085538976](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210717085538976.png)
 
 由于count是Action算子，所以两个count操作会产生两个Job，要搞清楚逻辑执行图，我们本次只需要关注一个Job即可。
 
@@ -116,7 +116,7 @@ object GroupByTest {
 
 Backend进程是一个后台进程，用来启动Task， 通过分析源码， 发现有三种Backend进程可选
 
-![image-20210715224710827](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210715224710827.png)
+![image-20210715224710827](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210715224710827.png)
 
 当运行本地版本的Spark时使用，其中执行程序、后端和主程序都运行在相同的JVM中。它位于TaskSchedulerImpl后面，处理在本地运行的单个Executor(由LocalSchedulerBackend创建)上启动的任务。
 

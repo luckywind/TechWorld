@@ -6,7 +6,7 @@
 
 相同key的数据一定在一个节点上，内存放不下就存到磁盘
 
-![image-20210719100823183](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210719100823183.png)
+![image-20210719100823183](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210719100823183.png)
 
 # Spark架构:shuffle
 
@@ -42,7 +42,7 @@ Spark 2.0 Hash Based Shuffle退出历史舞台
 
 ​        逻辑非常愚蠢：把reducer的个数作为reduce端的分区数，并创建相应个数的文件，然后迭代数据计算每个记录对应的partition并输出到对应的文件<font color=red>每个文件对应一个缓冲区，这个缓冲区也称为一个bucket</font>。看起来就像下图：
 
-![spark_hash_shuffle_no_consolidation](https://gitee.com/luckywind/PigGo/raw/master/image/spark_hash_shuffle_no_consolidation-1024x484.png)
+![spark_hash_shuffle_no_consolidation](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_hash_shuffle_no_consolidation-1024x484.png)
 
 有一种优化版的实现，通过参数spark.shuffle.consolidateFiles(默认false)控制。当启用时，mapper输出文件的个数是固定的，例如集群有E个executor，且每个executor有C个core，每个task申请T个CPU(spark.task.cpus),那么集群execution slots的个数是`E*C/T`, 则原本，shuffle过程中创建的文件个数是`E*C/T*R`，现在只需要`C/T*R`个文件，因为每个Executor都会复用这一组文件。
 
@@ -50,7 +50,7 @@ Spark 2.0 Hash Based Shuffle退出历史舞台
 
 <font color=red>文件数：最大并行的mapper数*reducer数</font>
 
-![spark_hash_shuffle_with_consolidation](https://gitee.com/luckywind/PigGo/raw/master/image/spark_hash_shuffle_with_consolidation-1024x500.png)
+![spark_hash_shuffle_with_consolidation](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_hash_shuffle_with_consolidation-1024x500.png)
 
 Pros:
 
@@ -88,7 +88,7 @@ SortShuffleManager由于有一个磁盘文件merge的过程，因此大大减少
 
 总结：**每个Map任务最后只会输出两个文件（一个是索引文件会记录每个分区的偏移量）中间过程采用归并排序,输出完成后，Reducer会根据索引文件得到属于自己的分区。**
 
-![spark_sort_shuffle](https://gitee.com/luckywind/PigGo/raw/master/image/spark_sort_shuffle-1024x459.png)
+![spark_sort_shuffle](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_sort_shuffle-1024x459.png)
 
 Pros:
 
@@ -106,7 +106,7 @@ Cons:
 
 > 和Hash Shuffle中的HashShuffleWriter实现基本一致，唯一的区别在于**，map端的多个输出文件会被汇总为一个文件**
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/852983-20190510151151027-712712994.jpg" alt="img" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/852983-20190510151151027-712712994.jpg" alt="img" style="zoom:50%;" />
 
 此时task会为每个reduce端的task都创建一个临时磁盘文件，并将数据按key进行hash然后根据key的hash值，将key写入对应的磁盘文件之中。当然，写入磁盘文件时也是先写入内存缓冲，缓冲写满之后再溢写到磁盘文件的。最后，同样会将所有临时磁盘文件都合并成一个磁盘文件，并创建一个单独的索引文件。
 
@@ -146,7 +146,7 @@ spark1.5开始，Spark 开始了钨丝计划（Tungsten），目的是优化内�
 
 但这种方式无法利用mapper端的预排序优势，且貌似不稳定。但是使用 Tungsten-Sort Based Shuffle 有几个限制，Shuffle 阶段不能有 aggregate 操作，分区数不能超过一定大小（2^24-1，这是可编码的最大 Parition Id），所以像 reduceByKey 这类有 aggregate 操作的算子是不能使用 Tungsten-Sort Based Shuffle，它会退化采用 Sort Shuffle。图示如下：
 
-![spark_tungsten_sort_shuffle](https://gitee.com/luckywind/PigGo/raw/master/image/spark_tungsten_sort_shuffle-1024x457.png)
+![spark_tungsten_sort_shuffle](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_tungsten_sort_shuffle-1024x457.png)
 
 对每个spill数据，先对指针数组排序输出一个索引的分区文件，然后再合并成一个大的索引文件
 
@@ -302,7 +302,7 @@ Map方法之后，数据首先进入到分区方法（getPartition），把数�
 
 Shuffle中的缓冲区大小会影响到mapreduce程序的执行效率，原则上说，缓冲区越大，磁盘io的次数越少，执行速度就越快。
 
-![preview](https://gitee.com/luckywind/PigGo/raw/master/image/v2-7922486f9a5b271abe91e63f17cf3ca3_r.jpg)
+![preview](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/v2-7922486f9a5b271abe91e63f17cf3ca3_r.jpg)
 
 ## Spark shuffle
 
@@ -334,7 +334,7 @@ BypassMergeSortShuffleWriter：map端没有聚合操作，RDD的Partition数小�
 
 SortShuffleWriter：map端支持聚合操作，也支持排序操作。
 
-![image-20211124102436911](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211124102436911.png)
+![image-20211124102436911](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211124102436911.png)
 
 # Shuffle read
 

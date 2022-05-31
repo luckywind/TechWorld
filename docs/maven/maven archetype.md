@@ -28,7 +28,7 @@ Maven 原型是一种项目的抽象，可以实例化为具体的定制 Maven �
 
 # 原型
 
-![image-20210731214431466](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210731214431466.png)
+![image-20210731214431466](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210731214431466.png)
 
 ## Maven Archetype 描述文件
 
@@ -156,7 +156,7 @@ archetype-resources目录是我们的一些项目文件，随意写。
 
 修改完后，文件结构如下：
 
-![image-20210801000630406](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210801000630406.png)
+![image-20210801000630406](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210801000630406.png)
 
 
 

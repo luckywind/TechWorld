@@ -9,5 +9,5 @@ SortMergeJoin 的原理如下图所示
 - Stage 2 的 Task 2 分别从 Stage 1 的 Task 0、1 中读取 Partition 2 的数据，且通过 MergeSort 对其进行排序
 - Stage 2 的 Task 2 在**上述两步 MergeSort 的同时，使用 SortMergeJoin 对二者进行 Join**
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_sort_merge_join.png" alt="Spark SQL SortMergeJoin" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_sort_merge_join.png" alt="Spark SQL SortMergeJoin" style="zoom:50%;" />
 

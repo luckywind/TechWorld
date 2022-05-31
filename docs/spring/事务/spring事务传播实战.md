@@ -1,4 +1,4 @@
-![095d0e882d34260f3d54635457bcf09c](https://gitee.com/luckywind/PigGo/raw/master/image/095d0e882d34260f3d54635457bcf09c.jpg)
+![095d0e882d34260f3d54635457bcf09c](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/095d0e882d34260f3d54635457bcf09c.jpg)
 
 # 事务传播实战
 

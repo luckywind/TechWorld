@@ -41,7 +41,7 @@
 
 SparkSQL Catalyst解析流程图
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/ab8bdf5c6b7dd28842ac64256a66346c.png)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/ab8bdf5c6b7dd28842ac64256a66346c.png)
 
 1. SQL 语句经过 **Antlr4** 解析，生成 **Unresolved Logical Plan**
 2. **analyzer** 与 **catalog** 进行绑定，生成 **Logical Plan**
@@ -109,9 +109,9 @@ Aggregate [name#8], [sum(cast(v#26 as bigint)) AS sum(v)#28L, name#8]
 
 这三类都是LogicalPlan类型的，可以理解为各种操作的Operator
 
-![图片](https://gitee.com/luckywind/PigGo/raw/master/image/640-20220319165918381.jpeg)
+![图片](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/640-20220319165918381.jpeg)
 
-![Operator](https://gitee.com/luckywind/PigGo/raw/master/image/640-20220319170745211.jpeg )
+![Operator](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/640-20220319170745211.jpeg )
 
 这些 operator 组成的抽象语法树就是整个 Catatyst 优化的基础，Catatyst 优化器会在这个树上面进行各种折腾，把树上面的节点挪来挪去来进行优化。
 
@@ -125,11 +125,11 @@ Aggregate [name#8], [sum(cast(v#26 as bigint)) AS sum(v)#28L, name#8]
 
 解析完成后，AST就变成了：
 
-![图片](https://gitee.com/luckywind/PigGo/raw/master/image/640-20220319172104378.jpeg)
+![图片](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/640-20220319172104378.jpeg)
 
 ## 逻辑优化
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/640-20220319172330430.jpeg" alt="图片" style="zoom:67%;" />![图片](https://gitee.com/luckywind/PigGo/raw/master/image/640-20220319172330430.jpeg)
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/640-20220319172330430.jpeg" alt="图片" style="zoom:67%;" />![图片](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/640-20220319172330430.jpeg)
 
 sparksql 中的逻辑优化种类繁多，spark sql 中的 Catalyst 框架大部分逻辑是在一个 Tree 类型的数据结构上做各种折腾
 
@@ -190,7 +190,7 @@ spark sql 中 join 操作根据各种条件选择不同的 join 策略，分为 
 
 上面提到 AST 上面的节点已经转换为了物理节点，这些物理节点最终从头节点递归调用 execute 方法，里面会在 child 生成的 RDD 上调用 transform操作就会产生一个串起来的 RDD 链
 
-![image-20220319174054530](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220319174054530.png)
+![image-20220319174054530](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220319174054530.png)
 
 1. 最终执行时被Exchange分成了两个stage
 2. 数据在一个一个的 plan 中流转，然后每个 plan 里面表达式都会对数据进行处理，就相当于经过了一个个小函数的调用处理，这里面就有大量的函数调用开销，那么我们是不是可以把这些小函数内联一下，当成一个大函数，WholeStageCodegen 就是干这事的。最终执行计划每个节点前面有个 * 号，说明WholeStageCodegen被启用

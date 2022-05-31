@@ -28,7 +28,7 @@ Dataset API的优点
 
 Dataset在编译期就能发现错误，节省开发者的时间和代价
 
-![image-20201022142227869](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201022142227869.png)
+![image-20201022142227869](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201022142227869.png)
 
 2. 更易用的结构化API
 

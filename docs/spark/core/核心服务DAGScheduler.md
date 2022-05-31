@@ -93,7 +93,7 @@ DAGScheduler是主要产生各类SparkListenterEvent的源头，它将各种Spar
 1. stage有两种类型，ResultStage和ShuffleMapStage
 2. finalStage就是ResultStage，其余都是ShuffleMapStage
 3. 每个新ShuffleMapStage的创建都是根据当前rdd的shuffle依赖信息创建的
-4. ShuffleMapStage的创建是递归的方式创建的：![image-20210724203528549](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210724203528549.png)
+4. ShuffleMapStage的创建是递归的方式创建的：![image-20210724203528549](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210724203528549.png)
 
 # 总结
 

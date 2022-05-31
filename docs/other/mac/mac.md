@@ -66,7 +66,7 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 [Filmage Screen录制屏幕](https://www.filmagepro.com/zh-cn/help/how-to-record-system-audio)
 
-![image-20210902154912934](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210902154912934.png)
+![image-20210902154912934](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210902154912934.png)
 
 录频选择“聚集设备”
 
@@ -74,7 +74,7 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 扬声器选择 "多输出设备" 才能听到对方声音
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20210902163739119.png" alt="image-20210902163739119" style="zoom:25%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210902163739119.png" alt="image-20210902163739119" style="zoom:25%;" />
 
 # 破解软件大全
 

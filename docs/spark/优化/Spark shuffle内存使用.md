@@ -12,7 +12,7 @@
 
 MemoryManager，TaskMemoryManager 和 MemoryConsumer 之前的对应关系，如下图。总体上，一个 MemoryManager 对应着至少一个 TaskMemoryManager （具体由 executor-core 参数指定），而一个 TaskMemoryManager 对应着多个 MemoryConsumer (具体由任务而定)。
 
-![consumerModel](https://gitee.com/luckywind/PigGo/raw/master/image/memory_consumer.jpeg)
+![consumerModel](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/memory_consumer.jpeg)
 
 1，当有多个 Task 同时在 Executor 上执行时， 将会有多个 TaskMemoryManager 共享 MemoryManager 管理的内存。那么 MemoryManager 是怎么分配的呢？答案是每个任务可以分配到的内存范围是 [1 / (2 * n), 1 / n]，其中 n 是正在运行的 Task 个数。因此，多个并发运行的 Task 会使得每个 Task 可以获得的内存变小。
 
@@ -24,7 +24,7 @@ MemoryManager，TaskMemoryManager 和 MemoryConsumer 之前的对应关系，如
 
 Write 阶段大体经历排序（最低要求是需要按照分区进行排序），可能的聚合 (combine) 和归并（有多个文件 spill 磁盘的情况 ），最终每个写 Task 会产生数据和索引两个文件。其中，数据文件会按照分区进行存储，即**相同分区的数据在文件中是连续的，而索引文件记录了每个分区在文件中的起始和结束位置**。
 
-**而对于 Shuffle Read， 首先可能需要通过网络从各个 Write 任务节点获取给定分区的数据，即数据文件中某一段连续的区域，然后经过排序，归并等过程，最终形成计算结果。**![sparkShuffle](https://gitee.com/luckywind/PigGo/raw/master/image/spark_shuffle.jpeg)对于 Shuffle Write，Spark 当前有三种实现，具体分别为 BypassMergeSortShuffleWriter, UnsafeShuffleWriter 和 SortShuffleWriter （具体使用哪一个实现有一个判断条件，此处不表)。而 Shuffle Read 只有一种实现。
+**而对于 Shuffle Read， 首先可能需要通过网络从各个 Write 任务节点获取给定分区的数据，即数据文件中某一段连续的区域，然后经过排序，归并等过程，最终形成计算结果。**![sparkShuffle](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_shuffle.jpeg)对于 Shuffle Write，Spark 当前有三种实现，具体分别为 BypassMergeSortShuffleWriter, UnsafeShuffleWriter 和 SortShuffleWriter （具体使用哪一个实现有一个判断条件，此处不表)。而 Shuffle Read 只有一种实现。
 
 ##  Shuffle Write 阶段分析
 
@@ -41,7 +41,7 @@ SortShuffleWriter 是最一般的实现，也是日常使用最频繁的。SortS
 2，无论是 PartitionedAppendOnlyMap 还是 PartitionedPairBuffer， 使用的排序算法是 TimSort。在使用该算法是正常情况下使用的临时额外空间是很小，但是最坏情况下是 n / 2，其中 n 表示待排序的数组长度（具体见 TimSort 实现）。
 
 3，当插入数据因为申请不到足够的内存将会 Spill 数据到磁盘，在将最终排序结果写入到数据文件之前，需要将内存中的 PartitionedAppendOnlyMap 或者 PartitionedPairBuffer 和已经 spill 到磁盘的 SpillFiles 进行合并。Merge 的大体过程如下图。
-![sparkMerge](https://gitee.com/luckywind/PigGo/raw/master/image/merge.jpeg)从上图可见，大体差不多就是归并排序的过程，由此可见这个过程是没有太多额外的内存消耗。归并过程中的聚合计算大体也是差不多的过程，唯一需要注意的是键值碰撞的情况，即当前输入的各个有序队列的键值的哈希值相同，但是实际的键值不等的情况。这种情况下，需要额外的空间保存所有键值不同，但哈希值相同值的中间结果。但是总体上来说，发生这种情况的概率并不是特别大。
+![sparkMerge](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/merge.jpeg)从上图可见，大体差不多就是归并排序的过程，由此可见这个过程是没有太多额外的内存消耗。归并过程中的聚合计算大体也是差不多的过程，唯一需要注意的是键值碰撞的情况，即当前输入的各个有序队列的键值的哈希值相同，但是实际的键值不等的情况。这种情况下，需要额外的空间保存所有键值不同，但哈希值相同值的中间结果。但是总体上来说，发生这种情况的概率并不是特别大。
 
 4，写数据文件的过程涉及到不同数据流之间的转化，而在流的写入过程中，一般都有缓存，主要由参数 spark.shuffle.file.buffer 和 spark.shuffle.spill.batchSize 控制，总体上这部分开销也不大。
 
@@ -59,7 +59,7 @@ UnsafeShuffleWriter 是对 SortShuffleWriter 的优化，大体上也和 SortShu
 
 Spark Shuffle Read 主要经历从获取数据，序列化流，添加指标统计，可能的聚合 （Aggregation) 计算以及排序等过程。大体流程如下图。
 
-![sparkRead](https://gitee.com/luckywind/PigGo/raw/master/image/shuffle_read-4-20211113211439439.jpeg)
+![sparkRead](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/shuffle_read-4-20211113211439439.jpeg)
 
 以上计算主要都是迭代进行。在以上步骤中，比较复杂的操作是从远程获取数据，聚合和排序操作。接下来，依次分析这三个步骤内存的使用情况。
 

@@ -20,7 +20,7 @@
 
 > 如果不包含缺失点，则会有两个连通子图
 
-![image-20220117160539291](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220117160539291.png)
+![image-20220117160539291](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220117160539291.png)
 
 ```scala
  val users: RDD[(VertexId, (String, String))] =
@@ -73,7 +73,7 @@ validCCGraph-----
 (2,0)
 ```
 
-![image-20220119184225141](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220119184225141.png)
+![image-20220119184225141](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220119184225141.png)
 
 ## groupEdges
 
@@ -98,7 +98,7 @@ validCCGraph-----
    Connected Components即连通体算法用id标注图中每个连通体，将连通体中序号最小的顶点的id作为连通体的id。如果在图G中，任意2个顶点之间都存在路径，那么称G为连通图，否则称该图为非连通图，则其中的极大连通子图称为连通体，如下图所示，该图中有两个连通体：
 
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/20170818200351914.png)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20170818200351914.png)
 
 连通体的属性：
 
@@ -436,7 +436,7 @@ Pregel API 就是用来进行迭代计算的
 
 在Spark中，RDD默认并不保存在内存中。为了避免重复计算，当需要多次使用时，建议使用缓存。在迭代计算时，为了获得最佳性能，也可能需要清空缓存。默认情况下缓存的RDD和图表将保留在内存中，直到按照LRU（Least Recently Used）顺序被删除。对于迭代计算，之前迭代的中间结果将填补缓存。虽然缓存最终将被删除，但是内存中不必要的数据还是会使垃圾回收机制变慢。有效策略是，一旦缓存不再需要，应用程序立即清空中间结果的缓存。
 
-![image-20220322095106498](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220322095106498.png)
+![image-20220322095106498](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220322095106498.png)
 
 
 
@@ -474,7 +474,7 @@ sssp.vertices.take(10).mkString("\n")
 
 ## pregel方法
 
-![image-20220322171650601](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220322171650601.png)
+![image-20220322171650601](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220322171650601.png)
 
 
 
@@ -613,11 +613,11 @@ res11: Array[(org.apache.spark.graphx.VertexId, Int)] = Array((1,0), (2,1), (3,2
 
 
 
-![源码剖析](https://gitee.com/luckywind/PigGo/raw/master/image/20160913003817287.png)
+![源码剖析](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20160913003817287.png)
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/pregel.png" alt="Smiley face" style="zoom:67%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/pregel.png" alt="Smiley face" style="zoom:67%;" />
 
-![剖析2](https://gitee.com/luckywind/PigGo/raw/master/image/20160913003912326.png)
+![剖析2](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20160913003912326.png)
 
 
 

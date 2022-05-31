@@ -232,39 +232,39 @@ object GroupByTest {
 
 它不仅把产生的RDD按顺序打印出来，还把RDD的缓存情况打印出来了，其中MapPartitionsRDD缓存了两个Partition，直接缓存到内存。
 
-![image-20210712163349584](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712163349584.png)
+![image-20210712163349584](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712163349584.png)
 
 ### Job
 
 代码中出现了两个Action算子count，应该会触发两个Job：
-![image-20210712164258801](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712164258801.png)
+![image-20210712164258801](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712164258801.png)
 
 ### Stage
 
 第一个Job因为不需要shuffle,只产生一个Stage
 
-![image-20210712164343265](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712164343265.png)
+![image-20210712164343265](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712164343265.png)
 
 #### task并行
 
 因为parallelize设置了defaultParalisem为2，所以有两个task并行调度(注意， 这是因为我们整个Application设置了4个并行度 local[4],能够满足task的并行需求)
 
-![image-20210712165013609](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712165013609.png)
+![image-20210712165013609](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712165013609.png)
 
 第二个Job产生了两个Stage:
-![image-20210712164410283](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712164410283.png)
+![image-20210712164410283](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712164410283.png)
 
 但是我们发现stage1和Job0的Stage0是同一行代码，此时会使用缓存的RDD
 
 catch操作缓存了一个MapPartitionsRDD
 
-![image-20210712164546468](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712164546468.png)
+![image-20210712164546468](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712164546468.png)
 
 ## 事件时间线
 
 分为executor的增删和Job状态变更两大类事件：
 
-![image-20210712171210335](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210712171210335.png)
+![image-20210712171210335](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210712171210335.png)
 
 ## 角色
 
@@ -452,7 +452,7 @@ TaskSchedulerImpl->>TaskSchedulerImpl:1.构造调度器FIFO/FAIR <br>2.构造Tas
 
 通过rpc调用
 
-![image-20210715224710827](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210715224710827.png)
+![image-20210715224710827](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210715224710827.png)
 
 当在本地运行时，executor/backend和master都运行在一个jvm里
 

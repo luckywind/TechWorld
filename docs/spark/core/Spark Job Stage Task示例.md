@@ -17,16 +17,16 @@
     Thread.sleep(10000*1000)
 ```
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/1620.png)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/1620.png)
 
 三个stage，从下面看到一共产生一个Job,3个stage,30个task； 这是因为每个stage包含10个分片产生10个task， 30=3*10
 
-![image-20220503092817614](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220503092817614.png)
+![image-20220503092817614](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220503092817614.png)
 
-![image-20220503092843931](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220503092843931.png)
+![image-20220503092843931](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220503092843931.png)
 
 从时间线发现stage0/1重叠度很大，说明它们是并行的，stage2是在它们之后运行的，因为它依赖stage0/1。
 
-![image-20220503092904653](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220503092904653.png)
+![image-20220503092904653](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220503092904653.png)
 
 reduceByKey是shuffle操作，该操作分别是stage0/1的最后一个操作，但是产生的RDD划分到shuffle操作的下一个stage里了。stage0/1在该shuffle过程中都进行了write操作，写入了480B的数据，Stage2读取它们俩的输出，产生960B的Shuffle Read。

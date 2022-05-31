@@ -4,24 +4,24 @@ Spark中大量采用事件监听方式，实现driver端的组件之间的通信
 
 在设计模式中有一个观察者模式，该模式建立一种对象与对象之间的依赖关系，一个对象状态发生改变时立即通知其他对象，其他对象就据此作出相应的反应。其中发生改变的对象称之为观察目标（也有叫主题的），被通知的对象称之为观察者，可以有多个观察者注册到一个观察目标中，这些观察者之间没有联系，其数量可以根据需要增减。
 
-![image-20210710162453712](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210710162453712.png)
+![image-20210710162453712](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210710162453712.png)
 
 
 
 # 事件驱动的异步化编程
 
 Spark-Core内部的事件框架实现了基于事件的异步化编程模式。它的最大好处是可以提升应用程序对物理资源的充分利用，能最大限度的压榨物理资源，提升应用程序的处理效率。缺点比较明显，降低了应用程序的可读性。Spark的基于事件的异步化编程框架由事件框架和异步执行线程池组成，应用程序产生的Event发送给ListenerBus，ListenerBus再把消息广播给所有的Listener，每个Listener收到Event判断是否自己感兴趣的Event，若是，会在Listener独享的线程池中执行Event所对应的逻辑程序块。下图展示Event、ListenerBus、Listener、Executor的关系，从事件生成、事件传播、事件解释三个方面的视角来看。
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2FzZDQ5MTMxMA==,size_16,color_FFFFFF,t_70.png)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2FzZDQ5MTMxMA==,size_16,color_FFFFFF,t_70.png)
 
 我们从线程的视角来看，看异步化处理。异步化处理体现在事件传播、事件解释两个阶段，其中事件解释的异步化实现了我们的基于事件的异步化编程。
 
-![在这里插入图片描述](https://gitee.com/luckywind/PigGo/raw/master/image/20190411144456755.png)
+![在这里插入图片描述](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20190411144456755.png)
 
 # Spark的实现
 
 Spark-Core、Spark-Streaming采用了分类的思路（分而治之）进行管理，每一大类事件都有独自的Event、ListenerBus
 
-![在这里插入图片描述](https://gitee.com/luckywind/PigGo/raw/master/image/20190411144524351.png)
+![在这里插入图片描述](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20190411144524351.png)
 
 ## Event
 
@@ -29,9 +29,9 @@ Spark-Core的核心事件trait是SparkListenerEvent，Spark-Straming的核心事
 
 下图是各种事件实体类：
 
-![image-20210709232059314](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709232059314.png)
+![image-20210709232059314](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709232059314.png)
 
-![image-20210709232140439](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709232140439.png)
+![image-20210709232140439](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709232140439.png)
 
 我们在定义事件需要注意哪些方面呢？我们以SparkListenerTaskStart为例，分析一个事件拥有哪些特征。
 
@@ -47,9 +47,9 @@ Spark-Core的核心监听triat是SparkListener，Spark-Streaming的核心监听t
 
 下图是一些监听实体类：
 
-![image-20210709232805895](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709232805895.png)
+![image-20210709232805895](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709232805895.png)
 
-![image-20210709232901521](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709232901521.png)
+![image-20210709232901521](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709232901521.png)
 
 ## ListenerBus
 
@@ -61,7 +61,7 @@ Spark-Core的核心监听triat是SparkListener，Spark-Streaming的核心监听t
 
 ListenerBus用于管理所有的Listener，Spark-Core和Spark-Streaming公用相同的trait ListenerBus， 最终都是使用AsyncEventQueue类对Listener进行管理。
 
-![image-20210709233404950](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709233404950.png)
+![image-20210709233404950](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210709233404950.png)
 
 ### LiveListenerBus：
 
@@ -197,7 +197,7 @@ def post(event: SparkListenerEvent): Unit = {
 
 ## 完整流程
 
-![image-20210710220515744](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210710220515744.png)
+![image-20210710220515744](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210710220515744.png)
 
 
 

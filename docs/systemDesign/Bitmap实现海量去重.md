@@ -8,7 +8,7 @@ $$512M=512*2^10*2^10*8=2^{9}*2^{10}*2^{10}*2^{3}bit=2^{31}bit\approx int的最�
 
 用一个512M的无符号int数组来记录一个QQ号是否存在形成一个bitmap，
 
-![image-20211219221616968](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211219221616968.png)
+![image-20211219221616968](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211219221616968.png)
 
 这个过程实际上自动完成了去重， 然后遍历所有正整数，当数组的值为1时，就表明该数是存在的。
 
@@ -69,13 +69,13 @@ $$512M=512*2^10*2^10*8=2^{9}*2^{10}*2^{10}*2^{3}bit=2^{31}bit\approx int的最�
 
 如何判断数字在该下标的32位中的哪一位？ 直接mod上32就可以。例如8，除以32取整为0，则在tmp[0]上，8mod32=8，所以在下标0的第8位（从右边数起，从0开始数）。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/bitMap.jpg" alt="bitMap.jpg" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/bitMap.jpg" alt="bitMap.jpg" style="zoom:50%;" />
 
 对于一个十进制数n,对应在数组`bitsMap[n/32][n%32]`中，但数组bitsMap毕竟不是一个二维数组, 我们通过移位操作实现
 
 
 
-![image-20211221210415364](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211221210415364.png)
+![image-20211221210415364](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211221210415364.png)
 
 
 
@@ -218,7 +218,7 @@ X % 2^n = X & (2^n - 1)
 
 int型占两个字节，也就是8个bit位，为了能表示负数，第一位是符号位，其余是数字位
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211221001016449.png" alt="image-20211221001016449" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211221001016449.png" alt="image-20211221001016449" style="zoom:50%;" />
 
 为什么需要反码/补码呢？ 正数和负数的二进制直接相加会有问题，例如1和-1的二进制相加并不等于0:
 

@@ -122,7 +122,7 @@ private[scheduler] abstract class Stage(
 
 假设我们有如下RDD拓扑：
 
-![image-20210725224421488](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210725224421488.png)
+![image-20210725224421488](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210725224421488.png)
 
 我们猜想下，应该怎么划分stage，怎么创建task（其实特想问每个task负责什么逻辑？这涉及到task的pipeline，放在下回分解）。
 
@@ -135,7 +135,7 @@ stage划分我们上一篇文章  [Spark之调度模块-DAGScheduler](https://mp
 
 有了上述理解，我们脑海里stage的划分、task的创建应该是下面这样：
 
-![image-20210725231659543](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210725231659543.png)
+![image-20210725231659543](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210725231659543.png)
 
 细心的同学可能会问stage不是从后往前创建的吗？为啥前面的编号比后面的小？
 

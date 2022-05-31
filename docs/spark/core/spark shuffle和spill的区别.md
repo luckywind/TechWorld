@@ -7,7 +7,7 @@ spill
 1. shuffle时，先写到内存中对应的桶，当内存占用达到一个阈值，这块内存缓冲刷写到磁盘
 2. shuffle的背后，有个外部排序操作，对桶做TimSort,因为插入数据需要大的内存块，当内存不足时，就需要把数据spill到磁盘并清空当前内存用于新一轮的插入排序。然后对spill的数据和内存中的数据进行一个merge 排序得到一个排序的结果。
 
-![spilled_Explained](https://gitee.com/luckywind/PigGo/raw/master/image/external_sort_and_spill_explained.jpg)
+![spilled_Explained](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/external_sort_and_spill_explained.jpg)
 
 评估spill的数据量
 
@@ -23,4 +23,4 @@ shuffle数据流
 
 对于spill数据的读取，spark首先返回给sorted RDD一个迭代器，读取操作定义在[interator.hasNext()](https://github.com/apache/spark/blob/d4420b455ab81b86c29fc45a3107e45873c72dc2/core/src/main/scala/org/apache/spark/util/collection/ExternalSorter.scala#L577)函数里，因此数据是懒加载。
 
-![spark_shuffle_dataflow](https://gitee.com/luckywind/PigGo/raw/master/image/spark_shuffle_dataflow.jpg)
+![spark_shuffle_dataflow](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_shuffle_dataflow.jpg)
