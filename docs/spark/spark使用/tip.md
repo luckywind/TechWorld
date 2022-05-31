@@ -142,7 +142,7 @@ split
 
 ## 转rdd
 
-1. 按下标获取字段: get(index) 从1开始
+1. 按下标获取字段: get(index) 从0开始
 2. `getAs[类型](字段名称) ` 强转，例如null强转Long会转成0
 3. getString/getLong等，当无法转换时会报错，例如null不能转成Long，但可以转成string(值为null)
 
@@ -212,5 +212,13 @@ object RDDUtils {
     count
   }
 }
+```
+
+# parquet
+
+
+
+```scala
+write.parquet(path)
 ```
 

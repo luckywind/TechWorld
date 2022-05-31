@@ -137,6 +137,10 @@ https://www.cnblogs.com/chengkanghua/p/11084749.html
 
 [参考](https://www.jianshu.com/p/fd8ebfcf42e3)
 
+主界面打开方法：
+
+PicGo 在 Mac 上是一个顶部栏应用，在 dock 栏是不会有图标的。要打开主窗口，请右键或者双指点按顶部栏 PicGo 图标，选择「打开详细窗口」即可打开主窗口。
+
 ## 图片上传
 
 针对截图，你可以直接使用`Ctrl/command+shift+p`快捷键上传，然后使用`Ctrl+V`复制粘贴到你的Markdown编辑器里。
@@ -148,6 +152,15 @@ https://www.cnblogs.com/chengkanghua/p/11084749.html
 在需要使用图片的时候，你只要直接将图片粘贴到Typora就好了
 
 ![image-20200822173249467](https://gitee.com/luckywind/PigGo/raw/master/image/image-20200822173249467.png)
+
+## 图床突然不能用了，切换阿里云oss
+
+[参考](https://blog.csdn.net/qq_38963246/article/details/123797155)
+
+9OSl6Aum4aJRRJDS
+43I3FIA7g7BcscyQO6WDeei5ZOOmWT
+
+![image-20220526120742416](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220526120742416.png)
 
 # tips
 

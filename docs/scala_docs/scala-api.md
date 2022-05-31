@@ -121,3 +121,32 @@ Scala的 Collection 库通过在 trait 实现中使用通用的构建器（build
 trait TraversableLike[+Elem, +Repr] { ... }
 ```
 
+# 比较
+
+1. equals 方法: 用于比较值是否相等(这意味着hashCode值相同)， 不关心是否是同一个对象，这点和Java一样；
+2. ==/!=方法：
+
+==是Any里定义的一个final方法，用于比较值。
+
+3. ne/eq方法：用于比较引用相等
+
+注意：
+
+1. equals/==默认行为与eq相同，但是我们可以重写类的equals方法
+2. ==方法的定义：发现==就是调用了equals方法，因此如果我们定义了equals方法后，也可以用==比较对象
+
+```scala
+package scala
+abstract class Any {
+  def equals(that: Any): Boolean  //值比较
+  def hashCode(): Int  //hash值
+  def toString(): String  
+  final def getClass(): Class[_] = sys.error("getClass")  
+  final def ==(that: Any): Boolean = this equals that  // 值比较，支持 null
+  final def != (that: Any): Boolean = !(this == that)  // 值比较
+  final def ## : Int = sys.error("##")  // hash值，支持 null
+  final def isInstanceOf[T0]: Boolean = sys.error("isInstanceOf") //是否为 T0 实例
+  final def asInstanceOf[T0]: T0 = sys.error("asInstanceOf") //强转为 T0
+}
+```
+

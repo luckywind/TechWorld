@@ -1,4 +1,8 @@
-# map
+# 处理map
+
+SparkSQL DataFrame API提供了内置标准的map函数，相比UDF更加高效
+
+
 
 ## 基本操作
 

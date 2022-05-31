@@ -78,7 +78,7 @@ Executor 的内存管理建立在 JVM 的内存管理之上，Spark 对 JVM 的�
 
 ### 堆外内存(Off-heap Memory)
 
-> 注意，这并不是JVM Off-Heap Memory!
+> 注意，这并不是JVM Off-Heap Memory! 这部分内存并不属于JVM管理，而是系统内存
 
 Spark 1.6 开始引入了Off-heap memory(详见[SPARK-11389](https://www.iteblog.com/redirect.php?url=aHR0cHM6Ly9pc3N1ZXMuYXBhY2hlLm9yZy9qaXJhL2Jyb3dzZS9TUEFSSy0xMTM4OQ==&article=true))。这种模式不在 JVM 内申请内存，而是调用 Java 的 unsafe 相关 API 进行诸如 C 语言里面的 malloc() 直接向操作系统申请内存，由于这种方式不经过 JVM 内存管理，所以可以避免频繁的 GC，这种内存申请的缺点是必须自己编写内存申请和释放的逻辑。
 
@@ -246,21 +246,11 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 [参考](https://stackoverflow.com/questions/58666517/difference-between-spark-yarn-executor-memoryoverhead-and-spark-memory-offhea/61723456#61723456)
 
-spark.executor.memoryOverhead是YARN等资源管理器使用的，而spark.memory.offHeap.size是Spark core的内存管理模块使用的。
-
-1. spark2.4.5之前
-
-   spark.executor.memoryOverhead一定要大于spark.memory.offHeap.size，这意味着如果你指定了spark.memory.offHeap.size，则必须手动把这部分内存加到memoryOverhead上，因为YARN请求资源时对spark.memory.offHeap.size一无所知
-
-   ```scala
-   private[yarn] val resource = Resource.newInstance(
-       executorMemory + memoryOverhead ,
-       executorCores)
-   ```
-
-2. spark3.0之后，我们就不必手动加了，Yarn会自动感知
-
 ## spark.executor.memoryOverhead与spark.memory.offHeap.size的区别
+
+
+
+
 
 ```shell
 spark.storage.memoryFraction 0.6(默认 )
@@ -278,12 +268,28 @@ Executor内存(GB)=
 
 设置堆外内存的参数为spark.executor.memoryOverhead与spark.memory.offHeap.size(需要与 spark.memory.offHeap.enabled同时使用)，其中这两个都是描述堆外内存的，但是它们有什么区别么？
 
-spark.memory.offHeap.size 真正作用于spark executor的堆外内存
-spark.executor.memoryOverhead 作用于yarn，通知yarn我要使用堆外内存和使用内存的大小，相当于spark.memory.offHeap.size +  spark.memory.offHeap.enabled，设置参数的大小并非实际使用内存大小
+spark.memory.offHeap.size是spark Core(memory manager)使用的，真正作用于spark executor的堆外内存。
+spark.executor.memoryOverhead是资源管理器使用的，例如YARN;通知yarn我要使用堆外内存和使用内存的大小，相当于spark.memory.offHeap.size +  spark.memory.offHeap.enabled，设置参数的大小并非实际使用内存大小
 
-使用时 spark.executor.memoryOverhead设置最好大于等于 spark.memory.offHeap.size
+spark2.4.5之前的版本，我们在设置spark.executor.memoryOverhead的时候，应该把spark.memory.offHeap.size加上，因为Yarn申请内存时没考虑spark.memory.offHeap.size：
+
+```scala
+private[yarn] val resource = Resource.newInstance(
+    executorMemory + memoryOverhead + pysparkWorkerMemory,
+    executorCores)
+```
+
+默认spark.executor.memoryOverhead=max(spark.executor.memory*0.1, 384M); 如果我们设置了spark.memory.offHeap.size，则应该同时设置spark.executor.memoryOverhead*
+
+*=max(spark.executor.memory*0.1, 384M) + spark.memory.offHeap.size
 
 
+
+但是spark3.0之后，Yarn申请资源时会把spark.memory.offHeap.size加上，我们就不必在设置spark.executor.memoryOverhead时加上spark.memory.offHeap.size了：
+
+```scala
+ executorMemory + executorOffHeapMemory + memoryOverhead + pysparkWorkerMemory
+```
 
 spark.executor.memoryOverhead官网介绍
 
@@ -308,6 +314,14 @@ Direct Buffer: NIO 使用的channel 缓冲区, 在 memoryOverHead 内存中分�
 spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
 
 ![image-20211123175623588](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211123175623588.png)
+
+![image-20220416162818460](Spark统一内存管理/image-20220416162818460.png)
+
+
+
+[Java-直接内存 DirectMemory 详解](https://cloud.tencent.com/developer/article/1586341)
+
+
 
 # MemoryStore
 

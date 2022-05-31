@@ -116,6 +116,7 @@ object DwmOneTrackAppUsage {
 3. withColumn可新增字段，这里可用udf生成新字段，udf可处理list字段，并返回一个tuple，后续可用._x的方式获取指定元素
 4. lit可产生常量字段
 5. list.: _* 可把list拆分为多个参数
+5. spark3不支持$魔法了，用col代替
 
 
 
@@ -126,3 +127,13 @@ object DwmOneTrackAppUsage {
 3. 时间戳一定要注意
 4. 所有字符串比对，统一大小写
 
+# 分区数指定
+
+```sql
+
+distribute by cast (rand()*10 as int);
+```
+
+# 踩坑
+
+parquet数据源不支持null :[不支持null类型](https://www.cxybb.com/article/qq_42164977/109392142)

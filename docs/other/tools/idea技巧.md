@@ -1,5 +1,7 @@
 # 自定义代码模版
 
+## 文件头
+
 1. 新建一个custom模版组，并在该模版组里新建模版
 2. 选择上下文， 这里选择Java，这样只在Java代码里有效
 3. 贴入模版代码，类名可以起一个变量，`$className$`
@@ -13,6 +15,16 @@
 ```java
 private static final Logger logger = LoggerFactory.getLogger($className$.class);
 ```
+
+## scala文件
+
+![image-20220406102059026](https://gitee.com/luckywind/PigGo/raw/master/image/image-20220406102059026.png)
+
+
+
+再创建scala文件时，初始内容就是模版里的代码了
+
+
 
 # 从命令行打开项目
 
@@ -89,3 +101,8 @@ command+alt+B
 
 ![image-20210709225127815](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210709225127815.png)
 
+# 快速定位文件在左侧文件夹的位置
+
+点击左侧雷达
+
+![img](https://gitee.com/luckywind/PigGo/raw/master/image/20200227145007996.png)
