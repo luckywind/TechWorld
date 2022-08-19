@@ -106,3 +106,7 @@ command+alt+B
 点击左侧雷达
 
 ![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/20200227145007996.png)
+
+# spark
+
+[如何使用IDEA远程调试spark](https://support.huaweicloud.com/devg3-mrs/mrs_07_410141.html)

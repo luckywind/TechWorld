@@ -76,6 +76,12 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210902163739119.png" alt="image-20210902163739119" style="zoom:25%;" />
 
+
+
+## Soundflower使用
+
+
+
 # 破解软件大全
 
 https://www.macwk.com/soft/all/p1
@@ -94,3 +100,12 @@ sudo spctl --master-enable
 # word图片乱码
 
 可用预览打开
+
+# mdworker问题
+
+http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-speed-your-mac
+
+这是用于sporlight快速搜索的一个服务，停止索引某些文件夹可加速
+
+![image-20220721094005367](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220721094005367.png)
+

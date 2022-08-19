@@ -331,5 +331,33 @@ root
 +----+-----------+---------+---------+
 ```
 
+# 选取列
 
+## select
+
+```scala
+ds.select($"colA", $"colB" + 1)     选取column表达式
+ds.select("colA", "colB")        根据列名选取
+```
+
+
+
+带类型
+
+```scala
+    val ds = Seq(1, 2, 3).toDS()
+    val newDS = ds.select(expr("value + 1").as[Int])
+```
+
+
+
+## selectExpr
+
+选取sql表达式，是select的变体
+
+```scala
+下面语句等价   
+ds.selectExpr("colA", "colB as newName", "abs(colC)")
+ds.select(expr("colA"), expr("colB as newName"), expr("abs(colC)"))
+```
 

@@ -4,7 +4,7 @@
 
 [InfoQ Sparksql内核剖析](https://xie.infoq.cn/article/2a70e9fb993bed9bc9ed02c46)
 
-[是时候学习真正的 spark 技术了](https://mp.weixin.qq.com/s/awT4aawtTIkNKGI_2zn5NA)写的不错
+[是时候学习真正的 spark 技术了](https://mp.weixin.qq.com/s/awT4aawtTIkNKGI_2zn5NA)写的不错 https://tech.xiaomi.com/#/pc/article-detail?id=15736
 
 # 通过案例研究源码
 
@@ -192,7 +192,7 @@ spark sql 中 join 操作根据各种条件选择不同的 join 策略，分为 
 
 ![image-20220319174054530](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220319174054530.png)
 
-1. 最终执行时被Exchange分成了两个stage
+1. 最终执行时被Exchange(shuffle)分成了两个stage
 2. 数据在一个一个的 plan 中流转，然后每个 plan 里面表达式都会对数据进行处理，就相当于经过了一个个小函数的调用处理，这里面就有大量的函数调用开销，那么我们是不是可以把这些小函数内联一下，当成一个大函数，WholeStageCodegen 就是干这事的。最终执行计划每个节点前面有个 * 号，说明WholeStageCodegen被启用
 3. Exchange 算子并没有实现整段代码生成，因为它需要通过网络发送数据。
 

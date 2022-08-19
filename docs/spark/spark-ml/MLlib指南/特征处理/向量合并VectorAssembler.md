@@ -21,3 +21,8 @@ println("Assembled columns 'hour', 'mobile', 'userFeatures' to vector column 'fe
 output.select("features", "clicked").show(false)
 ```
 
+
+
+
+
+1. 1. 
