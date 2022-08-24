@@ -1,8 +1,8 @@
 [答案](https://blog.csdn.net/qq_34519487/article/details/107882290)
 
-![image-20201121215649179](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121215649179.png)
+![image-20201121215649179](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121215649179.png)
 
-![image-20201121215718393](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121215718393.png)
+![image-20201121215718393](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121215718393.png)
 
 们首先看一下 “HEAD”。 HEAD 是一个对当前检出记录的符号引用 —— 也就是指向你正在其基础上进行工作的提交记录。
 
@@ -14,15 +14,15 @@ HEAD 通常情况下是指向分支名的（如 bugFix）。在你提交时，�
 
 ^ 和 ~+数字 可以基于分支名、HEAD或者提交按相对位置改变HEAD指向
 
-![image-20201121220901968](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121220901968.png)
+![image-20201121220901968](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121220901968.png)
 
-![image-20201121221452781](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121221452781.png)
+![image-20201121221452781](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121221452781.png)
 
 在reset后， `C2` 所做的变更还在，但是处于未加入暂存区状态。
 
-![image-20201121221712591](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121221712591.png)
+![image-20201121221712591](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121221712591.png)
 
-![image-20201121222057942](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201121222057942.png)
+![image-20201121222057942](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201121222057942.png)
 
 两个父节点：
 

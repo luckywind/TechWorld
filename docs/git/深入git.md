@@ -12,7 +12,7 @@
 ​```
 ```
 
-![gitlog](https://gitee.com/luckywind/PigGo/raw/master/image/gitlog.jpg)
+![gitlog](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/gitlog.jpg)
 
 # 查看之前版本
 

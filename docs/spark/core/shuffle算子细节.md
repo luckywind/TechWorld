@@ -19,7 +19,7 @@
 
 shuffle write 的任务很简单，那么实现也很简单：将 shuffle write 的处理逻辑加入到 ShuffleMapStage（ShuffleMapTask 所在的 stage） 的最后，该 stage 的 final RDD 每输出一个 record 就将其 partition 并持久化。图示如下：
 
-![image-20211210202833918](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210202833918.png)
+![image-20211210202833918](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210202833918.png)
 
 上图有 4 个 ShuffleMapTask 要在同一个 worker node 上运行，CPU core 数为 2，可以同时运行两个 task。每个 task 的执行结果（该 stage 的 finalRDD 中某个 partition 包含的 records）被逐一写到本地磁盘上。每个 task 包含 R 个缓冲区，R = reducer 个数（也就是下一个 stage 中 task 的个数），缓冲区被称为 bucket，其大小为`spark.shuffle.file.buffer.kb` ，默认是 32KB（Spark 1.1 版本以前是 100KB）。
 
@@ -34,14 +34,14 @@ ShuffleMapTask 的执行过程很简单：先利用 pipeline 计算得到 finalR
 
 目前来看，第二个问题还没有好的方法解决，因为写磁盘终究是要开缓冲区的，缓冲区太小会影响 IO 速度。但第一个问题有一些方法去解决，下面介绍已经在 Spark 里面实现的 FileConsolidation 方法。先上图：
 
-![image-20211210202939816](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210202939816.png)
+![image-20211210202939816](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210202939816.png)
 
 可以明显看出，在一个 core 上连续执行的 ShuffleMapTasks 可以共用一个输出文件 ShuffleFile。先执行完的 ShuffleMapTask 形成 ShuffleBlock i，后执行的 ShuffleMapTask 可以将输出数据直接追加到 ShuffleBlock i 后面，形成 ShuffleBlock i'，每个 ShuffleBlock 被称为 **FileSegment**。下一个 stage 的 reducer 只需要 fetch 整个 ShuffleFile 就行了。这样，每个 worker 持有的文件数降为 cores * R。FileConsolidation 功能可以通过`spark.shuffle.consolidateFiles=true`来开启。
 
 ## Shuffle read
 先看一张包含 ShuffleDependency 的物理执行图，来自 reduceByKey：
 
-![image-20211210203121980](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210203121980.png)
+![image-20211210203121980](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210203121980.png)
 
 很自然地，要计算 ShuffleRDD 中的数据，必须先把 MapPartitionsRDD 中的数据 fetch 过来。那么问题就来了：
 
@@ -82,7 +82,7 @@ MapReduce 可以在 process 函数里面可以定义任何数据结构，也可�
 ###  1. reduceByKey(func) 
 上面初步介绍了 reduceByKey() 是如何实现边 fetch 边 reduce() 的。需要注意的是虽然 Example(WordCount) 中给出了各个 RDD 的内容，但一个 partition 里面的 records 并不是同时存在的。比如在 ShuffledRDD 中，每 fetch 来一个 record 就立即进入了 func 进行处理。MapPartitionsRDD 中的数据是 func 在全部 records 上的处理结果。从 record 粒度上来看，reduce()  可以表示如下：
 
-![image-20211210210333972](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210210333972.png)
+![image-20211210210333972](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210210333972.png)
 
 可以看到，fetch 来的 records 被逐个 aggreagte 到 HashMap 中，等到所有 records 都进入 HashMap，就得到最后的处理结果。唯一要求是 func 必须是 commulative 的（参见上面的 Spark 的 reduce() 的代码）。
 
@@ -100,19 +100,19 @@ ShuffledRDD 到 MapPartitionsRDD 使用的是 mapPartitionsWithContext 操作。
 
 ### 2. groupByKey(numPartitions)
 
-![image-20211210211249461](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211249461.png)
+![image-20211210211249461](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211249461.png)
 
 与 reduceByKey() 流程一样，只是 func 变成 `result = result ++ record.value`，功能是将每个 key 对应的所有 values 链接在一起。result 来自 hashMap.get(record.key)，计算后的 result 会再次被 put 到 hashMap 中。与 reduceByKey() 的区别就是 groupByKey() 没有 map 端的 combine()。对于 groupByKey() 来说 map 端的 combine() 只是减少了重复 Key 占用的空间，如果 key 重复率不高，没必要 combine()，否则，最好能够 combine()。
 
 ### 3. distinct(numPartitions)
 
-![image-20211210211323791](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211323791.png)
+![image-20211210211323791](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211323791.png)
 
 与 reduceByKey() 流程一样，只是 func 变成 `result = result == null? record.value : result`，如果 HashMap 中没有该 record 就将其放入，否则舍弃。与 reduceByKey() 相同，在map 端存在 combine()。
 
 ### 4. cogroup(otherRDD, numPartitions)
 
-![image-20211210211634973](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211634973.png)
+![image-20211210211634973](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211634973.png)
 
 CoGroupedRDD 可能有 0 个、1 个或者多个 ShuffleDependency。但并不是要为每一个 ShuffleDependency 建立一个 HashMap，而是所有的 Dependency 共用一个 HashMap。与 reduceByKey() 不同的是，HashMap 在 CoGroupedRDD 的 compute() 中建立，而不是在 mapPartitionsWithContext() 中建立。
 
@@ -122,14 +122,14 @@ CoGroupedRDD => MappedValuesRDD 对应 mapValues() 操作，就是将  [ArrayBuf
 
 ### 5. intersection(otherRDD) 和 join(otherRDD, numPartitions)
 
-![image-20211210211717633](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211717633.png)
+![image-20211210211717633](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211717633.png)
 
-![image-20211210211730068](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211730068.png)
+![image-20211210211730068](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211730068.png)
 这两个操作中均使用了 cogroup，所以 shuffle 的处理方式与 cogroup 一样。
 
 ### 6. sortByKey(ascending, numPartitions)
 
-![image-20211210211757934](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211757934.png)
+![image-20211210211757934](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211757934.png)
 
 sortByKey() 中 ShuffledRDD => MapPartitionsRDD 的处理逻辑与 reduceByKey() 不太一样，没有使用 HashMap 和 func 来处理 fetch 过来的 records。
 
@@ -137,7 +137,7 @@ sortByKey() 中 ShuffledRDD => MapPartitionsRDD 的处理逻辑是：将 shuffle
 
 ### 7. coalesce(numPartitions, shuffle = true)
 
-![image-20211210211819332](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210211819332.png)
+![image-20211210211819332](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210211819332.png)
 
 coalesce() 虽然有 ShuffleDependency，但不需要对 shuffle 过来的 records 进行 aggregate，所以没有建立 HashMap。每 shuffle 一个 record，就直接流向 CoalescedRDD，进而流向 MappedRDD 中。
 
@@ -152,14 +152,14 @@ AppendOnlyMap 的官方介绍是 A simple open hash table optimized for the appe
 >
 > 核心思想
 >
-> 当散列发生冲突时，将原来的值分别![+1^2, -1^2, +2^2, -2^2](https://gitee.com/luckywind/PigGo/raw/master/image/gif.latex)……如此进行。
+> 当散列发生冲突时，将原来的值分别![+1^2, -1^2, +2^2, -2^2](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/gif.latex)……如此进行。
 > **如果题目只考虑正向，那么减的就不要考虑**。
 >
 > 冲突处理公式
 >
 > 原来的值改变后，模上表长，如果仍然冲突，继续增加，**直到增加的值等于表长**
 
-![image-20211210212105022](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210212105022.png)
+![image-20211210212105022](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210212105022.png)
 
 当要 put(K, V) 时，先 hash(K) 找存放位置，**如果存放位置已经被占用，就使用 Quadratic probing 探测方法来找下一个空闲位置**。对于图中的 K6 来说，第三次查找找到 K4 后面的空闲位置，放进去即可。get(K6) 的时候类似，找三次找到 K6，取出紧挨着的 V6，与先来的 value 做 func，结果重新放到 V6 的位置。
 
@@ -171,7 +171,7 @@ AppendOnlyMap 还有一个 `destructiveSortedIterator(): Iterator[(K, V)]` 方�
 
 ### 2. ExternalAppendOnlyMap
 
-![image-20211210212119419](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211210212119419.png)
+![image-20211210212119419](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211210212119419.png)
 
 相比 AppendOnlyMap，ExternalAppendOnlyMap 的实现略复杂，但逻辑其实很简单，类似 Hadoop MapReduce 中的 shuffle-merge-combine-sort 过程：
 

@@ -89,7 +89,7 @@ Spark提供五种Join操作机制
 
 对两个分支执行shuffle和sort，使得两边正确分区以及排序，例如：
 
-![Joins in Apache Spark: Sort Merge Join](https://gitee.com/luckywind/PigGo/raw/master/image/1*HW3YcSgA2KdS2MYGbPsxpw.png)
+![Joins in Apache Spark: Sort Merge Join](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/1*HW3YcSgA2KdS2MYGbPsxpw.png)
 
 包含两个步骤： 
 
@@ -102,7 +102,7 @@ spark2.3开始，这是默认的join算法，可通过***spark.sql.join.preferSo
 
 Map-reduce的概念，使用join列作为key把数据map出去，再shuffle数据。这样不同数据集的相同key会在一个机器上。reduce阶段，spark 在连接数据。
 
-![Joins in Apache Spark: Shuffled Hash Join](https://gitee.com/luckywind/PigGo/raw/master/image/1*-IDRGpNF7C-IwlMYoOEvAA.png)
+![Joins in Apache Spark: Shuffled Hash Join](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/1*-IDRGpNF7C-IwlMYoOEvAA.png)
 
 即使***spark.sql.join.preferSortMergeJoin*** =false, spark也只会在满足以下条件时才会选择shuffled hash join:
 
@@ -198,7 +198,7 @@ CoGroupPartition是结果rdd的分区，每个分区和上游所有rdd之间都�
 
 
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211128204907200.png" alt="image-20211128204907200" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211128204907200.png" alt="image-20211128204907200" style="zoom:50%;" />
 
 ```scala
   /*
@@ -275,7 +275,7 @@ CoGroupPartition是结果rdd的分区，每个分区和上游所有rdd之间都�
 
 例如，计算cop1分区，对于窄依赖，直接获取父分区的迭代器即可，对于宽依赖，则需要获取shuffle reader作为数据迭代器
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20211128210750056.png" alt="image-20211128210750056" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211128210750056.png" alt="image-20211128210750056" style="zoom:50%;" />
 
 2. 第二步构造ExternalAppendOnlyMap并插入数据
 

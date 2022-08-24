@@ -42,7 +42,7 @@ git操作概览图
 
 [git操作一览](https://www.processon.com/diagraming/5e8e919e5653bb6e6ebfea14)
 
-![image-20211128103845770](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211128103845770.png)
+![image-20211128103845770](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211128103845770.png)
 
 
 

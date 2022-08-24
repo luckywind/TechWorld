@@ -27,7 +27,7 @@ val useLegacyMemoryManager = conf.getBoolean("spark.memory.useLegacyMode", false
 
 ## 旧内存管理(1.6之前)
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/image-20210702220434112.png" alt="image-20210702220434112" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210702220434112.png" alt="image-20210702220434112" style="zoom:50%;" />
 
 1. Execution：在执行shuffle、join、sort和aggregation时，用于缓存中间数据
 2. Storage：主要用于缓存数据块以提高性能，同时也用于连续不断地广播或发送大的任务结果
@@ -64,7 +64,7 @@ Executor 的内存管理建立在 JVM 的内存管理之上，Spark 对 JVM 的�
 - **用户内存（User Memory）**：主要用于存储 RDD 转换操作所需要的数据，例如 RDD 依赖等信息。
 - **预留内存（Reserved Memory）**：系统预留内存，会用来存储Spark内部对象。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_on_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 150%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_on_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 150%;" />
 
 1. `systemMemory = Runtime.getRuntime.maxMemory`，其实就是通过参数 `spark.executor.memory` 或 `--executor-memory` 配置的。
 
@@ -84,13 +84,13 @@ Spark 1.6 开始引入了Off-heap memory(详见[SPARK-11389](https://www.iteblog
 
 默认情况下，堆外内存是关闭的，我们可以通过 `spark.memory.offHeap.enabled` 参数启用，并且通过 `spark.memory.offHeap.size` 设置堆外内存大小，单位为字节。如果堆外内存被启用，那么 Executor 内将同时存在堆内和堆外内存，两者的使用互不影响，这个时候 Executor 中的 Execution 内存是堆内的 Execution 内存和堆外的 Execution 内存之和，同理，Storage 内存也一样。相比堆内内存，堆外内存只区分 Execution 内存和 Storage 内存
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/Spark_off_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 200%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/Spark_off_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 200%;" />
 
 > 上图中的 *maxOffHeapMemory* 等于 *spark.memory.offHeap.size* 参数配置的。
 
 ### Execution 内存和 Storage 内存动态调整
 
-![Spark 内存管理](https://gitee.com/luckywind/PigGo/raw/master/image/spark_memory-management_iteblog.png)
+![Spark 内存管理](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_memory-management_iteblog.png)
 
 > 注意，上面说的借用对方的内存需要借用方和被借用方的内存类型都一样，都是堆内内存或者都是堆外内存，不存在堆内内存不够去借用堆外内存的空间。
 
@@ -313,7 +313,7 @@ Direct Buffer: NIO 使用的channel 缓冲区, 在 memoryOverHead 内存中分�
 
 spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
 
-![image-20211123175623588](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211123175623588.png)
+![image-20211123175623588](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211123175623588.png)
 
 ![image-20220416162818460](Spark统一内存管理/image-20220416162818460.png)
 
@@ -419,7 +419,7 @@ Executor OOM 一般发生 Shuffle 阶段，该阶段需求计算内存较大，�
 
 一般情况下，groupByKey 能实现的功能使用 reduceByKey 均可实现，而 ReduceByKey 存在 Map 端的合并，可以有效减少传输带宽占用及 Reduce 端内存消耗。
 
-![image-20210705212152809](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210705212152809.png)
+![image-20210705212152809](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210705212152809.png)
 
 2、 避免数据倾斜
 

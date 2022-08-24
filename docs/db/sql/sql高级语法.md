@@ -81,6 +81,28 @@ having count(1)>=3;
 
 # lateralView explode表生成函数
 
+## 追加一列
+
+```sql
+with tmp2 as (
+    select stack(5,
+             0,'height',11,
+             1,'weight',33,
+             2,'age',18   ) 
+             as (id,label,value)
+)
+select id,rd,label,value from tmp2
+            lateral view explode(split('0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9',',')) myTable as  rd
+```
+
+
+
+
+
+
+
+
+
 这应该是hive独有的一行变多行的语法,[参考](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView)
 
 语法：

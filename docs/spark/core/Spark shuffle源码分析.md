@@ -51,7 +51,7 @@ private[spark] object SortShuffleWriter {
 }
 ```
 
-![image-20210815222029237](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210815222029237.png)
+![image-20210815222029237](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210815222029237.png)
 
 ### 是否可用钨丝计划？
 
@@ -111,7 +111,7 @@ private[spark] object SortShuffleWriter {
   }
 ```
 
-![image-20210815232712184](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210815232712184.png)
+![image-20210815232712184](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210815232712184.png)
 
 ### 获取writer
 
@@ -158,7 +158,7 @@ shuffleReader开始读取文件  进行后期处理
 
 数据结构
 
-![image-20210827153403865](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210827153403865.png)
+![image-20210827153403865](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210827153403865.png)
 
 ```scala
 
@@ -183,13 +183,13 @@ shuffleReader开始读取文件  进行后期处理
 
 
 
-![image-20210827151326184](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210827151326184.png)
+![image-20210827151326184](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210827151326184.png)
 
 
 
 注册调用链：
 
-![image-20210827152340387](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210827152340387.png)
+![image-20210827152340387](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210827152340387.png)
 
 注册新的shuffle
 
@@ -438,7 +438,7 @@ BlockManagerWorker是从，存在于 Executor 中。会与 BlockManagerMaster节
 
 
 
-![image-20210903164055570](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210903164055570.png)
+![image-20210903164055570](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210903164055570.png)
 
 1. map task运行完毕之后，会将 task 执行之后的产生的磁盘小文件的地址封装到 MapStatus 对象中。通过 MapOutpuTrackerWorker对象向 Driver 中的 MapOutputTrackerMaster 汇报。
 

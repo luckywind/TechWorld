@@ -6,7 +6,7 @@
 
 3. 项目：项目是真正的时间线，最终要新建项目才能开始剪辑，一个事件中可以建立多个项目。并且，项目可以使用多个事件中的素材；注意，这种""使用""其实就是关联，并没有拷贝
 
-   ![image-20210814215808584](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210814215808584.png)
+   ![image-20210814215808584](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210814215808584.png)
 
 
 

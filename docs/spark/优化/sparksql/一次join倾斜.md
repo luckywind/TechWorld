@@ -35,15 +35,15 @@ group by d.month, e.month
 order by d.month, e.month;
 ```
 
-![image-20210916102914423](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210916102914423.png)
+![image-20210916102914423](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210916102914423.png)
 
 从DAG图看stage7457涉及到两个RDD的Join操作，发生了数据shuffle
 
 第1149行代码是jdk的线程池调度task，点进去可以看到该stage已经完成的499个task的汇总信息，重点关注shuffle相关指标：
-![image-20210916103356392](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210916103356392.png)
+![image-20210916103356392](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210916103356392.png)
 
 然后，去看第500个正在运行的task，其shuffle情况，直接找到task列表，按shuffle  Read大小排序：
-![image-20210916103619813](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210916103619813.png)
+![image-20210916103619813](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210916103619813.png)
 
 可以发现这个task已经读取了16.2G的数据块，远超前面499个task的最大读取量。至此，我们发现了数据倾斜。
 

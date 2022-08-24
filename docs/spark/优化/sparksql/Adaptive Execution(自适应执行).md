@@ -27,7 +27,7 @@
 
 这里描述一个shuffle, 2个mapper与5个reducer。不管每个reducer读取的数据量
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_fix_reducer_detail.png" alt="Spark Shuffle 过程" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_fix_reducer_detail.png" alt="Spark Shuffle 过程" style="zoom:50%;" />
 
 ## 开启后
 
@@ -35,7 +35,7 @@
 
 Reducer 0 读取 Partition 0，Reducer 1 读取 Partition 1、2、3，Reducer 2 读取 Partition 4
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_auto_reducer_detail_1.png" alt="Spark SQL adaptive reducer 1" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_auto_reducer_detail_1.png" alt="Spark SQL adaptive reducer 1" style="zoom:50%;" />
 
 1. shuffle写结束后，会统计每个分区的数据量， ExchangeCoordinator 根据 Shuffle Write 统计信息计算出合适的reducer的个数，这里计算出的reducer数为3，然后启动3个reducer任务。
 2. 数据分配：
@@ -44,7 +44,7 @@ Reducer 0 读取 Partition 0，Reducer 1 读取 Partition 1、2、3，Reducer 2 
 3. 该方案只会合并多个小的partition,不会拆分大的，因此默认partition个数可以大一点，否则自适应执行可能无效。
 
 但这还不是最理想的，因为reducer1从每个mapper读取1，2，3分区都是分开读取的，需要多次读取磁盘，相当于随机IO。 为了解决这个问题，Spark新增接口，一次shuffle读可以读多个分区的数据：
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_auto_reducer_detail_2.png" alt="Spark SQL adaptive reducer 2" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_auto_reducer_detail_2.png" alt="Spark SQL adaptive reducer 2" style="zoom:50%;" />
 
 由于 Adaptive Execution 的自动设置 Reducer 是由 ExchangeCoordinator 根据 Shuffle Write 统计信息决定的，因此即使在同一个 Job 中不同 Shuffle 的 Reducer 个数都可以不一样，从而使得每次 Shuffle 都尽可能最优。
 
@@ -54,7 +54,7 @@ Reducer 0 读取 Partition 0，Reducer 1 读取 Partition 1、2、3，Reducer 2 
 
 不开启，执行计划一旦确定，即使发现后续执行计划可以优化，也不可更改。如下图所示，SortMergJoin 的 Shuffle Write 结束后，发现 Join 一方的 Shuffle 输出只有 46.9KB，仍然继续执行 SortMergeJoin
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_fix_dag.png" alt="Spark SQL with fixed DAG" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_fix_dag.png" alt="Spark SQL with fixed DAG" style="zoom:50%;" />
 
 此时完全可将 SortMergeJoin 变更为 BroadcastJoin 从而提高整体执行效率。
 
@@ -72,7 +72,7 @@ Reducer 0 读取 Partition 0，Reducer 1 读取 Partition 1、2、3，Reducer 2 
 
 思路：将部分倾斜的分区用多个task处理。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/spark_ae_skew_join.png" alt="Spark SQL resolve joinm skew" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_skew_join.png" alt="Spark SQL resolve joinm skew" style="zoom:50%;" />
 
 在上图中，左右两边分别是参与 Join 的 Stage 0 与 Stage 1 (实际应该是两个 RDD 进行 Join，但如同上文所述，这里不区分 RDD 与 Stage)，中间是获取 Join 结果的 Stage 2
 

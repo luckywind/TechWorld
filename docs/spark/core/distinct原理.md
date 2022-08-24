@@ -49,5 +49,5 @@ distinct方法：
 map(x => (x, null)).reduceByKey((x, y) => x, numPartitions).map(_._1)
 ```
 
-![image-20210924143420845](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210924143420845.png)
+![image-20210924143420845](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210924143420845.png)
 

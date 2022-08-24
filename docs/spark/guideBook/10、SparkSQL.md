@@ -37,7 +37,7 @@ sparkSQL 的最高级抽象就是Catalog,它是关于表中数据、数据库、
 
 [参考](http://hbasefly.com/2017/02/16/sparksql-dataframe/)
 
-![11](https://gitee.com/luckywind/PigGo/raw/master/image/11.png)
+![11](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/11.png)
 
 # DataFrame
 
@@ -59,7 +59,7 @@ sparkSQL 的最高级抽象就是Catalog,它是关于表中数据、数据库、
 
 相比RDD，DataFrame增加了scheme概念，从这个角度看，DataFrame有点类似于关系型数据库中表的概念。可以根据下图对比RDD与DataFrame数据结构的差别：
 
-![12](https://gitee.com/luckywind/PigGo/raw/master/image/12.png)
+![12](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/12.png)
 
 直观上看，DataFrame相比RDD多了一个表头，这个小小的变化带来了很多优化的空间：
 
@@ -67,7 +67,7 @@ sparkSQL 的最高级抽象就是Catalog,它是关于表中数据、数据库、
 
 1. RDD中每一行纪录都是一个整体，因此你不知道内部数据组织形式，这就使得你对数据项的操作能力很弱。表现出来就是支持很少的而且是比较粗粒度的算子，比如map、filter算子等。而DataFrame将一行切分了多个列，每个列都有一定的数据格式，这与数据库表模式就很相似了，数据粒度相比更细，因此就能支持更多更细粒度的算子，比如select算子、groupby算子、where算子等。更重要的，后者的表达能力要远远强于前者，比如同一个功能用RDD和DataFrame实现：
 
-![13](https://gitee.com/luckywind/PigGo/raw/master/image/13.png)
+![13](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/13.png)
 
 2. DataFrame的Schema的存在，数据项的转换也都将是类型安全的，这对于较为复杂的数据计算程序的调试是十分有利的，很多数据类型不匹配的问题都可以在编译阶段就被检查出来，而对于不合法的数据文件，DataFrame也具备一定分辨能力。
 

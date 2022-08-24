@@ -1,4 +1,4 @@
-![image-20210903143343329](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210903143343329.png)
+![image-20210903143343329](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210903143343329.png)
 
 # 移位运算
 

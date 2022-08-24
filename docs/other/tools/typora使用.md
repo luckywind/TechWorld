@@ -151,7 +151,7 @@ PicGo 在 Mac 上是一个顶部栏应用，在 dock 栏是不会有图标的。
 
 在需要使用图片的时候，你只要直接将图片粘贴到Typora就好了
 
-![image-20200822173249467](https://gitee.com/luckywind/PigGo/raw/master/image/image-20200822173249467.png)
+![image-20200822173249467](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20200822173249467.png)
 
 ## 图床突然不能用了，切换阿里云oss
 

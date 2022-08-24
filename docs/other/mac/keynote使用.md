@@ -35,9 +35,9 @@
 - 所见即所得：实景操作、用更加可视化的形式表现数据、表现功能。
 - 讲一个故事：用兴趣的朋友可以去啃一啃《乔布斯的魔力演讲》这本书。
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/giphy-2.gif)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/giphy-2.gif)
 
-![img](https://gitee.com/luckywind/PigGo/raw/master/image/giphy-1-1.gif)
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/giphy-1-1.gif)
 
 # 动画
 
@@ -57,7 +57,7 @@
 
 ## 对齐
 
-![image-20211029144353970](https://gitee.com/luckywind/PigGo/raw/master/image/image-20211029144353970.png)
+![image-20211029144353970](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211029144353970.png)
 
 # 导出视频
 

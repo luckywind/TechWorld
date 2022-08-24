@@ -53,11 +53,11 @@ List  //因为scala._总是被自动引入
 蓝色是特质，黑色是实现
 粗黑线 是默认实现关系
 
-![collections-immutable-diagram](https://gitee.com/luckywind/PigGo/raw/master/image/collections-immutable-diagram.svg)
+![collections-immutable-diagram](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/collections-immutable-diagram.svg)
 
 ## 可变集合
 
-![image-20210204145818824](https://gitee.com/luckywind/PigGo/raw/master/image/image-20210204145818824.png)
+![image-20210204145818824](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210204145818824.png)
 
 ## Traversable特质
 

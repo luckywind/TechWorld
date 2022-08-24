@@ -105,5 +105,5 @@ cd REPOSITORY-NAME
 
 1. 在github上进入仓库，点击settings
 
-   ![image-20201018122012266](https://gitee.com/luckywind/PigGo/raw/master/image/image-20201018122012266.png)
+   ![image-20201018122012266](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20201018122012266.png)
 

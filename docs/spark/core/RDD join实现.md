@@ -2,15 +2,15 @@
 
 join通常需要不同rdd中相应的key分布在同一个分区，以便于本地合并。如果rdd的分区器未知，则需要shuffle使得两个rdd共享分区器，且相同key的数据在同一个分区中。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/hpsp_0401.png" alt="Join, full shuffle" style="zoom: 50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0401.png" alt="Join, full shuffle" style="zoom: 50%;" />
 
 如果他们有相同的分区器，则他们的数据可能是在一起的，从而可以避免网络传输
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/hpsp_0403.png" alt="Colocated join" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0403.png" alt="Colocated join" style="zoom:50%;" />
 
 不管是否有相同的分区器，如果某个rdd已知一个只有窄依赖的分区器，和大多数k/v操作一样，join的花费随着key的数量以及数据移动的距离而增加。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/hpsp_0402.png" alt="Join one partitioner known" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0402.png" alt="Join one partitioner known" style="zoom:50%;" />
 
 注意：
 
@@ -52,7 +52,7 @@ def joinScoresWithAddress3(scoreRDD: RDD[(Long, Double)],
   }
 ```
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/hpsp_0404.png" alt="Join both partitioners known" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0404.png" alt="Join both partitioners known" style="zoom:50%;" />
 
 1. 同一个action算子、同一个分区器物化的rdd，则一定是co-located
 2. 最好在重分区后持久化
@@ -61,7 +61,7 @@ def joinScoresWithAddress3(scoreRDD: RDD[(Long, Double)],
 
 广播器hash join把小rdd推送到每个节点，然后在大rdd的每个分区进行一个map端合并。注意使用mapPartitions来合并元素。
 
-<img src="https://gitee.com/luckywind/PigGo/raw/master/image/hpsp_0405.png" alt="Broadcast Hash Join" style="zoom:50%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0405.png" alt="Broadcast Hash Join" style="zoom:50%;" />
 
 ```sql
  def manualBroadCastHashJoin[K : Ordering : ClassTag, V1 : ClassTag,

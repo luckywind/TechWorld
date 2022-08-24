@@ -69,6 +69,8 @@ hexo d -g #重新产生博客文章并发布到GitHub，前提得在Hexo里配�
 
 ## 常用命令
 
+![image-20220619170425550](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220619170425550.png)
+
 1. hexo init  [folder]  命令用于初始化本地文件夹为网站的根目录,`folder` 可选参数，用以指定初始化目录的路径，若无指定则默认为当前目录
 2. hexo new [layout] <title> 命令用于新建文章，一般可以简写为 `hexo n`
 
@@ -109,6 +111,14 @@ hexo d == hexo deploy#部署
 `hexo clean` #清除缓存 网页正常情况下可以忽略此条命令
 `hexo g` #生成静态网页
 `hexo d` #开始部署
+
+
+
+删除文章
+
+首先进入到source / _post 文件夹中，找到helloworld.md文件，在本地直接执行删除。然后依次执行
+
+> hexo d -g
 
 ## 图片问题
 
@@ -268,6 +278,18 @@ comments: false
 ---
 ```
 
+## 问题记录
+
+评论功能提示：
+
+```java
+The app is archived, please restore in console before use. [400 GET https://kuj1mtnf.api.lncldglobal.com/1.1/classes/Comment]
+```
+
+解决办法：
+
+登录LeanCloud: https://console.leancloud.app/apps, 应用列表里点击激活等一会就行。
+
 # 添加分类、标签
 
 [参考](https://blog.51cto.com/u_15065852/4264634)
@@ -280,7 +302,7 @@ categories: # 分类
   - 分类  # 只能由一个
 tags: # 标签
   - PS3  # 能有多个
-  - Games  # 一个标签一行
+  - Games  # 一个标签一行，也可以用列表[标签1,标签2]
 ---
 ```
 
@@ -293,4 +315,24 @@ npm install hexo-deployer-git --save
 ```
 
 [参考](https://mizeri.github.io/2021/04/18/Hexo-blog-deploy/)
+
+# 自定义首页
+
+```
+title: 让首页显示部分内容
+date: 2020-02-23 22:55:10
+description: 这是显示在首页的概述，正文内容均会被隐藏。
+```
+
+## 头像
+
+```
+avatar:
+  # Replace the default image and set the url here.
+  url: /images/weixingongzhonghaologo.png
+```
+
+# 配置文章模板
+
+[参考](https://shmilybaozi.github.io/2018/11/05/hexo%E6%96%87%E7%AB%A0%E6%A8%A1%E6%9D%BF%E8%AE%BE%E7%BD%AE/)
 
