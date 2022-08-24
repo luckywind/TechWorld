@@ -94,3 +94,10 @@ sudo spctl --master-enable
 # word图片乱码
 
 可用预览打开
+
+# 查看操作系统安装时间
+
+```shell
+ls -l /var/db/.AppleSetupDone
+```
+

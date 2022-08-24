@@ -95,3 +95,4 @@ spark.scheduler.mode=FAIR， 默认是FIFO
 
 # sql逻辑优化
 
+https://blog.51cto.com/wang/4376310
