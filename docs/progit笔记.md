@@ -87,7 +87,7 @@ git push origin --tags 也可以一次推送所有tag
 
    merge命令，是把两个分支最新的快照以及最新的共同祖先进行三方合并，并产生一个新的提交对象
 
-   ![image-20220825095102419](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220825095102419.png)
+   ![image-20220825095102419](/home/mi/.config/Typora/typora-user-images/image-20220825095102419.png)
 
 还有另一个选择，可以把子分支里产生的变化在主分支的基础上重新打一遍，这叫做衍合(rebase)
 
@@ -98,7 +98,7 @@ git rebase master
 
 原理： 从共同祖先开始，子分支的所有提交逐个应用到主分支上，并产生一个新的提交；主分支再快进到这个提交。
 
-![image-20220825100100492](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220825100100492.png)
+![image-20220825100100492](/home/mi/.config/Typora/typora-user-images/image-20220825100100492.png)
 
 #### 分支操作
 
@@ -121,18 +121,5 @@ git push origin 分支名
 跟踪远程分支
 git checkout  --track  远程仓库/远程分支
 
-```
-
-### git工具
-
-#### stashing
-
-```shell
-git stash 储藏
-git stash list 查看现有储藏
-git stash apply 使用最新的储藏
-git stash apply stash@{第几个储藏}
-git stash drop 移除储藏
-git stash branch 新分支   用stash中的修改创建一个新的分支，创建成功后会删除此stash
 ```
 
