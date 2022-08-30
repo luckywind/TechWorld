@@ -233,7 +233,7 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 
 ### 水位线的传递
 
-上游不同分区进度不同时 ，以最慢的那个时钟，即最小的那个水位线为准。
+**上游不同分区进度不同时 ，以最慢的那个时钟，即最小的那个水位线为准。**
 
 # 窗口
 
@@ -423,4 +423,83 @@ val winAggStream = stream.keyBy(...)
 .aggregate(new MyAggregateFunction)
 val lateStream = winAggStream.getSideOutput(outputTag)
 ```
+
+### 迟到数据的处理
+
+迟到数据： 水位线之后到的数据，它的时间戳是在水位线之前的。只有在事件时间语义下，讨论迟到数据才有意义。
+
+1. 水位线延迟， 水位线是所有事件时间定时器触发的判断标准，延迟时间不宜设置的过大，通常给水位线设置一个“能够处理大多数乱序数据的小延迟”。设置后，所有定时器都会按照延迟后的水位线来触发。
+2. 允许窗口处理迟到数据，窗口也可以设置延迟时间，允许处理迟到的数据。水位线到达窗口结束时间时，先快速输出一个近似结果，然后保持窗口继续等待延迟数据，每来一条数据，窗口就会再次计算，并将更新后的结果i输出，这样就可以逐步修正结果，最终得到准确的统计值了。
+3. 迟到数据放入侧输出流，兜底方法，只能保证数据不丢失。
+
+# 处理函数
+
+![image-20220829092334817](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220829092334817.png)
+
+Flink 本身提供了多层 API,DataStream
+API 只是中间的一环,如图 7-1 所示:
+在更底层,我们可以不定义任何具体的算子(比如 map(),filter(),或者 window()),而只是提炼出一个统一的“处理”(process)操作——它是所有转换算子的一个概括性的表达,可以自定义处理逻辑,所以这一层接口就被叫作“处理函数”(process function)。
+
+Flink 中几乎所有转换算子都提供了对应的函数类接口,处理函数也不例外;它所对应的函数类,就叫作 ProcessFunction
+
+## 处理函数的功能
+
+1. MapFunction 只能获取当前的数据
+2. AggregateFunction可以获取当前的状态（以累加器形式出现）
+3. RichMapFunction富函数类，getRuntimeContext(),可以拿到状态,还有并行度、任务名
+   称之类的运行时信息
+4. ProcessFunction可以访问事件的时间戳、水位线信息
+
+处理函数提供了一个“定时服务”(TimerService),我们可以通过它访问流中的事件(event)、时间戳(timestamp)、水位线(watermark),甚至可以注册“定时事件”。而且处理函数继承了 AbstractRichFunction 抽象类,所以拥有富函数类的所有特性,同样可以访问状态(state)和其他运行时信息。此外,处理函数还可以直接将数据输出到侧输出流(side output)中。所以,处理函数是最为灵活的处理方法,可以实现各种自定义的业务逻辑;同时也是整个DataStream API 的底层基础。
+
+1. 抽象方法 processElement()
+该方法用于“处理元素”
+,定义了处理的核心逻辑。这个方法对于流中的每个元素都会调
+用一次,参数包括三个:输入数据值 value,上下文 ctx,以及“收集器”
+(Collector)out。方
+法没有返回值,处理之后的输出数据是通过收集器 out 来定义的。
+⚫ value:当前流中的输入元素,也就是正在处理的数据,类型与流中数据类型一致。
+⚫ ctx:类型是 ProcessFunction 中定义的内部抽象类 Context,表示当前运行的上下文,
+可以获取到当前的时间戳,并提供了用于查询时间和注册定时器的“定时服务”
+(TimerService),以及可以将数据发送到“侧输出流”(side output)的方法 output()。
+Context 抽象类定义如下:
+
+```scala
+public abstract class Context {
+public abstract Long timestamp();
+public abstract TimerService timerService();
+public abstract <X> void output(OutputTag<X> outputTag, X value);
+}
+```
+
+⚫out:“收集器”
+(类型为 Collector),用于返回输出数据。使用方式与 flatMap()算子中的收集器完全一样,直接调用 out.collect()方法就可以向下游发出一个数据。这个方法可调用,也可以不调用。通过几个参数的分析不难发现,ProcessFunction 可以轻松实现 flatMap 这样的基本转换功能(当然 map()、filter()更不在话下);
+而通过富函数提供的获取上下文方法.getRuntimeContext(),也可以自定义状态(state)进行处理,这也就能实现聚合操作的功能了。关于自定义状态的具
+体实现,我们会在后续“状态管理”一章中详细介绍。
+
+2. 非抽象方法 onTimer()
+该方法用于定义定时触发的操作,这是一个非常强大、也非常有趣的功能。这个方法只有在注册好的定时器触发的时候才会调用,而定时器是通过“定时服务” TimerService 来注册的。打个比方,注册定时器(timer)就是设了一个闹钟,到了设定时间就会响;而 onTimer()中定义的,就是闹钟响的时候要做的事。所以它本质上是一个基于时间的“回调”(callback)方法,通过时间的进展来触发;在事件时间语义下就是由水位线(watermark)来触发了。与 processElement()类似,定时方法 onTimer()也有三个参数:时间戳(timestamp),上下文(ctx),以及收集器(out)。这里的 timestamp 是指设定好的触发时间,事件时间语义下当然就是水位线了。另外这里同样有上下文和收集器,所以也可以调用定时服务(TimerService),以及任意输出处理之后的数据。既然有.onTimer()方法做定时触发,我们用 processFunction 也可以自定义数据按照时间分组、定时触发计算输出结果;这其实就实现了窗口(window)的功能。这里需要注意的是,上面的 onTimer()方法只是定时器触发时的操作,而定时器(timer)真正的设置需要用到上下文 ctx 中的定时服务。在 Flink 中,只有“按键分区流”KeyedStream才支持设置定时器的操作,
+所以之前的代码中我们并没有使用定时器。所以基于不同类型的流,可以使用不同的处理函数,它们之间还是有一些微小的区别的。接下来我们就介绍一下处理函数的分类
+
+## 处理函数的分类
+
+Flink 中的处理函数其实是一个大家族,ProcessFunction 只是其中一员。
+Flink 提供了 8 个不同的处理函数:
+(1) ProcessFunction
+最基本的处理函数,基于 DataStream 直接调用 process()时作为参数传入。
+(2) KeyedProcessFunction
+对流按键分区后的处理函数,基于 KeyedStream 调用 process()时作为参数传入。要想使用定时器,必须基于 KeyedStream。
+(3) ProcessWindowFunction
+开窗之后的处理函数,也是全窗口函数的代表。基于 WindowedStream 调用 process()时作为参数传入。
+(4) ProcessAllWindowFunction
+同样是开窗之后的处理函数,基于 AllWindowedStream 调用 process()时作为参数传入。
+(5) CoProcessFunction
+合并(connect)两条流之后的处理函数,基于 ConnectedStreams 调用 process()时作为参数传入。
+(6) ProcessJoinFunction
+间隔连接(interval join)两条流之后的处理函数,基于 IntervalJoined 调用 process()时作为参数传入。
+(7) BroadcastProcessFunction
+广播连接流处理函数,基于 BroadcastConnectedStream 调用 process()时作为参数传入。这里的“广播连接流”BroadcastConnectedStream,是一个未 keyBy 的普通 DataStream 与一个广播流(BroadcastStream)做连接(conncet)之后的产物。
+(8) KeyedBroadcastProcessFunction
+按键分区的广播连接流处理函数,同样是基于 BroadcastConnectedStream 调用 process()时作为参数传入。与 BroadcastProcessFunction 不同的是,这时的广播连接流,是一个 KeyedStream与广播流(BroadcastStream)做连接之后的产物。
+接下来,我们就对 KeyedProcessFunction 和 ProcessWindowFunction 的具体用法展开详细说明。
 
