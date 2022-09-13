@@ -208,24 +208,85 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 
 ### 内置水位线生成器
 
+水位线的生成策略可以分为两类：
+
+- 基于事件时间生成
+- 基于时间周期生成
+
 通过调用 WatermarkStrategy 的静态辅助方法来创建。它们都是周期性 生成水位线的，分别对应着处理有序流和乱序流的场景。
 
 1. 有序流
 
    直接调用WatermarkStrategy.forMonotonousTimestamps()方法就可以实现。简单来说，就是直接拿当前最 大的时间戳作为水位线就可以了。这里需要注意的是，时间戳和水位线的单位，必须都是毫秒。
 
+   ```scala
+   stream.assignTimestampsAndWatermarks( WatermarkStrategy.forMonotonousTimestamps[Event]()
+      //指定当前水位线生成策略的时间戳生成器                                  
+       .withTimestampAssigner(
+         new SerializableTimestampAssigner[Event] {
+           /**
+           t: 被赋予时间戳的事件
+           l: 当前事件的时间戳，或者一个负值(未赋予时间戳)
+           */
+           override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+         }
+       ))
+   ```
+
+   
+
 2. 乱序流
-   WatermarkStrategy. forBoundedOutOfOrderness() 设置延迟时间
+   WatermarkStrategy. forBoundedOutOfOrderness() 设置最大乱序时间
+   
+   ```scala
+       stream.assignTimestampsAndWatermarks( WatermarkStrategy.forBoundedOutOfOrderness[Event](Duration.ofSeconds(5))
+       .withTimestampAssigner(
+         new SerializableTimestampAssigner[Event] {
+           override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+         }
+       ))
+   ```
+   
+   
 
 ### 自定义水位线策略
 
-在 WatermarkStrategy 中，时间戳分配器 TimestampAssigner 都是大同小异的，指定字段提 取时间戳就可以了;而不同策略的关键就在于 WatermarkGenerator 的实现。整体说来，Flink 有两种不同的生成水位线的方式:一种是周期性的(Periodic)，另一种是断点式的(Punctuated)。
+在 WatermarkStrategy 中，时间戳分配器 TimestampAssigner 都是大同小异的，指定字段提 取时间戳就可以了;而不同策略的关键就在于 WatermarkGenerator 的实现。<font color=red>整体说来，Flink 有两种不同的生成水位线的方式:一种是周期性的(Periodic)，另一种是断点式的(Punctuated)。</font>
 
 (1)周期性水位线生成器(Periodic Generator)
- 周期性生成器一般是通过 onEvent()观察判断输入的事件，而在 onPeriodicEmit()里发出水
-
-位线。
+ 周期性生成器一般是通过 onEvent()观察判断输入的事件，而在 onPeriodicEmit()里发出水位线。
  (2)断点式水位线生成器(Punctuated Generator)
+
+```scala
+    stream.assignTimestampsAndWatermarks( new WatermarkStrategy[Event] {
+      //(一) 提取时间戳，当然提取时间戳也可以像上面内置水位线生成器那样放到外面程序里提取
+      override def createTimestampAssigner(context: TimestampAssignerSupplier.Context): TimestampAssigner[Event] = {
+        new SerializableTimestampAssigner[Event] {
+          override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+        }
+      }
+     //(二) 实现水位器生成器， 这里是周期性发送时间戳，如果想要断点式生成时间戳，则在onEvent里更新时间戳并发送即可，onPeriodicEmit无需实现
+      override def createWatermarkGenerator(context: WatermarkGeneratorSupplier.Context): WatermarkGenerator[Event] = {
+        new WatermarkGenerator[Event] {
+          // 定义一个延迟时间
+          val delay = 5000L
+          //1 定义属性保存最大时间戳
+          var maxTs = Long.MinValue + delay + 1  //+xx防止溢出  
+
+          override def onEvent(t: Event, l: Long, watermarkOutput: WatermarkOutput): Unit = {
+            //2 根据当前事件更新当前最大时间戳
+            maxTs = math.max(maxTs, t.timestamp)
+          }
+
+          override def onPeriodicEmit(watermarkOutput: WatermarkOutput): Unit = {
+            //3 框架会定期调用这个方法，该方法周期性发送时间戳
+            val watermark = new Watermark(maxTs - delay - 1)
+            watermarkOutput.emitWatermark(watermark)
+          }
+        }
+      }
+    } )
+```
 
 断点式生成器会不停地检测 onEvent()中的事件，当发现带有水位线信息的特殊事件时， 就立即发出水位线。一般来说，断点式生成器不会通过 onPeriodicEmit()发出水位线。
 
@@ -302,6 +363,8 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
    过按键分区 keyBy()操作后，数据流会按照 key 被分为多条逻辑流(logical streams)，这
 
    就是 KeyedStream。基于 KeyedStream 进行窗口操作时, 窗口计算会在多个并行子任务上同时 执行。相同 key 的数据会被发送到同一个并行子任务，而窗口操作会基于每个 key 进行单独的 处理。所以可以认为，每个 key 上都定义了一组窗口，各自独立地进行统计计算。
+   
+   ![image-20220913104205899](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913104205899.png)
 
 ```scala
  stream.keyBy(...)
@@ -330,26 +393,100 @@ stream.keyBy(<key selector>)
 .aggregate(<window function>)
 ```
 
+### 窗口分配器
+
+所谓的分配，就是分配窗口数据，和窗口的分配是一样的。
+
+![image-20220913104752924](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913104752924.png)
+
+1. 时间窗口
+
+   - 滚动时间窗口
+
+   ```scala
+   stream.keyBy(...)
+   .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
+   .aggregate(...)
+   ```
+
+   - 滑动时间窗口
+
+   ```scala
+   SlidingEventTimeWindows.of(Time.seconds(10),Time.seconds(5))
+   SlidingProcessingTimeWindows.of(Time.seconds(10),Time.seconds(5))
+   ```
+
+   - 事件时间会话窗口
+
+   ```scala
+   EventTimeSessionWindows.withGap(Time.seconds(10)))
+   ```
+
+2. 计数窗口
+
+- 滚动计数
+
+  ```scala
+   stream.keyBy(...)
+       .countWindow(10)
+  ```
+
+- 滑动计数
+
+  ```scala
+   stream.keyBy(...)
+       .countWindow(10,3)
+  ```
+
+3. 全局窗口
+
+```scala
+ stream.keyBy(...)
+     .window(GlobalWindows.create())
+```
+
+
+
 ### 窗口函数
 
-![image-20220827183938019](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220827183938019.png)
+![image-20220913111338447](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913111338447.png)
+
+
+
+<font color=red>窗口函数总结</font>： 
+
+- 增量聚合函数(计算分摊到窗口收集数据过程中，更加高效)
+
+1. reduce后跟ReduceFunction
+2. aggregate后跟AggregateFunction
+
+- 全窗口函数(提供了更多信息)
+
+1. apply后跟WindowFunction  能提供的上下文信息较少，逐渐弃用
+2. process后跟ProcessWindowFunction 最底层的通用窗口函数接口
+
+两者优点可以结合在一起使用， 方法就是在reduce/aggregate里多传一个全窗口函数。大体思路，就是使用增量聚合函数聚合中间结果，等到窗口需要触发计算时，调用全窗口函数；这样即加速了计算，又不用缓存全部数据。
+
+
+
+
 
 根据处理方式，可分成两类：
 
-1. 增量聚合函数
+1. **增量聚合函数**
 
    1. ReduceFunction
 
-      > 聚合状态、结果类型必须和输入一样
+      > **聚合状态、结果类型必须和输入一样**
 
       ```scala
       WindowedStream
       .reduce( new ReduceFunction)
       ```
 
-   2. AggretateFunction
+   2. **AggretateFunction**
 
-      > 输出类型可以和输入不一样
+      > **输出类型可以和输入不一样**
 
       AggregateFunction 接口中有四个方法:
        ⚫ createAccumulator():创建一个累加器，这就是为聚合创建了一个初始状态，每个聚合任务只会调用一次。
@@ -363,7 +500,7 @@ stream.keyBy(<key selector>)
 
    3. 另外，Flink 也为窗口的聚合提供了一系列预定义的简单聚合方法，可以直接基于 WindowedStream 调用。主要包括 sum()/max()/maxBy()/min()/minBy()，与 KeyedStream 的简单 聚合非常相似。它们的底层，其实都是通过 AggregateFunction 来实现的。
 
-2. 全窗口函数
+2. **全窗口函数**
 
    1. WindowFunction
 
@@ -376,24 +513,26 @@ stream.keyBy(<key selector>)
 
       可拿到窗口所有元素和窗口本身的信息， 但缺乏上下文信息以及更高级的功能，逐渐被ProcessWindowFunction替代。
 
-   2. ProcessWindowFunction
+   2. **ProcessWindowFunction**
 
 Window API 中最底层的通用窗口函数接口，最强大，它不仅可以获取窗口信息还可以获取到一个 “上下文对象”(Context)。这个上下文对象非常强大，不仅能够获取窗口信息，还可以访问当 前的时间和状态信息。
 
 基于 WindowedStream 调用 process()方法，传入一个 ProcessWindowFunction 的实现类
 
-3. 增量聚合和全窗口聚合的结合
+3. **增量聚合和全窗口聚合的结合**
 
-- 增量聚合函数处理计算会更高效。增量聚合相当于把计算量“均摊”到了窗口收集数据的 过程中，自然就会比全窗口聚合更加高效、输出更加实时。
-- 而全窗口函数的优势在于提供了更多的信息，可以认为是更加“通用”的窗口操作，窗口 计算更加灵活，功能更加强大。
+- **增量聚合函数处理计算会更高效。增量聚合相当于把计算量“均摊”到了窗口收集数据的 过程中，自然就会比全窗口聚合更加高效、输出更加实时。**
+- **而全窗口函数的优势在于提供了更多的信息，可以认为是更加“通用”的窗口操作，窗口 计算更加灵活，功能更加强大**。
 
 但reduce/aggretate方法可以组合增量窗口和全量窗口一起使用：
 处理机制是:基于第一个参数(增量聚合函数)来处理窗口数据，每来一个数 据就做一次聚合;等到窗口需要触发计算时，则调用第二个参数(全窗口函数)的处理逻辑输 出结果。需要注意的是，这里的全窗口函数就不再缓存所有数据了，而是直接将增量聚合函数 的结果拿来当作了 Iterable 类型的输入。一般情况下，这时的可迭代集合中就只有一个元素了
 
 ### 其他API
 
-1. 触发器
-   WindowedStream 调用 trigger()方法，每个窗口分配器(WindowAssigner)都会对应一个默认 的触发器;对于 Flink 内置的窗口类型，它们的触发器都已经做了实现
+触发器主要是用来控制窗口什么时候触发计算。所谓的“触发计算”，本质上就是执行窗 口函数，所以可以认为是计算得到结果并输出的过程。
+
+1. **触发器**
+   WindowedStream 调用 trigger()方法，每个窗口分配器(WindowAssigner)都会对应一个默认 的触发器;对于 Flink 内置的窗口类型，它们的触发器都已经做了实现。例如，所有事件时间 窗口，默认的触发器都是 EventTimeTrigger;类似还有 ProcessingTimeTrigger 和 CountTrigger。 所以一般情况下是不需要自定义触发器的，不过我们依然有必要了解它的原理。
 
    Trigger 是一个抽象类，自定义时必须实现下面四个抽象方法:
     ⚫ onElement():窗口中每到来一个元素，都会调用这个方法。
@@ -401,18 +540,19 @@ Window API 中最底层的通用窗口函数接口，最强大，它不仅可以
     ⚫ onProcessingTime ():当注册的处理时间定时器触发时，将调用这个方法。
 
    ⚫ clear():当窗口关闭销毁时，调用这个方法。一般用来清除自定义的状态。
+   Trigger 除了可以控制触发计算，还可以定义窗口什么时候关闭(销毁)
 
-2. 移除器(Evictor)
+2. **移除器**(Evictor)
 
    Evictor 接口定义了两个方法:
     ⚫ evictBefore():定义执行窗口函数之前的移除数据操作
     ⚫ evictAfter():定义执行窗口函数之后的以处数据操作 默认情况下，预实现的移除器都是在执行窗口函数(window fucntions)之前移除数据的。
 
-3. 允许延迟(Allowed Lateness)
+3. **允许延迟**(Allowed Lateness)
 
-我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口
+我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口。基于 WindowedStream 调用 allowedLateness()方法，传入一个 Time 类型的延迟时间，就可 以表示允许这段时间内的延迟数据。
 
-4. 迟到数据放入侧输出流
+4. **迟到数据放入侧输出流**
 
 基于 WindowedStream 调用 sideOutputLateData() 方法，就可以实现这个功能。方法需要 传入一个“输出标签”(OutputTag)，用来标记分支的迟到数据流。因为保存的就是流中的原 始数据，所以 OutputTag 的类型与流中数据类型相同
 
@@ -423,4 +563,313 @@ val winAggStream = stream.keyBy(...)
 .aggregate(new MyAggregateFunction)
 val lateStream = winAggStream.getSideOutput(outputTag)
 ```
+
+# 多流转换
+
+## union/connect
+
+这里其实，就是把两个流的数据放到一起
+
+但，也可以通过keyBy()指定键进行分组后合并， 实现了类似于 SQL 中的 join 操作
+
+1. 分流：一般通过侧输出流
+
+2. 合流：合流算子比较丰富，union()/connect()/join()
+
+   1. union的多个流必须类型相同(一次可以合并多个流)
+
+   2. connect允许数据类型不同(一次只能合并两个流)
+
+      > 在代码实现上，需要分为两步:首先基于一条 DataStream 调用 connect()方法，传入另外 一条 DataStream 作为参数，将两条流连接起来，得到一个 ConnectedStreams;然后再调用同处 理方法得到DataStream。这里可以的调用的同处理方法有map()/flatMap()，以及process()方法
+
+```scala
+val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    env.setParallelism(1)
+    val stream1: DataStream[Int] = env.fromElements(1,2,3)
+    val stream2: DataStream[Long] = env.fromElements(1L,2L,3L,4L)
+    val connectedStream: ConnectedStreams[Int, Long] = stream1.connect(stream2)
+    val result=connectedStream
+      .map(new CoMapFunction[Int,Long,String] {
+        //处理第一条流
+        override def map1(in1: Int): String = {
+          "Int:"+in1
+        }
+                                                                                                                                                                                          //处理第二条流
+        override def map2(in2: Long): String = {
+          "Long:"+in2
+        }
+      })
+
+    result.print()
+    env.execute()
+```
+
+对于连接流 ConnectedStreams 的处理操作，需要分别定义对两条流的处理转换，因此接口 中就会有两个相同的方法需要实现，用数字“1”“2”区分，在两条流中的数据到来时分别调 用。我们把这种接口叫作“**协同处理函数**”(co-process function)。与 CoMapFunction 类似，如 果是调用 flatMap()就需要传入一个 CoFlatMapFunction，需要实现 flatMap1()、flatMap2()两个 方法;而调用 process()时，传入的则是一个 CoProcessFunction。
+
+CoProcessFunction 也是“处理函数”家族中的一员，同样可以通过上下文ctx来 访问 timestamp、水位线，并通过 TimerService 注册定时器;另外也提供了 onTimer()方法，用 于定义定时触发的处理操作。
+
+## join(基于时间的合流)
+
+对于两条流的合并，很多情况我们并不是简单地将所有数据放在一起，而是希望根据某个 字段的值将它们联结起来，“配对”去做处理。类似于SQL中的join
+
+1. connect: 最复杂，通过keyBy()分组后合并,自定义状态、触发器
+2. window: 中间
+3. join算子：最简单
+
+### 窗口join
+
+1. 接口API
+
+```scala
+stream1
+.join(stream2)//的到JoinedStreams 
+.where(<KeySelector>) //左key
+.equalTo(<KeySelector>) //右key
+.window(<WindowAssigner>) //出现在同一个窗口
+.apply(<JoinFunction>)//同时处理
+```
+
+
+
+join逻辑
+
+```scala
+public interface JoinFunction<IN1, IN2, OUT> extends Function, Serializable {
+   OUT join(IN1 first, IN2 second) throws Exception;
+}
+```
+
+
+
+2. 处理流程
+
+JoinFunction 中的两个参数，分别代表了两条流中的匹配的数据。
+
+窗口中每有一对数据成功联结匹配，JoinFunction 的 join()方法就会被调用一次，并输出一 个结果。
+
+除了 JoinFunction，在 apply()方法中还可以传入 FlatJoinFunction，用法非常类似，只是内 部需要实现的 join()方法没有返回值。
+
+> **注意，join的结果是笛卡尔积**
+
+### 间隔join
+
+隔联结的思 路就是针对一条流的每个数据，开辟出其时间戳前后的一段时间间隔，看这期间是否有来自另 一条流的数据匹配。
+
+1. 原理：
+   对第一条流中的每一条数据a ：开辟一段时间间隔:[a.timestamp + lowerBound, a.timestamp + upperBound], 如果另一条流的数据在这个范围内，则成功匹配
+
+![image-20220906075209055](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220906075209055.png)
+
+与窗口联结不同的是，interval join 做匹配的**时间段是基于流中数据的**，所以并不确定;**而且流 B 中的数据可以不只在一个区间内被匹配。**
+
+2. 接口API
+  
+
+```scala
+stream1
+.keyBy(_._1) //基于keyed流做内连接
+.intervalJoin(stream2.keyBy(_._1))
+.between(Time.milliseconds(-2),Time.milliseconds(1))
+.process(new ProcessJoinFunction[(String, Long), (String, Long), String] {
+    override def processElement(left: (String, Long), right: (String, Long), ctx: ProcessJoinFunction[(String, Long), (String, Long), String]#Context, out: Collector[String]) = {
+           out.collect(left + "," + right)
+     }
+});
+```
+
+# 状态编程
+
+## 状态分类
+
+1. 托管状态(Managed State)和原始状态(Raw State)
+
+推荐托管状态：Flink运行时维护
+
+2. 算子状态(Operator State)和按键分区状态(Keyed State)
+
+- Flink 能管理的状态在并行任务间是无法共享的，每个状态只能针对当前子任务的实例有效
+
+> 在 Flink 中，一个算子任务会按照并行度分为多个并行子任务执行，而不同的子
+>
+> 任务会占据不同的任务槽(task slots)。由于不同的 slot 在计算资源上是物理隔离的
+
+算子状态可以用在所有算子上，使用的时候其实就跟一个本地变量没什么区别——因为本 地变量的作用域也是当前任务实例。在使用时，我们还需进一步实现 CheckpointedFunction 接 口。
+
+- keyed流之后的算子应该只能访问当前key
+
+  按键分区状态应用非常广泛。之前讲到的聚合算子必须在 keyBy()之后才能使用，就是因 为聚合的结果是以Keyed State的形式保存的。另外，也可以通过富函数类(Rich Function) 来自定义 Keyed State，所以只要提供了富函数类接口的算子，也都可以使用 Keyed State。
+
+  所以即使是 map()、filter()这样无状态的基本转换算子，我们也可以通过富函数类给它们 “追加”Keyed State，或者实现CheckpointedFunction接口来定义Operator State;从这个角度
+
+  讲，Flink 中所有的算子都可以是有状态的，不愧是“有状态的流处理”。在富函数中，我们可以调用.getRuntimeContext() 获取当前的运行时上下文(RuntimeContext)，进而获取到访问状态的句柄;这种富函数中自 定义的状态也是 Keyed State。
+
+### 按键分区状态
+
+### 状态结构类型
+
+1. 值状态ValueState
+
+```scala
+public interface ValueState<T> extends State {
+   T value() throws IOException;
+   void update(T value) throws IOException;
+}
+```
+
+2. 列表状态ListState
+
+用方式 与一般的 List 非常相似。
+
+3. 映射状态(MapState)
+4. 归约状态(ReducingState)
+5. 聚合状态(AggregatingState)
+
+在具体使用时，为了让运行时上下文清楚到底是哪个状态，我们还需要创建一个“状态描
+
+述器”(StateDescriptor)来提供状态的基本信息
+
+### 状态使用
+
+```scala
+class MyFlatMapFunction extends RichFlatMapFunction[Long, String] {
+// 声明状态,如果不使用懒加载的 方式初始化状态变量，则应该在 open()方法中也就是生命周期的开始初始化状态变量
+lazy val state = getRuntimeContext.getState(new
+ValueStateDescriptor[Long]("my state", classOf[Long]))
+override defflatMap(input: Long, out: Collector[String] ): Unit = { // 访问状态
+       var currentState = state.value()
+currentState += 1 // 状态数值加 1 // 更新状态 state.update(currentState)
+if (currentState >= 100) {
+          out.collect("state: " + currentState)
+state.clear() // 清空状态 }
+} }
+```
+
+### 状态生存时间(TTL)
+
+需要创建一个 StateTtlConfig 配置对象，然后调用状态描述器的 164
+
+enableTimeToLive()方法启动 TTL 功能
+
+```scala
+val ttlConfig = StateTtlConfig
+   .newBuilder(Time.seconds(10))//状态生存时间
+   .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)//什么时候更新状态失效时间
+//状态可见性，状态的清理并非实时的，过期了仍然可能没被清理而被读取到；然而我们可控制是否读取这个过期值
+   .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+   .build()
+val stateDescriptor = new ValueStateDescriptor[String](
+"my-state",
+     classOf[String]
+   )
+stateDescriptor.enableTimeToLive(ttlConfig)
+```
+
+## 算子状态
+
+从某种意义上说，算子状态是更底层的状态类型，因为它只针对当前算子并行任务有效，不需 要考虑不同 key 的隔离。算子状态功能不如按键分区状态丰富，应用场景较少(没有key定义的场景)，它的调用方法 也会有一些区别。
+
+算子状态(Operator State)就是一个算子并行实例上定义的状态，作用范围被限定为当前 算子任务。算子状态跟数据的 key 无关，所以不同 key 的数据只要被分发到同一个并行子任务， 就会访问到同一个 Operator State。
+
+当算子的并行度发生变化时，算子状态也支持在并行的算子任务实例之间做重组分配。根 据状态的类型不同，重组分配的方案也会不同。
+
+### 状态类型
+
+- ListState
+
+> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“大列表”，然后再均匀地分配给所有并行任务
+
+- UnionListState 
+
+> 在并行度调整时，常规列表状态是轮询分 配状态项，而联合列表状态的算子则会直接广播状态的完整列表。这样，并行度缩放之后的并 行子任务就获取到了联合后完整的“大列表”
+
+-  BroadcastState。
+
+> 算子并行子任务都保持同一份“全局”状态，用来做统一的配置和规则设定。 这时所有分区的所有数据都会访问到同一个状态，状态就像被“广播”到所有分区一样，这种 特殊的算子状态，就叫作广播状态(BroadcastState)
+
+### 代码实现
+
+Flink提供了管理算子状态的接口，我们根据业务需要自行设计状态的快照保存和恢复逻辑
+
+- CheckpointedFunction接口
+
+  ```scala
+  public interface CheckpointedFunction {
+  // 保存状态快照到检查点时，调用这个方法； 注意这个快照Context可提供检查点相关信息，但无法获取状态
+     void snapshotState(FunctionSnapshotContext context) throws Exception
+  // 初始化状态时调用这个方法，也会在恢复状态时调用；这个函数初始化上下文是真的Context，可以获取到状态内容
+  void initializeState(FunctionInitializationContext context) throws Exception;
+  }
+  ```
+
+## 状态持久化和状态后端
+
+Flink 对状态进行持久化的方式，就是将当前所 有分布式状态进行“快照”保存，写入一个“检查点”(checkpoint)或者保存点(savepoint) 保存到外部存储系统中
+
+- 检查点： 
+
+  > 至少一次：检查点之后又处理了一部分数据，如果出现故障，就需要源能重放这部分数据，否则就会丢失。例如，可以保存kafka的偏移量来重放数据
+
+- 状态后端：
+
+状态后端主要负责两件事:一是本地的状态管理，二是将检查 点(checkpoint)写入远程的持久化存储。
+
+状态后端分类：
+
+- 哈希表状态后端(HashMapStateBackend)
+
+- 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
+
+  > RocksDB 默认存储在 TaskManager 的本地数据目录里。EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻 塞数据的处理;而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存 效率。
+  >
+  > 由于它会把状态数据落盘，而且支持增量化的检查点，所以在状态非常大、窗口非常长、 键/值状态很大的应用场景中是一个好选择，同样对所有高可用性设置有效。
+  >
+  > 
+
+IDE中使用RocksDB状态后端，需要加依赖
+
+```xml
+<dependency>
+   <groupId>org.apache.flink</groupId>
+   <artifactId>flink-statebackend-rocksdb_2.11</artifactId>
+   <version>1.13.0</version>
+</dependency>
+```
+
+# 容错机制
+
+检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言 的:故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正 确性。
+
+### 检查点的保存
+
+- 周期性触发
+- 一个数据**被所有任务处理完时保存**，或者就完全不保存该数据的状态
+
+```scala
+val wordCountStream = env.addSource(...)
+       .map((_,1))
+       .keyBy(_._1)
+       .sum(1)
+```
+
+
+
+![image-20220907084434583](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220907084434583.png)
+
+### 检查点配置
+
+```scala
+val env =
+StreamExecutionEnvironment.getExecutionEnvironment
+// 启用检查点，间隔时间 1 秒
+env.enableCheckpointing(1000)
+CheckpointConfig checkpointConfig = env.getCheckpointConfig
+// 设置精确一次模式 checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE) // 最小间隔时间 500 毫秒 checkpointConfig.setMinPauseBetweenCheckpoints(500)
+// 超时时间 1 分钟
+checkpointConfig.setCheckpointTimeout(60000) // 同时只能有一个检查点 checkpointConfig.setMaxConcurrentCheckpoints(1) // 开启检查点的外部持久化保存，作业取消后依然保留 checkpointConfig.enableExternalizedCheckpoints(
+ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+// 启用不对齐的检查点保存方式 checkpointConfig.enableUnalignedCheckpoints
+// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径 checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
+```
+
+
 
