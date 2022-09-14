@@ -389,7 +389,7 @@ stream.windowAll(...)
 
 ```scala
 stream.keyBy(<key selector>) 
-.window(<window assigner>) 
+.window/windowAll(<window assigner>) 
 .aggregate(<window function>)
 ```
 
@@ -564,6 +564,114 @@ val winAggStream = stream.keyBy(...)
 val lateStream = winAggStream.getSideOutput(outputTag)
 ```
 
+## 迟到数据的处理
+
+1. 设置水位线延迟时间
+   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。
+
+2. 允许窗口处理迟到数据
+
+   水位线到达窗口结束时间时，快速输出一个近似结果，然后保持窗口继续等待延迟数据，每来一条数据窗口就重新计算更新结果。
+
+3. 迟到数据放入侧输出流
+
+# 处理函数
+
+在更底层，我们可以不定义任何具体的算子(比如 map()，filter()，或者 window())，而只 是提炼出一个统一的“处理”(process)操作——它是所有转换算子的一个概括性的表达，可 以自定义处理逻辑，所以这一层接口就被叫作“处理函数”(process function)。
+
+处理函数主要是定义数据流的转换操作，所以也可以把它归到转换算子中。我们知道在 Flink 中几乎所有转换算子都提供了对应的函数类接口，处理函数也不例外;它所对应的函数 类，就叫作 ProcessFunction。
+
+![image-20220913142358829](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913142358829.png)
+
+## 基本处理函数
+
+### 处理函数功能
+
+1. 普通转换算子： 只能拿到当前的数据
+
+2. 窗口聚合： 可获取到当前的累加器状态
+
+3. 富函数类：getRuntimeContext可拿到状态、并行度、任务名称等运行时信息
+
+4. **处理函数(ProcessFunction)：可拿到时间戳、当前水位线**
+
+   <font color=red>继承了 AbstractRichFunction 抽象类，所以拥有富函数类的所有特性，是整个DataStream API的底层基础</font>>
+
+内部单独定义了两个方法:一个是必须要实现的抽象方法 processElement();另一个是非 抽象方法 onTimer()。
+
+1. 抽象方法 processElement()
+
+   - 可以通过out多次输出，也可以通过output()输出到侧输出流
+
+   - ctx提供查询和注册定时器的定时服务TimeService
+
+     > <font color=red>不过只有基于 KeyedStream 的处理函数，才能去调用注册和删除定时器的方法; 未作按键分区的 DataStream 不支持定时器操作，只能获取当前时间。</font>
+
+2. 非抽象方法 onTimer()
+
+   processElement里注册的定时器到点时，会触发这里的逻辑。同一个key和时间戳，最多只有一个定时器
+
+   > 既然有.onTimer()方法做定时触发，我们用 ProcessFunction 也可以自定义数据按照时间分 组、定时触发计算输出结果;这其实就实现了窗口(window)的功能
+
+### 处理函数分类
+
+(1)**ProcessFunction**
+
+最基本的处理函数，基于 DataStream 直接调用 process()时作为参数传入。
+
+ (2)**KeyedProcessFunction**
+
+对流按键分区后的处理函数，基于 KeyedStream 调用 process()时作为参数传入。要想使用 定时器，必须基于 KeyedStream。
+
+(3)**ProcessWindowFunction**
+
+开窗之后的处理函数，也是全窗口函数的代表。基于 WindowedStream 调用 process()时作 为参数传入。
+
+(4)ProcessAllWindowFunction
+ 同样是开窗之后的处理函数，基于 AllWindowedStream 调用 process()时作为参数传入。
+
+(5)CoProcessFunction
+
+合并(connect)两条流之后的处理函数，基于 ConnectedStreams 调用 process()时作为参 数传入。
+
+(6)ProcessJoinFunction
+
+间隔连接(interval join)两条流之后的处理函数，基于 IntervalJoined 调用 process()时作为 参数传入。
+
+(7)BroadcastProcessFunction
+
+广播连接流处理函数，基于 BroadcastConnectedStream 调用 process()时作为参数传入。这 里的“广播连接流”BroadcastConnectedStream，是一个未 keyBy 的普通 DataStream 与一个广 播流(BroadcastStream)做连接(conncet)之后的产物。
+
+(8)KeyedBroadcastProcessFunction
+
+按键分区的广播连接流处理函数，同样是基于 BroadcastConnectedStream 调用 process()时 作为参数传入。与 BroadcastProcessFunction 不同的是，这时的广播连接流，是一个 KeyedStream 与广播流(BroadcastStream)做连接之后的产物。
+
+## KeyedProcessFunction
+
+```scala
+    stream.keyBy(data => true)
+      .process( new KeyedProcessFunction[Boolean, Event, String] {
+        override def processElement(value: Event, ctx: KeyedProcessFunction[Boolean, Event, String]#Context, out: Collector[String]): Unit = {
+          val currentTime = ctx.timerService().currentProcessingTime()
+          out.collect("数据到达，当前时间是：" + currentTime)
+          // 注册一个5秒之后的定时器
+          ctx.timerService().registerProcessingTimeTimer(currentTime + 5 * 1000)
+        }
+
+        // 定义定时器触发时的执行逻辑
+        override def onTimer(timestamp: Long, ctx: KeyedProcessFunction[Boolean, Event, String]#OnTimerContext, out: Collector[String]): Unit = {
+          out.collect("定时器触发，触发时间为：" + timestamp)
+        }
+      } )
+      .print()
+```
+
+
+
+
+
+
+
 # 多流转换
 
 ## union/connect
@@ -681,11 +789,19 @@ stream1
 
 ## 状态分类
 
-1. 托管状态(Managed State)和原始状态(Raw State)
+1. **托管状态**(Managed State)和**原始状态**(Raw State)
 
 推荐托管状态：Flink运行时维护
 
-2. 算子状态(Operator State)和按键分区状态(Keyed State)
+原始状态时自定义的，需要自己实现状态的序列化和故障恢复
+
+
+
+状态在任务间是天然隔离(不同slot计算资源是物理隔离的)的，对于有状态的操作，状态应该在key之间隔离。
+
+所以，按照状态的隔离可以这样分(只考虑托管状态)：
+
+2. **算子状态**(Operator State)和**按键分区状态**(Keyed State)
 
 - Flink 能管理的状态在并行任务间是无法共享的，每个状态只能针对当前子任务的实例有效
 
@@ -695,12 +811,14 @@ stream1
 
 算子状态可以用在所有算子上，使用的时候其实就跟一个本地变量没什么区别——因为本 地变量的作用域也是当前任务实例。在使用时，我们还需进一步实现 CheckpointedFunction 接 口。
 
-- keyed流之后的算子应该只能访问当前key
+- **keyed流之后的算子应该只能访问当前key**
+
+  > 一个分区上可以有多个key
 
   按键分区状态应用非常广泛。之前讲到的聚合算子必须在 keyBy()之后才能使用，就是因 为聚合的结果是以Keyed State的形式保存的。另外，也可以通过富函数类(Rich Function) 来自定义 Keyed State，所以只要提供了富函数类接口的算子，也都可以使用 Keyed State。
 
   所以即使是 map()、filter()这样无状态的基本转换算子，我们也可以通过富函数类给它们 “追加”Keyed State，或者实现CheckpointedFunction接口来定义Operator State;从这个角度
-
+  
   讲，Flink 中所有的算子都可以是有状态的，不愧是“有状态的流处理”。在富函数中，我们可以调用.getRuntimeContext() 获取当前的运行时上下文(RuntimeContext)，进而获取到访问状态的句柄;这种富函数中自 定义的状态也是 Keyed State。
 
 ### 按键分区状态
@@ -735,7 +853,7 @@ class MyFlatMapFunction extends RichFlatMapFunction[Long, String] {
 // 声明状态,如果不使用懒加载的 方式初始化状态变量，则应该在 open()方法中也就是生命周期的开始初始化状态变量
 lazy val state = getRuntimeContext.getState(new
 ValueStateDescriptor[Long]("my state", classOf[Long]))
-override defflatMap(input: Long, out: Collector[String] ): Unit = { // 访问状态
+override def flatMap(input: Long, out: Collector[String] ): Unit = { // 访问状态
        var currentState = state.value()
 currentState += 1 // 状态数值加 1 // 更新状态 state.update(currentState)
 if (currentState >= 100) {
@@ -746,7 +864,7 @@ state.clear() // 清空状态 }
 
 ### 状态生存时间(TTL)
 
-需要创建一个 StateTtlConfig 配置对象，然后调用状态描述器的 164
+需要创建一个 StateTtlConfig 配置对象，然后调用状态描述器的
 
 enableTimeToLive()方法启动 TTL 功能
 
@@ -776,7 +894,7 @@ stateDescriptor.enableTimeToLive(ttlConfig)
 
 - ListState
 
-> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“大列表”，然后再均匀地分配给所有并行任务
+> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“**大列表**”，然后再均匀地分配给所有并行任务
 
 - UnionListState 
 
@@ -811,19 +929,21 @@ Flink 对状态进行持久化的方式，就是将当前所 有分布式状态�
 
 - 状态后端：
 
+![image-20220913173114327](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913173114327.png)
+
 状态后端主要负责两件事:一是本地的状态管理，二是将检查 点(checkpoint)写入远程的持久化存储。
 
 状态后端分类：
 
-- 哈希表状态后端(HashMapStateBackend)
+- ​	哈希表状态后端(HashMapStateBackend)
+  - 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
 
-- 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
 
-  > RocksDB 默认存储在 TaskManager 的本地数据目录里。EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻 塞数据的处理;而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存 效率。
-  >
-  > 由于它会把状态数据落盘，而且支持增量化的检查点，所以在状态非常大、窗口非常长、 键/值状态很大的应用场景中是一个好选择，同样对所有高可用性设置有效。
-  >
-  > 
+> RocksDB 默认存储在 TaskManager 的本地数据目录里。EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻 塞数据的处理;而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存 效率。
+>
+> 由于它会把状态数据落盘，而且支持增量化的检查点，所以在状态非常大、窗口非常长、 键/值状态很大的应用场景中是一个好选择，同样对所有高可用性设置有效。
+>
+> 
 
 IDE中使用RocksDB状态后端，需要加依赖
 
@@ -837,12 +957,18 @@ IDE中使用RocksDB状态后端，需要加依赖
 
 # 容错机制
 
-检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言 的:故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正 确性。
+## 检查点
+
+检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言 的:故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正 确性。所以，有时又会把 checkpoint 叫作“一致性检查点”。
 
 ### 检查点的保存
 
 - 周期性触发
-- 一个数据**被所有任务处理完时保存**，或者就完全不保存该数据的状态
+- 保存的时间点： 一个数据**被所有任务处理完时保存**，或者就完全不保存该数据的状态
+
+  > 如果出现故障， 故障时正在处理的所有数据都需要重新处理，所以我们只需要让源任务请求重放数据即可。
+
+  举例来说：下面这个wordcount例子里，所有算子处理完前3条数据时，可以进行检查点保存
 
 ```scala
 val wordCountStream = env.addSource(...)
@@ -855,6 +981,12 @@ val wordCountStream = env.addSource(...)
 
 ![image-20220907084434583](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220907084434583.png)
 
+### 从检查点恢复
+
+发生故障时，找到最近一次成功保存的检查点来恢复状态：
+
+重启任务，读取检查点，把状态分别填充到对应的状态中。Source任务重放故障时未处理完成的数据
+
 ### 检查点配置
 
 ```scala
@@ -863,13 +995,107 @@ StreamExecutionEnvironment.getExecutionEnvironment
 // 启用检查点，间隔时间 1 秒
 env.enableCheckpointing(1000)
 CheckpointConfig checkpointConfig = env.getCheckpointConfig
-// 设置精确一次模式 checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE) // 最小间隔时间 500 毫秒 checkpointConfig.setMinPauseBetweenCheckpoints(500)
+// 设置精确一次模式 
+checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE) 
+// 最小间隔时间 500 毫秒 
+checkpointConfig.setMinPauseBetweenCheckpoints(500)
 // 超时时间 1 分钟
-checkpointConfig.setCheckpointTimeout(60000) // 同时只能有一个检查点 checkpointConfig.setMaxConcurrentCheckpoints(1) // 开启检查点的外部持久化保存，作业取消后依然保留 checkpointConfig.enableExternalizedCheckpoints(
+checkpointConfig.setCheckpointTimeout(60000) 
+// 同时只能有一个检查点 
+checkpointConfig.setMaxConcurrentCheckpoints(1) 
+// 开启检查点的外部持久化保存，作业取消后依然保留 
+checkpointConfig.enableExternalizedCheckpoints(
 ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
-// 启用不对齐的检查点保存方式 checkpointConfig.enableUnalignedCheckpoints
-// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径 checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
+// 启用不对齐的检查点保存方式 
+checkpointConfig.enableUnalignedCheckpoints
+// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径 
+checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
 ```
 
 
 
+### 检查点算法
+
+#### 检查点分界线
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220914102032904.png" alt="image-20220914102032904" style="zoom:50%;" />
+
+我们现在的目标是，在不暂停流处理的前提下，让每个任务“认出”触发检查点保存的那 个数据。
+
+可以借鉴水位线(watermark)的设计，在数据流中插入一个特殊的数据结构，专门 用来表示触发检查点保存的时间点。收到保存检查点的指令后，Source 任务可以在当前数据 流中插入这个结构;之后的所有任务只要遇到它就开始对状态做持久化快照保存。这种特殊的数据形式，把一条流上的数据按照不同的检查点分隔开，所以就叫作检查点的 “分界线”(Checkpoint Barrier)。
+
+与水位线很类似，检查点分界线也是一条特殊的数据，由 Source 算子注入到常规的数据 流中，它的位置是限定好的，不能超过其他数据，也不能被后面的数据超过。检查点分界线中 带有一个检查点 ID，这是当前要保存的检查点的唯一标识。
+
+在 JobManager 中有一个“检查点协调器”(checkpoint coordinator)，专门用来协调处理检 查点的相关工作。检查点协调器会定期向 TaskManager 发出指令，要求保存检查点(带着检查 点 ID);**TaskManager 会让所有的 Source 任务把自己的偏移量(算子状态)保存起来，并将带 有检查点 ID 的分界线(barrier)插入到当前的数据流中**，然后像正常的数据一样像下游传递; 之后 Source 任务就可以继续读入新的数据了。
+
+每个算子任务只要处理到这个 barrier，就把当前的状态进行快照;在收到 barrier 之前， 还是正常地处理之前的数据，完全不受影响。
+
+#### 分布式快照算法
+
+​        处理多个分区的分界线传递，一个分区向多个分区传递分界线比较简单，直接广播传递即可；复杂的是一个分区上游有多个分区的情况，所谓的分界线，就是分界线到来之前的数据都已经处理(需要保存到当前检查点)，分界线到来之后的数据都不处理(不需要保存检查点)；所以它需要等待所有上游分区的分界线都到齐，即所谓的分界线对齐。
+
+​        对于分界线先到的分区，在等待其他分区分界线的过程中可能会接受到新的数据，这些数据属于分界线后的，不能处理，只能缓存起来，当出现背压时，会堆积大量的缓冲数据，检查点可能需要很久才能保存完毕。为了应对这种场景，Flink 1.11之后提供了不对齐的检查点保存方式，可以将未处理的缓 冲数据(in-flight data)也保存进检查点。这样，当我们遇到一个分区barrier时就不需等待对 齐，而是可以直接启动状态的保存了。
+
+​        对于分界线后到的分区，分界线到来之前的数据正常处理。
+
+​		所有算子遇到分界线就做检查点，保存完状态都需要向JobManager确认
+
+​        
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220914110452165.png" alt="image-20220914110452165" style="zoom:50%;" />
+
+#### 非对齐检查点
+
+顾名思义，非对齐检查点取消了屏障对齐操作
+
+a) 当算子的所有输入流中的第一个屏障到达算子的输入缓冲区时，立即将这个屏障发往下游（输出缓冲区）。
+
+b) 由于第一个屏障没有被阻塞，它的步调会比较快，超过一部分缓冲区中的数据。算子会标记两部分数据：一是屏障首先到达的那条流中被超过的数据，二是其他流中位于当前检查点屏障之前的所有数据（当然也包括进入了输入缓冲区的数据），如下图中标黄的部分所示。
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/format,png.png)
+
+c) 将上述两部分数据连同算子的状态一起做异步快照。
+
+既然不同检查点的数据都混在一起了，非对齐检查点还能保证exactly once语义吗？答案是肯定的。当任务从非对齐检查点恢复时，除了对齐检查点也会涉及到的Source端重放和算子的计算状态恢复之外，未对齐的流数据也会被恢复到各个链路，三者合并起来就是能够保证exactly once的完整现场了。
+
+## 保存点(savepoint)
+
+从名称就可以看出，这也是一个存盘的备份，它的原理和算法与检查点完全相同，只是多 了一些额外的元数据。事实上，保存点就是通过检查点的机制来创建流式作业状态的一致性镜 像(consistent image)的。
+
+检查点主要用来做故障恢复，是容错机制的核心;保存点则更加灵活，可以用 来做有计划的手动备份和恢复。
+
+保存点能够在程序更改的时候依然兼容，前提是状态的拓扑结构和数据类 型不变。我们知道保存点中状态都是以算子 ID-状态名称这样的 key-value 组织起来的，算子 ID 可以在代码中直接调用 SingleOutputStreamOperator 的.uid()方法来进行指定.
+
+对于没有设置 ID 的算子，Flink 默认会自动进行设置，所以在重新启动应用后可能会导致 ID 不同而无法兼容以前的状态。所以为了方便后续的维护，强烈建议在程序中为每一个算子 手动指定 ID。
+
+用法:
+
+```shell
+停掉作业，并创建一个保存点
+bin/flink stop --savepointPath [:targetDirectory] :jobId
+从保存点重启应用
+bin/flink run -s :savepointPath [:runArgs]
+```
+
+
+
+## 端到端状态一致性
+
+完整的流处理应用，应该包括了数据源、流处理器和外部存储系统三个部分。这个完 整应用的一致性，就叫作“端到端(end-to-end)的状态一致性”，它取决于三个组件中最弱的 那一环。一般来说，能否达到 at-least-once 一致性级别，主要看数据源能够重放数据;而能否 达到 exactly-once 级别，流处理器内部、数据源、外部存储都要有相应的保证机制
+
+Flink通过检查点(checkpoint)来保证exactly-onece语义。所以，端到端一致性的关键点，就在于输入的数据源端和输出的外部存储端。
+
+**输入端**： 数据源必须能够重放，例如Kafka。
+
+**输出端**： 一条数据被所有任务处理完并写入了外部系统，但是检查点还没来得及保存最新状态任务就失败了，此时最新的那个检查点认为该数据还没有处理，恢复时会重放那条数据，导致该数据重复写入。
+能够保证 exactly-once 一致性的写入方式有两种:
+
+- 幂等写入：多次写入，结果不会变。
+
+> 需要注意，对于幂等写入，遇到故障进行恢复时，有可能会出现短暂的不一致。因为保存 点完成之后到发生故障之间的数据，其实已经写入了一遍，回滚的时候并不能消除它们。如果 有一个外部应用读取写入的数据，可能会看到奇怪的现象:短时间内，结果会突然“跳回”到 之前的某个值，然后“重播”一段之前的数据。不过当数据的重放逐渐超过发生故障的点的时 候，最终的结果还是一致的。
+
+- 事务写入:  利用事务写入的数据可以收回
+
+事务写入的基本思想就是: 用一个事务来进行数据向外部系统的写入，这个事务是与检查点绑定在一起的。当 Sink 任务 遇到 barrier 时，开始保存状态的同时就开启一个事务，接下来所有数据的写入都在这个事务 中;待到当前检查点保存完毕时，将事务提交，所有写入的数据就真正可用了。如果中间过程 出现故障，状态会回退到上一个检查点，而当前事务没有正常关闭(因为当前检查点没有保存 完)，所以也会回滚，写入到外部的数据就被撤销了。
+
+事务写入又有两种实现方式:预写日志(WAL)和两阶段提交(2PC)
