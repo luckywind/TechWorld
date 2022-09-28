@@ -133,6 +133,10 @@ https://www.cnblogs.com/chengkanghua/p/11084749.html
 
 [自定义](https://blog.csdn.net/chotin/article/details/104289298)
 
+## 多级目录编号
+
+[参考](https://blog.51cto.com/u_2930144/3864611)
+
 # 配合PicGo
 
 [参考](https://www.jianshu.com/p/fd8ebfcf42e3)
@@ -161,6 +165,38 @@ PicGo 在 Mac 上是一个顶部栏应用，在 dock 栏是不会有图标的。
 43I3FIA7g7BcscyQO6WDeei5ZOOmWT
 
 ![image-20220526120742416](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220526120742416.png)
+
+
+
+ubuntu上的picgo的配置
+
+```json
+{
+  "picBed": {
+    "uploader": "aliyun",
+    "aliyun": {
+        "accessKeyId": "XXX",
+  "accessKeySecret": "XXX",
+  "bucket": "piggo-picture", 
+  "area": "oss-cn-hangzhou", 
+  "path": "image", 
+  "customUrl": "" , 
+
+	    "options": ""
+    }
+  },
+  "picgoPlugins": {
+    "picgo-plugin-super-prefix": true
+  },
+  "picgo-plugin-super-prefix": {
+    "prefixFormat": "YYYY/",
+    "fileFormat": "YYYYMMDDHHmmss"
+  }
+}
+
+```
+
+
 
 # tips
 
