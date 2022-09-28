@@ -208,24 +208,85 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 
 ### 内置水位线生成器
 
+水位线的生成策略可以分为两类：
+
+- 基于事件时间生成
+- 基于时间周期生成
+
 通过调用 WatermarkStrategy 的静态辅助方法来创建。它们都是周期性 生成水位线的，分别对应着处理有序流和乱序流的场景。
 
 1. 有序流
 
    直接调用WatermarkStrategy.forMonotonousTimestamps()方法就可以实现。简单来说，就是直接拿当前最 大的时间戳作为水位线就可以了。这里需要注意的是，时间戳和水位线的单位，必须都是毫秒。
 
+   ```scala
+   stream.assignTimestampsAndWatermarks( WatermarkStrategy.forMonotonousTimestamps[Event]()
+      //指定当前水位线生成策略的时间戳生成器                                  
+       .withTimestampAssigner(
+         new SerializableTimestampAssigner[Event] {
+           /**
+           t: 被赋予时间戳的事件
+           l: 当前事件的时间戳，或者一个负值(未赋予时间戳)
+           */
+           override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+         }
+       ))
+   ```
+
+   
+
 2. 乱序流
-   WatermarkStrategy. forBoundedOutOfOrderness() 设置延迟时间
+   WatermarkStrategy. forBoundedOutOfOrderness() 设置最大乱序时间
+   
+   ```scala
+       stream.assignTimestampsAndWatermarks( WatermarkStrategy.forBoundedOutOfOrderness[Event](Duration.ofSeconds(5))
+       .withTimestampAssigner(
+         new SerializableTimestampAssigner[Event] {
+           override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+         }
+       ))
+   ```
+   
+   
 
 ### 自定义水位线策略
 
-在 WatermarkStrategy 中，时间戳分配器 TimestampAssigner 都是大同小异的，指定字段提 取时间戳就可以了;而不同策略的关键就在于 WatermarkGenerator 的实现。整体说来，Flink 有两种不同的生成水位线的方式:一种是周期性的(Periodic)，另一种是断点式的(Punctuated)。
+在 WatermarkStrategy 中，时间戳分配器 TimestampAssigner 都是大同小异的，指定字段提 取时间戳就可以了;而不同策略的关键就在于 WatermarkGenerator 的实现。<font color=red>整体说来，Flink 有两种不同的生成水位线的方式:一种是周期性的(Periodic)，另一种是断点式的(Punctuated)。</font>
 
 (1)周期性水位线生成器(Periodic Generator)
- 周期性生成器一般是通过 onEvent()观察判断输入的事件，而在 onPeriodicEmit()里发出水
-
-位线。
+ 周期性生成器一般是通过 onEvent()观察判断输入的事件，而在 onPeriodicEmit()里发出水位线。
  (2)断点式水位线生成器(Punctuated Generator)
+
+```scala
+    stream.assignTimestampsAndWatermarks( new WatermarkStrategy[Event] {
+      //(一) 提取时间戳，当然提取时间戳也可以像上面内置水位线生成器那样放到外面程序里提取
+      override def createTimestampAssigner(context: TimestampAssignerSupplier.Context): TimestampAssigner[Event] = {
+        new SerializableTimestampAssigner[Event] {
+          override def extractTimestamp(t: Event, l: Long): Long = t.timestamp
+        }
+      }
+     //(二) 实现水位器生成器， 这里是周期性发送时间戳，如果想要断点式生成时间戳，则在onEvent里更新时间戳并发送即可，onPeriodicEmit无需实现
+      override def createWatermarkGenerator(context: WatermarkGeneratorSupplier.Context): WatermarkGenerator[Event] = {
+        new WatermarkGenerator[Event] {
+          // 定义一个延迟时间
+          val delay = 5000L
+          //1 定义属性保存最大时间戳
+          var maxTs = Long.MinValue + delay + 1  //+xx防止溢出  
+
+          override def onEvent(t: Event, l: Long, watermarkOutput: WatermarkOutput): Unit = {
+            //2 根据当前事件更新当前最大时间戳
+            maxTs = math.max(maxTs, t.timestamp)
+          }
+
+          override def onPeriodicEmit(watermarkOutput: WatermarkOutput): Unit = {
+            //3 框架会定期调用这个方法，该方法周期性发送时间戳
+            val watermark = new Watermark(maxTs - delay - 1)
+            watermarkOutput.emitWatermark(watermark)
+          }
+        }
+      }
+    } )
+```
 
 断点式生成器会不停地检测 onEvent()中的事件，当发现带有水位线信息的特殊事件时， 就立即发出水位线。一般来说，断点式生成器不会通过 onPeriodicEmit()发出水位线。
 
@@ -302,6 +363,8 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
    过按键分区 keyBy()操作后，数据流会按照 key 被分为多条逻辑流(logical streams)，这
 
    就是 KeyedStream。基于 KeyedStream 进行窗口操作时, 窗口计算会在多个并行子任务上同时 执行。相同 key 的数据会被发送到同一个并行子任务，而窗口操作会基于每个 key 进行单独的 处理。所以可以认为，每个 key 上都定义了一组窗口，各自独立地进行统计计算。
+   
+   ![image-20220913104205899](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913104205899.png)
 
 ```scala
  stream.keyBy(...)
@@ -326,30 +389,104 @@ stream.windowAll(...)
 
 ```scala
 stream.keyBy(<key selector>) 
-.window(<window assigner>) 
+.window/windowAll(<window assigner>) 
 .aggregate(<window function>)
 ```
 
+### 窗口分配器
+
+所谓的分配，就是分配窗口数据，和窗口的分配是一样的。
+
+![image-20220913104752924](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913104752924.png)
+
+1. 时间窗口
+
+   - 滚动时间窗口
+
+   ```scala
+   stream.keyBy(...)
+   .window(TumblingProcessingTimeWindows.of(Time.seconds(5)))
+   .aggregate(...)
+   ```
+
+   - 滑动时间窗口
+
+   ```scala
+   SlidingEventTimeWindows.of(Time.seconds(10),Time.seconds(5))
+   SlidingProcessingTimeWindows.of(Time.seconds(10),Time.seconds(5))
+   ```
+
+   - 事件时间会话窗口
+
+   ```scala
+   EventTimeSessionWindows.withGap(Time.seconds(10)))
+   ```
+
+2. 计数窗口
+
+- 滚动计数
+
+  ```scala
+   stream.keyBy(...)
+       .countWindow(10)
+  ```
+
+- 滑动计数
+
+  ```scala
+   stream.keyBy(...)
+       .countWindow(10,3)
+  ```
+
+3. 全局窗口
+
+```scala
+ stream.keyBy(...)
+     .window(GlobalWindows.create())
+```
+
+
+
 ### 窗口函数
 
-![image-20220827183938019](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220827183938019.png)
+![image-20220913111338447](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913111338447.png)
+
+
+
+<font color=red>窗口函数总结</font>： 
+
+- 增量聚合函数(计算分摊到窗口收集数据过程中，更加高效)
+
+1. reduce后跟ReduceFunction
+2. aggregate后跟AggregateFunction
+
+- 全窗口函数(提供了更多信息)
+
+1. apply后跟WindowFunction  能提供的上下文信息较少，逐渐弃用
+2. process后跟ProcessWindowFunction 最底层的通用窗口函数接口
+
+两者优点可以结合在一起使用， 方法就是在reduce/aggregate里多传一个全窗口函数。大体思路，就是使用增量聚合函数聚合中间结果，等到窗口需要触发计算时，调用全窗口函数；这样即加速了计算，又不用缓存全部数据。
+
+
+
+
 
 根据处理方式，可分成两类：
 
-1. 增量聚合函数
+1. **增量聚合函数**
 
    1. ReduceFunction
 
-      > 聚合状态、结果类型必须和输入一样
+      > **聚合状态、结果类型必须和输入一样**
 
       ```scala
       WindowedStream
       .reduce( new ReduceFunction)
       ```
 
-   2. AggretateFunction
+   2. **AggretateFunction**
 
-      > 输出类型可以和输入不一样
+      > **输出类型可以和输入不一样**
 
       AggregateFunction 接口中有四个方法:
        ⚫ createAccumulator():创建一个累加器，这就是为聚合创建了一个初始状态，每个聚合任务只会调用一次。
@@ -363,7 +500,7 @@ stream.keyBy(<key selector>)
 
    3. 另外，Flink 也为窗口的聚合提供了一系列预定义的简单聚合方法，可以直接基于 WindowedStream 调用。主要包括 sum()/max()/maxBy()/min()/minBy()，与 KeyedStream 的简单 聚合非常相似。它们的底层，其实都是通过 AggregateFunction 来实现的。
 
-2. 全窗口函数
+2. **全窗口函数**
 
    1. WindowFunction
 
@@ -376,24 +513,26 @@ stream.keyBy(<key selector>)
 
       可拿到窗口所有元素和窗口本身的信息， 但缺乏上下文信息以及更高级的功能，逐渐被ProcessWindowFunction替代。
 
-   2. ProcessWindowFunction
+   2. **ProcessWindowFunction**
 
 Window API 中最底层的通用窗口函数接口，最强大，它不仅可以获取窗口信息还可以获取到一个 “上下文对象”(Context)。这个上下文对象非常强大，不仅能够获取窗口信息，还可以访问当 前的时间和状态信息。
 
 基于 WindowedStream 调用 process()方法，传入一个 ProcessWindowFunction 的实现类
 
-3. 增量聚合和全窗口聚合的结合
+3. **增量聚合和全窗口聚合的结合**
 
-- 增量聚合函数处理计算会更高效。增量聚合相当于把计算量“均摊”到了窗口收集数据的 过程中，自然就会比全窗口聚合更加高效、输出更加实时。
-- 而全窗口函数的优势在于提供了更多的信息，可以认为是更加“通用”的窗口操作，窗口 计算更加灵活，功能更加强大。
+- **增量聚合函数处理计算会更高效。增量聚合相当于把计算量“均摊”到了窗口收集数据的 过程中，自然就会比全窗口聚合更加高效、输出更加实时。**
+- **而全窗口函数的优势在于提供了更多的信息，可以认为是更加“通用”的窗口操作，窗口 计算更加灵活，功能更加强大**。
 
 但reduce/aggretate方法可以组合增量窗口和全量窗口一起使用：
 处理机制是:基于第一个参数(增量聚合函数)来处理窗口数据，每来一个数 据就做一次聚合;等到窗口需要触发计算时，则调用第二个参数(全窗口函数)的处理逻辑输 出结果。需要注意的是，这里的全窗口函数就不再缓存所有数据了，而是直接将增量聚合函数 的结果拿来当作了 Iterable 类型的输入。一般情况下，这时的可迭代集合中就只有一个元素了
 
 ### 其他API
 
-1. 触发器
-   WindowedStream 调用 trigger()方法，每个窗口分配器(WindowAssigner)都会对应一个默认 的触发器;对于 Flink 内置的窗口类型，它们的触发器都已经做了实现
+触发器主要是用来控制窗口什么时候触发计算。所谓的“触发计算”，本质上就是执行窗 口函数，所以可以认为是计算得到结果并输出的过程。
+
+1. **触发器**
+   WindowedStream 调用 trigger()方法，每个窗口分配器(WindowAssigner)都会对应一个默认 的触发器;对于 Flink 内置的窗口类型，它们的触发器都已经做了实现。例如，所有事件时间 窗口，默认的触发器都是 EventTimeTrigger;类似还有 ProcessingTimeTrigger 和 CountTrigger。 所以一般情况下是不需要自定义触发器的，不过我们依然有必要了解它的原理。
 
    Trigger 是一个抽象类，自定义时必须实现下面四个抽象方法:
     ⚫ onElement():窗口中每到来一个元素，都会调用这个方法。
@@ -401,18 +540,19 @@ Window API 中最底层的通用窗口函数接口，最强大，它不仅可以
     ⚫ onProcessingTime ():当注册的处理时间定时器触发时，将调用这个方法。
 
    ⚫ clear():当窗口关闭销毁时，调用这个方法。一般用来清除自定义的状态。
+   Trigger 除了可以控制触发计算，还可以定义窗口什么时候关闭(销毁)
 
-2. 移除器(Evictor)
+2. **移除器**(Evictor)
 
    Evictor 接口定义了两个方法:
     ⚫ evictBefore():定义执行窗口函数之前的移除数据操作
     ⚫ evictAfter():定义执行窗口函数之后的以处数据操作 默认情况下，预实现的移除器都是在执行窗口函数(window fucntions)之前移除数据的。
 
-3. 允许延迟(Allowed Lateness)
+3. **允许延迟**(Allowed Lateness)
 
-我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口
+我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口。基于 WindowedStream 调用 allowedLateness()方法，传入一个 Time 类型的延迟时间，就可 以表示允许这段时间内的延迟数据。
 
-4. 迟到数据放入侧输出流
+4. **迟到数据放入侧输出流**
 
 基于 WindowedStream 调用 sideOutputLateData() 方法，就可以实现这个功能。方法需要 传入一个“输出标签”(OutputTag)，用来标记分支的迟到数据流。因为保存的就是流中的原 始数据，所以 OutputTag 的类型与流中数据类型相同
 
@@ -424,25 +564,51 @@ val winAggStream = stream.keyBy(...)
 val lateStream = winAggStream.getSideOutput(outputTag)
 ```
 
-### 迟到数据的处理
+## 处理函数的分类
 
-迟到数据： 水位线之后到的数据，它的时间戳是在水位线之前的。只有在事件时间语义下，讨论迟到数据才有意义。
+Flink 中的处理函数其实是一个大家族,ProcessFunction 只是其中一员。
+Flink 提供了 8 个不同的处理函数:
+(1) ProcessFunction
+最基本的处理函数,基于 DataStream 直接调用 process()时作为参数传入。
+(2) KeyedProcessFunction
+对流按键分区后的处理函数,基于 KeyedStream 调用 process()时作为参数传入。要想使用定时器,必须基于 KeyedStream。
+(3) ProcessWindowFunction
+开窗之后的处理函数,也是全窗口函数的代表。基于 WindowedStream 调用 process()时作为参数传入。
+(4) ProcessAllWindowFunction
+同样是开窗之后的处理函数,基于 AllWindowedStream 调用 process()时作为参数传入。
+(5) CoProcessFunction
+合并(connect)两条流之后的处理函数,基于 ConnectedStreams 调用 process()时作为参数传入。
+(6) ProcessJoinFunction
+间隔连接(interval join)两条流之后的处理函数,基于 IntervalJoined 调用 process()时作为参数传入。
+(7) BroadcastProcessFunction
+广播连接流处理函数,基于 BroadcastConnectedStream 调用 process()时作为参数传入。这里的“广播连接流”BroadcastConnectedStream,是一个未 keyBy 的普通 DataStream 与一个广播流(BroadcastStream)做连接(conncet)之后的产物。
+(8) KeyedBroadcastProcessFunction
+按键分区的广播连接流处理函数,同样是基于 BroadcastConnectedStream 调用 process()时作为参数传入。与 BroadcastProcessFunction 不同的是,这时的广播连接流,是一个 KeyedStream与广播流(BroadcastStream)做连接之后的产物。
+接下来,我们就对 KeyedProcessFunction 和 ProcessWindowFunction 的具体用法展开详细说明。
 
-1. 水位线延迟， 水位线是所有事件时间定时器触发的判断标准，延迟时间不宜设置的过大，通常给水位线设置一个“能够处理大多数乱序数据的小延迟”。设置后，所有定时器都会按照延迟后的水位线来触发。
-2. 允许窗口处理迟到数据，窗口也可以设置延迟时间，允许处理迟到的数据。水位线到达窗口结束时间时，先快速输出一个近似结果，然后保持窗口继续等待延迟数据，每来一条数据，窗口就会再次计算，并将更新后的结果i输出，这样就可以逐步修正结果，最终得到准确的统计值了。
-3. 迟到数据放入侧输出流，兜底方法，只能保证数据不丢失。
+
+## 迟到数据的处理
+
+1. 设置水位线延迟时间
+   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。
+
+2. 允许窗口处理迟到数据
+
+   水位线到达窗口结束时间时，快速输出一个近似结果，然后保持窗口继续等待延迟数据，每来一条数据窗口就重新计算更新结果。
+
+3. 迟到数据放入侧输出流
 
 # 处理函数
 
-![image-20220829092334817](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220829092334817.png)
+在更底层，我们可以不定义任何具体的算子(比如 map()，filter()，或者 window())，而只 是提炼出一个统一的“处理”(process)操作——它是所有转换算子的一个概括性的表达，可 以自定义处理逻辑，所以这一层接口就被叫作“处理函数”(process function)。
 
-Flink 本身提供了多层 API,DataStream
-API 只是中间的一环,如图 7-1 所示:
-在更底层,我们可以不定义任何具体的算子(比如 map(),filter(),或者 window()),而只是提炼出一个统一的“处理”(process)操作——它是所有转换算子的一个概括性的表达,可以自定义处理逻辑,所以这一层接口就被叫作“处理函数”(process function)。
+处理函数主要是定义数据流的转换操作，所以也可以把它归到转换算子中。我们知道在 Flink 中几乎所有转换算子都提供了对应的函数类接口，处理函数也不例外;它所对应的函数 类，就叫作 ProcessFunction。
 
-Flink 中几乎所有转换算子都提供了对应的函数类接口,处理函数也不例外;它所对应的函数类,就叫作 ProcessFunction
+![image-20220913142358829](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913142358829.png)
 
-## 处理函数的功能
+## 基本处理函数
+
+### 处理函数功能
 
 1. MapFunction 只能获取当前的数据
 2. AggregateFunction可以获取当前的状态（以累加器形式出现）
@@ -481,25 +647,490 @@ public abstract <X> void output(OutputTag<X> outputTag, X value);
 该方法用于定义定时触发的操作,这是一个非常强大、也非常有趣的功能。这个方法只有在注册好的定时器触发的时候才会调用,而定时器是通过“定时服务” TimerService 来注册的。打个比方,注册定时器(timer)就是设了一个闹钟,到了设定时间就会响;而 onTimer()中定义的,就是闹钟响的时候要做的事。所以它本质上是一个基于时间的“回调”(callback)方法,通过时间的进展来触发;在事件时间语义下就是由水位线(watermark)来触发了。与 processElement()类似,定时方法 onTimer()也有三个参数:时间戳(timestamp),上下文(ctx),以及收集器(out)。这里的 timestamp 是指设定好的触发时间,事件时间语义下当然就是水位线了。另外这里同样有上下文和收集器,所以也可以调用定时服务(TimerService),以及任意输出处理之后的数据。既然有.onTimer()方法做定时触发,我们用 processFunction 也可以自定义数据按照时间分组、定时触发计算输出结果;这其实就实现了窗口(window)的功能。这里需要注意的是,上面的 onTimer()方法只是定时器触发时的操作,而定时器(timer)真正的设置需要用到上下文 ctx 中的定时服务。在 Flink 中,只有“按键分区流”KeyedStream才支持设置定时器的操作,
 所以之前的代码中我们并没有使用定时器。所以基于不同类型的流,可以使用不同的处理函数,它们之间还是有一些微小的区别的。接下来我们就介绍一下处理函数的分类
 
-## 处理函数的分类
+### 处理函数分类
 
-Flink 中的处理函数其实是一个大家族,ProcessFunction 只是其中一员。
-Flink 提供了 8 个不同的处理函数:
-(1) ProcessFunction
-最基本的处理函数,基于 DataStream 直接调用 process()时作为参数传入。
-(2) KeyedProcessFunction
-对流按键分区后的处理函数,基于 KeyedStream 调用 process()时作为参数传入。要想使用定时器,必须基于 KeyedStream。
-(3) ProcessWindowFunction
-开窗之后的处理函数,也是全窗口函数的代表。基于 WindowedStream 调用 process()时作为参数传入。
-(4) ProcessAllWindowFunction
-同样是开窗之后的处理函数,基于 AllWindowedStream 调用 process()时作为参数传入。
-(5) CoProcessFunction
-合并(connect)两条流之后的处理函数,基于 ConnectedStreams 调用 process()时作为参数传入。
-(6) ProcessJoinFunction
-间隔连接(interval join)两条流之后的处理函数,基于 IntervalJoined 调用 process()时作为参数传入。
-(7) BroadcastProcessFunction
-广播连接流处理函数,基于 BroadcastConnectedStream 调用 process()时作为参数传入。这里的“广播连接流”BroadcastConnectedStream,是一个未 keyBy 的普通 DataStream 与一个广播流(BroadcastStream)做连接(conncet)之后的产物。
-(8) KeyedBroadcastProcessFunction
-按键分区的广播连接流处理函数,同样是基于 BroadcastConnectedStream 调用 process()时作为参数传入。与 BroadcastProcessFunction 不同的是,这时的广播连接流,是一个 KeyedStream与广播流(BroadcastStream)做连接之后的产物。
-接下来,我们就对 KeyedProcessFunction 和 ProcessWindowFunction 的具体用法展开详细说明。
+(1)**ProcessFunction**
+
+最基本的处理函数，基于 DataStream 直接调用 process()时作为参数传入。
+
+ (2)**KeyedProcessFunction**
+
+对流按键分区后的处理函数，基于 KeyedStream 调用 process()时作为参数传入。要想使用 定时器，必须基于 KeyedStream。
+
+(3)**ProcessWindowFunction**
+
+开窗之后的处理函数，也是全窗口函数的代表。基于 WindowedStream 调用 process()时作 为参数传入。
+
+(4)ProcessAllWindowFunction
+ 同样是开窗之后的处理函数，基于 AllWindowedStream 调用 process()时作为参数传入。
+
+(5)CoProcessFunction
+
+合并(connect)两条流之后的处理函数，基于 ConnectedStreams 调用 process()时作为参 数传入。
+
+(6)ProcessJoinFunction
+
+间隔连接(interval join)两条流之后的处理函数，基于 IntervalJoined 调用 process()时作为 参数传入。
+
+(7)BroadcastProcessFunction
+
+广播连接流处理函数，基于 BroadcastConnectedStream 调用 process()时作为参数传入。这 里的“广播连接流”BroadcastConnectedStream，是一个未 keyBy 的普通 DataStream 与一个广 播流(BroadcastStream)做连接(conncet)之后的产物。
+
+(8)KeyedBroadcastProcessFunction
+
+按键分区的广播连接流处理函数，同样是基于 BroadcastConnectedStream 调用 process()时 作为参数传入。与 BroadcastProcessFunction 不同的是，这时的广播连接流，是一个 KeyedStream 与广播流(BroadcastStream)做连接之后的产物。
+
+## KeyedProcessFunction
+
+```scala
+    stream.keyBy(data => true)
+      .process( new KeyedProcessFunction[Boolean, Event, String] {
+        override def processElement(value: Event, ctx: KeyedProcessFunction[Boolean, Event, String]#Context, out: Collector[String]): Unit = {
+          val currentTime = ctx.timerService().currentProcessingTime()
+          out.collect("数据到达，当前时间是：" + currentTime)
+          // 注册一个5秒之后的定时器
+          ctx.timerService().registerProcessingTimeTimer(currentTime + 5 * 1000)
+        }
+
+        // 定义定时器触发时的执行逻辑
+        override def onTimer(timestamp: Long, ctx: KeyedProcessFunction[Boolean, Event, String]#OnTimerContext, out: Collector[String]): Unit = {
+          out.collect("定时器触发，触发时间为：" + timestamp)
+        }
+      } )
+      .print()
+```
+
+
+
+
+
+
+
+# 多流转换
+
+## union/connect
+
+这里其实，就是把两个流的数据放到一起
+
+但，也可以通过keyBy()指定键进行分组后合并， 实现了类似于 SQL 中的 join 操作
+
+1. 分流：一般通过侧输出流
+
+2. 合流：合流算子比较丰富，union()/connect()/join()
+
+   1. union的多个流必须类型相同(一次可以合并多个流)
+
+   2. connect允许数据类型不同(一次只能合并两个流)
+
+      > 在代码实现上，需要分为两步:首先基于一条 DataStream 调用 connect()方法，传入另外 一条 DataStream 作为参数，将两条流连接起来，得到一个 ConnectedStreams;然后再调用同处 理方法得到DataStream。这里可以的调用的同处理方法有map()/flatMap()，以及process()方法
+
+```scala
+val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    env.setParallelism(1)
+    val stream1: DataStream[Int] = env.fromElements(1,2,3)
+    val stream2: DataStream[Long] = env.fromElements(1L,2L,3L,4L)
+    val connectedStream: ConnectedStreams[Int, Long] = stream1.connect(stream2)
+    val result=connectedStream
+      .map(new CoMapFunction[Int,Long,String] {
+        //处理第一条流
+        override def map1(in1: Int): String = {
+          "Int:"+in1
+        }
+                                                                                                                                                                                          //处理第二条流
+        override def map2(in2: Long): String = {
+          "Long:"+in2
+        }
+      })
+
+    result.print()
+    env.execute()
+```
+
+对于连接流 ConnectedStreams 的处理操作，需要分别定义对两条流的处理转换，因此接口 中就会有两个相同的方法需要实现，用数字“1”“2”区分，在两条流中的数据到来时分别调 用。我们把这种接口叫作“**协同处理函数**”(co-process function)。与 CoMapFunction 类似，如 果是调用 flatMap()就需要传入一个 CoFlatMapFunction，需要实现 flatMap1()、flatMap2()两个 方法;而调用 process()时，传入的则是一个 CoProcessFunction。
+
+CoProcessFunction 也是“处理函数”家族中的一员，同样可以通过上下文ctx来 访问 timestamp、水位线，并通过 TimerService 注册定时器;另外也提供了 onTimer()方法，用 于定义定时触发的处理操作。
+
+## join(基于时间的合流)
+
+对于两条流的合并，很多情况我们并不是简单地将所有数据放在一起，而是希望根据某个 字段的值将它们联结起来，“配对”去做处理。类似于SQL中的join
+
+1. connect: 最复杂，通过keyBy()分组后合并,自定义状态、触发器
+2. window: 中间
+3. join算子：最简单
+
+### 窗口join
+
+1. 接口API
+
+```scala
+stream1
+.join(stream2)//的到JoinedStreams 
+.where(<KeySelector>) //左key
+.equalTo(<KeySelector>) //右key
+.window(<WindowAssigner>) //出现在同一个窗口
+.apply(<JoinFunction>)//同时处理
+```
+
+
+
+join逻辑
+
+```scala
+public interface JoinFunction<IN1, IN2, OUT> extends Function, Serializable {
+   OUT join(IN1 first, IN2 second) throws Exception;
+}
+```
+
+
+
+2. 处理流程
+
+JoinFunction 中的两个参数，分别代表了两条流中的匹配的数据。
+
+窗口中每有一对数据成功联结匹配，JoinFunction 的 join()方法就会被调用一次，并输出一 个结果。
+
+除了 JoinFunction，在 apply()方法中还可以传入 FlatJoinFunction，用法非常类似，只是内 部需要实现的 join()方法没有返回值。
+
+> **注意，join的结果是笛卡尔积**
+
+### 间隔join
+
+隔联结的思 路就是针对一条流的每个数据，开辟出其时间戳前后的一段时间间隔，看这期间是否有来自另 一条流的数据匹配。
+
+1. 原理：
+   对第一条流中的每一条数据a ：开辟一段时间间隔:[a.timestamp + lowerBound, a.timestamp + upperBound], 如果另一条流的数据在这个范围内，则成功匹配
+
+![image-20220906075209055](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220906075209055.png)
+
+与窗口联结不同的是，interval join 做匹配的**时间段是基于流中数据的**，所以并不确定;**而且流 B 中的数据可以不只在一个区间内被匹配。**
+
+2. 接口API
+
+
+```scala
+stream1
+.keyBy(_._1) //基于keyed流做内连接
+.intervalJoin(stream2.keyBy(_._1))
+.between(Time.milliseconds(-2),Time.milliseconds(1))
+.process(new ProcessJoinFunction[(String, Long), (String, Long), String] {
+    override def processElement(left: (String, Long), right: (String, Long), ctx: ProcessJoinFunction[(String, Long), (String, Long), String]#Context, out: Collector[String]) = {
+           out.collect(left + "," + right)
+     }
+});
+```
+
+# 状态编程
+
+## 状态分类
+
+1. **托管状态**(Managed State)和**原始状态**(Raw State)
+
+推荐托管状态：Flink运行时维护
+
+原始状态时自定义的，需要自己实现状态的序列化和故障恢复
+
+
+
+状态在任务间是天然隔离(不同slot计算资源是物理隔离的)的，对于有状态的操作，状态应该在key之间隔离。
+
+所以，按照状态的隔离可以这样分(只考虑托管状态)：
+
+2. **算子状态**(Operator State)和**按键分区状态**(Keyed State)
+
+- Flink 能管理的状态在并行任务间是无法共享的，每个状态只能针对当前子任务的实例有效
+
+> 在 Flink 中，一个算子任务会按照并行度分为多个并行子任务执行，而不同的子
+>
+> 任务会占据不同的任务槽(task slots)。由于不同的 slot 在计算资源上是物理隔离的
+
+算子状态可以用在所有算子上，使用的时候其实就跟一个本地变量没什么区别——因为本 地变量的作用域也是当前任务实例。在使用时，我们还需进一步实现 CheckpointedFunction 接 口。
+
+- **keyed流之后的算子应该只能访问当前key**
+
+  > 一个分区上可以有多个key
+
+  按键分区状态应用非常广泛。之前讲到的聚合算子必须在 keyBy()之后才能使用，就是因 为聚合的结果是以Keyed State的形式保存的。另外，也可以通过富函数类(Rich Function) 来自定义 Keyed State，所以只要提供了富函数类接口的算子，也都可以使用 Keyed State。
+
+  所以即使是 map()、filter()这样无状态的基本转换算子，我们也可以通过富函数类给它们 “追加”Keyed State，或者实现CheckpointedFunction接口来定义Operator State;从这个角度
+  
+  讲，Flink 中所有的算子都可以是有状态的，不愧是“有状态的流处理”。在富函数中，我们可以调用.getRuntimeContext() 获取当前的运行时上下文(RuntimeContext)，进而获取到访问状态的句柄;这种富函数中自 定义的状态也是 Keyed State。
+
+### 按键分区状态
+
+### 状态结构类型
+
+1. 值状态ValueState
+
+```scala
+public interface ValueState<T> extends State {
+   T value() throws IOException;
+   void update(T value) throws IOException;
+}
+```
+
+2. 列表状态ListState
+
+用方式 与一般的 List 非常相似。
+
+3. 映射状态(MapState)
+4. 归约状态(ReducingState)
+5. 聚合状态(AggregatingState)
+
+在具体使用时，为了让运行时上下文清楚到底是哪个状态，我们还需要创建一个“状态描
+
+述器”(StateDescriptor)来提供状态的基本信息
+
+### 状态使用
+
+```scala
+class MyFlatMapFunction extends RichFlatMapFunction[Long, String] {
+// 声明状态,如果不使用懒加载的 方式初始化状态变量，则应该在 open()方法中也就是生命周期的开始初始化状态变量
+lazy val state = getRuntimeContext.getState(new
+ValueStateDescriptor[Long]("my state", classOf[Long]))
+override def flatMap(input: Long, out: Collector[String] ): Unit = { // 访问状态
+       var currentState = state.value()
+currentState += 1 // 状态数值加 1 // 更新状态 state.update(currentState)
+if (currentState >= 100) {
+          out.collect("state: " + currentState)
+state.clear() // 清空状态 }
+} }
+```
+
+### 状态生存时间(TTL)
+
+需要创建一个 StateTtlConfig 配置对象，然后调用状态描述器的
+
+enableTimeToLive()方法启动 TTL 功能
+
+```scala
+val ttlConfig = StateTtlConfig
+   .newBuilder(Time.seconds(10))//状态生存时间
+   .setUpdateType(StateTtlConfig.UpdateType.OnCreateAndWrite)//什么时候更新状态失效时间
+//状态可见性，状态的清理并非实时的，过期了仍然可能没被清理而被读取到；然而我们可控制是否读取这个过期值
+   .setStateVisibility(StateTtlConfig.StateVisibility.NeverReturnExpired)
+   .build()
+val stateDescriptor = new ValueStateDescriptor[String](
+"my-state",
+     classOf[String]
+   )
+stateDescriptor.enableTimeToLive(ttlConfig)
+```
+
+## 算子状态
+
+从某种意义上说，算子状态是更底层的状态类型，因为它只针对当前算子并行任务有效，不需 要考虑不同 key 的隔离。算子状态功能不如按键分区状态丰富，应用场景较少(没有key定义的场景)，它的调用方法 也会有一些区别。
+
+算子状态(Operator State)就是一个算子并行实例上定义的状态，作用范围被限定为当前 算子任务。算子状态跟数据的 key 无关，所以不同 key 的数据只要被分发到同一个并行子任务， 就会访问到同一个 Operator State。
+
+当算子的并行度发生变化时，算子状态也支持在并行的算子任务实例之间做重组分配。根 据状态的类型不同，重组分配的方案也会不同。
+
+### 状态类型
+
+- ListState
+
+> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“**大列表**”，然后再均匀地分配给所有并行任务
+
+- UnionListState 
+
+> 在并行度调整时，常规列表状态是轮询分 配状态项，而联合列表状态的算子则会直接广播状态的完整列表。这样，并行度缩放之后的并 行子任务就获取到了联合后完整的“大列表”
+
+-  BroadcastState。
+
+> 算子并行子任务都保持同一份“全局”状态，用来做统一的配置和规则设定。 这时所有分区的所有数据都会访问到同一个状态，状态就像被“广播”到所有分区一样，这种 特殊的算子状态，就叫作广播状态(BroadcastState)
+
+### 代码实现
+
+Flink提供了管理算子状态的接口，我们根据业务需要自行设计状态的快照保存和恢复逻辑
+
+- CheckpointedFunction接口
+
+  ```scala
+  public interface CheckpointedFunction {
+  // 保存状态快照到检查点时，调用这个方法； 注意这个快照Context可提供检查点相关信息，但无法获取状态
+     void snapshotState(FunctionSnapshotContext context) throws Exception
+  // 初始化状态时调用这个方法，也会在恢复状态时调用；这个函数初始化上下文是真的Context，可以获取到状态内容
+  void initializeState(FunctionInitializationContext context) throws Exception;
+  }
+  ```
+
+## 状态持久化和状态后端
+
+Flink 对状态进行持久化的方式，就是将当前所 有分布式状态进行“快照”保存，写入一个“检查点”(checkpoint)或者保存点(savepoint) 保存到外部存储系统中
+
+- 检查点： 
+
+  > 至少一次：检查点之后又处理了一部分数据，如果出现故障，就需要源能重放这部分数据，否则就会丢失。例如，可以保存kafka的偏移量来重放数据
+
+- 状态后端：
+
+![image-20220913173114327](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913173114327.png)
+
+状态后端主要负责两件事:一是本地的状态管理，二是将检查 点(checkpoint)写入远程的持久化存储。
+
+状态后端分类：
+
+- ​	哈希表状态后端(HashMapStateBackend)
+  - 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
+
+
+> RocksDB 默认存储在 TaskManager 的本地数据目录里。EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻 塞数据的处理;而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存 效率。
+>
+> 由于它会把状态数据落盘，而且支持增量化的检查点，所以在状态非常大、窗口非常长、 键/值状态很大的应用场景中是一个好选择，同样对所有高可用性设置有效。
+>
+> 
+
+IDE中使用RocksDB状态后端，需要加依赖
+
+```xml
+<dependency>
+   <groupId>org.apache.flink</groupId>
+   <artifactId>flink-statebackend-rocksdb_2.11</artifactId>
+   <version>1.13.0</version>
+</dependency>
+```
+
+# 容错机制
+
+## 检查点
+
+检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言 的:故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正 确性。所以，有时又会把 checkpoint 叫作“一致性检查点”。
+
+### 检查点的保存
+
+- 周期性触发
+- 保存的时间点： 一个数据**被所有任务处理完时保存**，或者就完全不保存该数据的状态
+
+  > 如果出现故障， 故障时正在处理的所有数据都需要重新处理，所以我们只需要让源任务请求重放数据即可。
+
+  举例来说：下面这个wordcount例子里，所有算子处理完前3条数据时，可以进行检查点保存
+
+```scala
+val wordCountStream = env.addSource(...)
+       .map((_,1))
+       .keyBy(_._1)
+       .sum(1)
+```
+
+
+
+![image-20220907084434583](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220907084434583.png)
+
+### 从检查点恢复
+
+发生故障时，找到最近一次成功保存的检查点来恢复状态：
+
+重启任务，读取检查点，把状态分别填充到对应的状态中。Source任务重放故障时未处理完成的数据
+
+### 检查点配置
+
+```scala
+val env =
+StreamExecutionEnvironment.getExecutionEnvironment
+// 启用检查点，间隔时间 1 秒
+env.enableCheckpointing(1000)
+CheckpointConfig checkpointConfig = env.getCheckpointConfig
+// 设置精确一次模式 
+checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE) 
+// 最小间隔时间 500 毫秒 
+checkpointConfig.setMinPauseBetweenCheckpoints(500)
+// 超时时间 1 分钟
+checkpointConfig.setCheckpointTimeout(60000) 
+// 同时只能有一个检查点 
+checkpointConfig.setMaxConcurrentCheckpoints(1) 
+// 开启检查点的外部持久化保存，作业取消后依然保留 
+checkpointConfig.enableExternalizedCheckpoints(
+ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+// 启用不对齐的检查点保存方式 
+checkpointConfig.enableUnalignedCheckpoints
+// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径 
+checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
+```
+
+
+
+### 检查点算法
+
+#### 检查点分界线
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220914102032904.png" alt="image-20220914102032904" style="zoom:50%;" />
+
+我们现在的目标是，在不暂停流处理的前提下，让每个任务“认出”触发检查点保存的那 个数据。
+
+可以借鉴水位线(watermark)的设计，在数据流中插入一个特殊的数据结构，专门 用来表示触发检查点保存的时间点。收到保存检查点的指令后，Source 任务可以在当前数据 流中插入这个结构;之后的所有任务只要遇到它就开始对状态做持久化快照保存。这种特殊的数据形式，把一条流上的数据按照不同的检查点分隔开，所以就叫作检查点的 “分界线”(Checkpoint Barrier)。
+
+与水位线很类似，检查点分界线也是一条特殊的数据，由 Source 算子注入到常规的数据 流中，它的位置是限定好的，不能超过其他数据，也不能被后面的数据超过。检查点分界线中 带有一个检查点 ID，这是当前要保存的检查点的唯一标识。
+
+在 JobManager 中有一个“检查点协调器”(checkpoint coordinator)，专门用来协调处理检 查点的相关工作。检查点协调器会定期向 TaskManager 发出指令，要求保存检查点(带着检查 点 ID);**TaskManager 会让所有的 Source 任务把自己的偏移量(算子状态)保存起来，并将带 有检查点 ID 的分界线(barrier)插入到当前的数据流中**，然后像正常的数据一样像下游传递; 之后 Source 任务就可以继续读入新的数据了。
+
+每个算子任务只要处理到这个 barrier，就把当前的状态进行快照;在收到 barrier 之前， 还是正常地处理之前的数据，完全不受影响。
+
+#### 分布式快照算法
+
+​        处理多个分区的分界线传递，一个分区向多个分区传递分界线比较简单，直接广播传递即可；复杂的是一个分区上游有多个分区的情况，所谓的分界线，就是分界线到来之前的数据都已经处理(需要保存到当前检查点)，分界线到来之后的数据都不处理(不需要保存检查点)；所以它需要等待所有上游分区的分界线都到齐，即所谓的分界线对齐。
+
+​        对于分界线先到的分区，在等待其他分区分界线的过程中可能会接受到新的数据，这些数据属于分界线后的，不能处理，只能缓存起来，当出现背压时，会堆积大量的缓冲数据，检查点可能需要很久才能保存完毕。为了应对这种场景，Flink 1.11之后提供了不对齐的检查点保存方式，可以将未处理的缓 冲数据(in-flight data)也保存进检查点。这样，当我们遇到一个分区barrier时就不需等待对 齐，而是可以直接启动状态的保存了。
+
+​        对于分界线后到的分区，分界线到来之前的数据正常处理。
+
+​		所有算子遇到分界线就做检查点，保存完状态都需要向JobManager确认
+
+​        
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220914110452165.png" alt="image-20220914110452165" style="zoom:50%;" />
+
+#### 非对齐检查点
+
+顾名思义，非对齐检查点取消了屏障对齐操作
+
+a) 当算子的所有输入流中的第一个屏障到达算子的输入缓冲区时，立即将这个屏障发往下游（输出缓冲区）。
+
+b) 由于第一个屏障没有被阻塞，它的步调会比较快，超过一部分缓冲区中的数据。算子会标记两部分数据：一是屏障首先到达的那条流中被超过的数据，二是其他流中位于当前检查点屏障之前的所有数据（当然也包括进入了输入缓冲区的数据），如下图中标黄的部分所示。
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/format,png.png)
+
+c) 将上述两部分数据连同算子的状态一起做异步快照。
+
+既然不同检查点的数据都混在一起了，非对齐检查点还能保证exactly once语义吗？答案是肯定的。当任务从非对齐检查点恢复时，除了对齐检查点也会涉及到的Source端重放和算子的计算状态恢复之外，未对齐的流数据也会被恢复到各个链路，三者合并起来就是能够保证exactly once的完整现场了。
+
+## 保存点(savepoint)
+
+从名称就可以看出，这也是一个存盘的备份，它的原理和算法与检查点完全相同，只是多 了一些额外的元数据。事实上，保存点就是通过检查点的机制来创建流式作业状态的一致性镜 像(consistent image)的。
+
+检查点主要用来做故障恢复，是容错机制的核心;保存点则更加灵活，可以用 来做有计划的手动备份和恢复。
+
+保存点能够在程序更改的时候依然兼容，前提是状态的拓扑结构和数据类 型不变。我们知道保存点中状态都是以算子 ID-状态名称这样的 key-value 组织起来的，算子 ID 可以在代码中直接调用 SingleOutputStreamOperator 的.uid()方法来进行指定.
+
+对于没有设置 ID 的算子，Flink 默认会自动进行设置，所以在重新启动应用后可能会导致 ID 不同而无法兼容以前的状态。所以为了方便后续的维护，强烈建议在程序中为每一个算子 手动指定 ID。
+
+用法:
+
+```shell
+停掉作业，并创建一个保存点
+bin/flink stop --savepointPath [:targetDirectory] :jobId
+从保存点重启应用
+bin/flink run -s :savepointPath [:runArgs]
+```
+
+
+
+## 端到端状态一致性
+
+完整的流处理应用，应该包括了数据源、流处理器和外部存储系统三个部分。这个完 整应用的一致性，就叫作“端到端(end-to-end)的状态一致性”，它取决于三个组件中最弱的 那一环。一般来说，能否达到 at-least-once 一致性级别，主要看数据源能够重放数据;而能否 达到 exactly-once 级别，流处理器内部、数据源、外部存储都要有相应的保证机制
+
+Flink通过检查点(checkpoint)来保证exactly-onece语义。所以，端到端一致性的关键点，就在于输入的数据源端和输出的外部存储端。
+
+**输入端**： 数据源必须能够重放，例如Kafka。
+
+**输出端**： 一条数据被所有任务处理完并写入了外部系统，但是检查点还没来得及保存最新状态任务就失败了，此时最新的那个检查点认为该数据还没有处理，恢复时会重放那条数据，导致该数据重复写入。
+能够保证 exactly-once 一致性的写入方式有两种:
+
+- 幂等写入：多次写入，结果不会变。
+
+> 需要注意，对于幂等写入，遇到故障进行恢复时，有可能会出现短暂的不一致。因为保存 点完成之后到发生故障之间的数据，其实已经写入了一遍，回滚的时候并不能消除它们。如果 有一个外部应用读取写入的数据，可能会看到奇怪的现象:短时间内，结果会突然“跳回”到 之前的某个值，然后“重播”一段之前的数据。不过当数据的重放逐渐超过发生故障的点的时 候，最终的结果还是一致的。
+
+- 事务写入:  利用事务写入的数据可以收回
+
+事务写入的基本思想就是: 用一个事务来进行数据向外部系统的写入，这个事务是与检查点绑定在一起的。当 Sink 任务 遇到 barrier 时，开始保存状态的同时就开启一个事务，接下来所有数据的写入都在这个事务 中;待到当前检查点保存完毕时，将事务提交，所有写入的数据就真正可用了。如果中间过程 出现故障，状态会回退到上一个检查点，而当前事务没有正常关闭(因为当前检查点没有保存 完)，所以也会回滚，写入到外部的数据就被撤销了。
+
+事务写入又有两种实现方式:预写日志(WAL)和两阶段提交(2PC)
 
