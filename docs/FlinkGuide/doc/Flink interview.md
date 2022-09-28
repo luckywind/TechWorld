@@ -2,6 +2,10 @@
 
 [参考1](https://www.modb.pro/db/108234)
 
+[参考](https://chowdera.com/2022/02/202202120531451058.html)
+
+[参考](https://blog.csdn.net/a805814077/article/details/108095451)
+
 ### why flink
 
 主要考虑的是 flink 的**低延迟**、**高吞吐量**和对**流式数据**应用场景更好的支持；另外，flink 可以很好地处理**乱序**数据，而且可以保证 **exactly-once** 的状态一致性。
@@ -76,3 +80,11 @@ Ingestion Time：指数据进入Flink的时间。适用场景：存在多个 Sou
 ### 数据高峰的处理
 
 使用大容量的 Kafka 把数据先放到消息队列里面作为数据源，再使用 Flink 进行消费，不过这样会影响到一点实时性。
+
+### flink checkpoint
+
+1. 什么时候触发checkpoint?
+2. checkpoint过程？
+3. 检查点是什么结构？
+4. checkpoint listener?
+5. checkpoint有哪些接口？
