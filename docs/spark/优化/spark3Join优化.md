@@ -71,6 +71,33 @@ AQE统计shuffle文件检测数据倾斜，并把倾斜的分区分割成多个�
 
 ## Join Hints
 
+1. Broadcast HashJoin
+
+```sql
+有三种方式
+SELECT /*+ BROADCAST(t1) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
+
+SELECT /*+ BROADCASTJOIN (t1) */ * FROM t1 left JOIN t2 ON t1.key = t2.key;
+
+SELECT /*+ MAPJOIN(t2) */ * FROM t1 right JOIN t2 ON t1.key = t2.key;
+```
+
+2. shuffle sort merge Join
+
+```sql
+SELECT /*+ SHUFFLE_MERGE(t1) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
+
+SELECT /*+ MERGEJOIN(t2) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
+
+SELECT /*+ MERGE(t1) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
+```
+
+3. shuffle Hash Join
+
+```sql
+SELECT /*+ SHUFFLE_HASH(t1) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
+```
+
 
 
 # 启用AQE
