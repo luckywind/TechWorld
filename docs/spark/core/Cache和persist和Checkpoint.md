@@ -1,8 +1,24 @@
 # cache
 
-将要计算 RDD partition 的时候（而不是已经计算得到第一个 record 的时候）就去判断 partition 要不要被 cache。如果要被 cache 的话，先将 partition 计算出来，然后 cache 到内存。cache 只使用 memory，写磁盘的话那就叫 checkpoint 了。
+- 保存到哪？ 
+
+rdd.cache() 只保存到内存
+
+DataFrame/DataSet.cache()是保存到memory_and_disk
+
+
+
+>  将要计算 RDD partition 的时候（而不是已经计算得到第一个 record 的时候）就去判断 partition 要不要被 cache。如果要被 cache 的话，先将 partition 计算出来，然后 cache 到内存。cache 只使用 memory，写磁盘的话那就叫 checkpoint 了。
 
 调用 rdd.cache() 后， rdd 就变成 persistRDD 了
+
+
+
+# persist
+
+无参方法内部调用cache()
+
+有参数方法传入Storage Levels
 
 
 

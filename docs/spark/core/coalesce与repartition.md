@@ -91,7 +91,7 @@ PartitionCoalescer
 
 ## 总结
 
-1. coalesce的默认参数只能减少分区，且不会发生shuffle,只是新的分区对应多个老分区。
+1. coalesce的默认参数只能减少分区，且不会发生shuffle,只是把其他executors上的数据移动到其余几个executors上
 
    > 因此只想减少分区时不要用repartition，它会导致shuffle发生
 
@@ -102,6 +102,10 @@ PartitionCoalescer
 
 
 # repartition
+
+1. 可以增加和减少分区
+2. 总是会shuffle
+3. 结果分区大小会差不多
 
 ## 源码
 

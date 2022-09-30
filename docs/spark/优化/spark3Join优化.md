@@ -1,3 +1,94 @@
+
+
+# 性能提升四个方面
+
+[视频](https://www.databricks.com/session_na20/deep-dive-into-the-new-features-of-apache-spark-3-0)
+
+[blog](https://www.databricks.com/blog/2020/05/29/adaptive-query-execution-speeding-up-spark-sql-at-runtime.html)
+
+过去，通过优化查询优化器、查询计划以提升Spark SQL的性能 ，其中改善最大的就是基于成本优化框架，通过各种数据统计来选择最优的计划，例如选择正确的Join策略，调整join顺序等。但是过期的统计值等可能导致选择了非最优的查询计划。
+
+## AQE自适应执行
+
+什么时候优化？各stage之间RDD需要物化，这样可以知道每个中间结果分区的大小，且后续task还没开始，这里是重新优化的机会。
+
+AQE框架首先检查最开始的stage(它们不依赖其他stage)， 一旦完成，框架就基于运行时的统计结果更新逻辑计划，运行优化器，物理计划和物理优化规则，例如缩减分区，倾斜join处理等。然后框架使用新的执行计划执行下一个stage，循环下去直到执行完成。
+
+spark3.0 的AQE主要有三个特性：
+
+1. 动态缩减shuffle分区
+2. 动态切换join策略
+3. 动态优化倾斜join
+
+
+
+### 动态缩减shuffle分区
+
+shuffle是非常耗时的，shuffle的一个关键属性就是分区数，最优的分区数依赖数据的大小，这个不是很好调优：
+
+1. 分区数太少，那么处理这个大分区的task可能需要落盘
+2. 分区数太大，每个分区可能非常小，导致大量小的网络数据拉取
+
+思路就是开始设置一个比较大的分区数，运行过程中根据实际情况合并分区。
+
+例如，`SELECT max(i)FROM tbl GROUP BY j`   表有两个分区，开始时shuffle到了5个分区，其中有三个分区非常小，如果没有AQE， Spark就会启用5个task聚合这5个分区。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/blog-adaptive-query-execution-2.png" alt="Spark Shuffle without AQE partition coalescing." style="zoom:50%;" />
+
+有了AQE， 则会把三个小分区合并为一个大分区，然后只有启动3个task就可以了：
+
+![Spark Shuffle with AQE partition coalescing.](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/blog-adaptive-query-execution-3.png)
+
+### 动态切换join策略
+
+·如果有一个表比较小，那么broadcast hash join是一个比较高效的join策略，但是因为过滤或者join关系复杂可能导致表大小计算不准。
+
+为了解决这个问题，AQE在运行时基于准确的表大小重新规划join策略。
+
+例如，AQE在运行时发现tb2实际大小比估计的小，从而把sort mege join策略修正为broadcast join策略
+
+
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/blog-adaptive-query-execution-4.png" alt="Example reoptimization performed by Adaptive Query Execution at runtime, which automatically uses broadcast hash joins wherever they can be used to make the query faster." style="zoom:150%;" />
+
+
+
+### 动态优化倾斜join
+
+AQE统计shuffle文件检测数据倾斜，并把倾斜的分区分割成多个小分区，再与其他表join。
+
+例如，表A有一个倾斜分区A0，AQE会把A0且分成两个分区，从而发起多个task与B0进行join
+
+![Skew join without AQE skew join optimization.](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/blog-adaptive-query-execution-5.png)
+
+![Skew join with AQE skew join optimization.](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/blog-adaptive-query-execution-6.png)
+
+## 动态分区裁剪
+
+在[星型模型](https://www.malaoshi.top/show_1IX2IO6OP7Ul.html)中，Spark2的优化器很难在编译时确定哪些分区可以跳过不读，导致读了一些不需要的数据。但Spark3之后，Spark会首先过滤维表，根据过滤后的结果找到只需要读事实表的分区，这样就能极大的提升性能
+
+## 查询编译加速(Query Compilation Speedup)
+
+## Join Hints
+
+
+
+# 启用AQE
+
+```sql
+set spark.sql.adaptive.enabled = true;
+```
+
+
+
+
+
+
+
+
+
+
+
 https://www.waitingforcode.com/apache-spark-sql/whats-new-apache-spark-3-join-skew-optimization/read#configuration
 
 当一个分区远大于其他分区时将会导致数据倾斜问题，倾斜的分区影响网络传输和task执行时间

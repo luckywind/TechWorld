@@ -136,3 +136,11 @@ git stash drop 移除储藏
 git stash branch 新分支   用stash中的修改创建一个新的分支，创建成功后会删除此stash
 ```
 
+# 问题解决记录
+
+强制丢弃本地修改,[参考](https://www.cnblogs.com/feifeicui/p/11351433.html)
+
+```shell
+git clean -d -fx
+```
+
