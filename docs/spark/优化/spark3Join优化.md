@@ -16,13 +16,13 @@ AQE框架首先检查最开始的stage(它们不依赖其他stage)， 一旦完�
 
 spark3.0 的AQE主要有三个特性：
 
-1. 动态缩减shuffle分区
+1. 动态缩减shuffle分区，减少task开销
 2. 动态切换join策略
 3. 动态优化倾斜join
 
 
 
-### 动态缩减shuffle分区
+### 动态调整shuffle分区数量
 
 shuffle是非常耗时的，shuffle的一个关键属性就是分区数，最优的分区数依赖数据的大小，这个不是很好调优：
 
@@ -99,6 +99,36 @@ SELECT /*+ SHUFFLE_HASH(t1) */ * FROM t1 INNER JOIN t2 ON t1.key = t2.key;
 ```
 
 
+
+## 分区Hints
+
+4. repartition Hints
+
+```sql
+INSERT
+	...
+SELECT
+/*+ REPARTITION(40) */
+```
+
+> --conf spark.sql.shuffle.partitions=3000， 这个优化把线上一个小时的作业减少到20分钟
+
+还可以尝试
+
+5. coalesce
+
+```sql
+INSERT
+	overwrite TABLE testdb.testtable PARTITION (a, dt, hour)
+SELECT
+/*+ COALESCE(40) */
+	...
+FROM
+```
+
+6. rebalance(列名)
+
+它会按照指定的列名对查询结果进行分区， 不论是否开启AQE，它都尽量把查询结果输出为合理大小的分区，即使数据有倾斜。
 
 # 启用AQE
 

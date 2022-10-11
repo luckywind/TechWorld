@@ -457,8 +457,8 @@ stream.keyBy(<key selector>)
 
 - 增量聚合函数(计算分摊到窗口收集数据过程中，更加高效)
 
-1. reduce后跟ReduceFunction
-2. aggregate后跟AggregateFunction
+1. reduce后跟ReduceFunction，**聚合状态、结果类型必须和输入一样**
+2. aggregate后跟AggregateFunction，**聚合状态、结果类型和输入可以不一样**
 
 - 全窗口函数(提供了更多信息)
 

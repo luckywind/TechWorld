@@ -25,6 +25,7 @@
 - 仅支持等值连接，join key不需要排序
 - 支持除了全外连接(full outer joins)之外的所有join类型
 - 需要对小表构建Hash map，属于内存密集型的操作，如果构建Hash表的一侧数据比较大，可能会造成OOM，不适合严重倾斜的join
+- 对于FullOuter Join，需要建立双向hash表，代价太大。因此FullOuterJoin默认都是基于SortJoin来实现
 - 将参数*spark.sql.join.prefersortmergeJoin (default true)*置为false
 
 ### Broadcast Hash Join
@@ -48,7 +49,7 @@
 
 该方式是在没有合适的JOIN机制可供选择时，最终会选择该种join策略。优先级为：*Broadcast Hash Join > Sort Merge Join > Shuffle Hash Join > cartesian Join > Broadcast Nested Loop Join*.
 
-最小的数据集被广播到另一个数据集的每个分区上，执行一个嵌套循环来执行join, 也就是说数据集1的每条记录都尝试join数据集2的每条记录，效率比较低。既可以做等值join也可以做非等值join，而且是非等值join的默认策略。 
+最小的数据集被广播到另一个数据集的每个分区上，执行一个<font color=red>嵌套循环</font>来执行join, 也就是说数据集1的每条记录都尝试join数据集2的每条记录(最笨的方法)，效率比较低。既可以做等值join也可以做非等值join，而且是非等值join的默认策略。 
 
 <font color=red>没有排序，就是广播小表到每个分区上，尝试join每条记录，效率低！</font>
 

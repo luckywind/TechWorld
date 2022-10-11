@@ -2,7 +2,7 @@
 
 uptime
 
-![2_15.png](load/2_15-100522188-orig.png)
+![2_15.png](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/2_15-100522188-orig.png)
 
 小数代表过去1分钟、5分钟、15分钟cpu平均负载；可以分析高负载是暂时的，还是长期的。但什么是高负载呢？数字代表请求cpu资源的任务量，1.0代表一个100%的cpu核的资源；超过1.0的部分代表等待cpu处理的进程量。
 

@@ -2,6 +2,8 @@
 
 [spark支持的join方式以及join策略](https://blog.csdn.net/weixin_42325002/article/details/119353977)
 
+Spark 的Join 分为Spark SQL的Join 和RDD的Join
+
 # Join操作的要点
 
 ## 数据大小
@@ -115,7 +117,7 @@ Hash join也要求数据正确分区，但不要求排序，可能会比sortMerg
 
 [参考](https://zhuanlan.zhihu.com/p/271910611)
 
-# Join源码
+# RDD  Join源码
 
 [参考](https://blog.csdn.net/gaoshui87/article/details/78272791)
 
@@ -167,7 +169,7 @@ CoGroupedRDD的原理： 对于父RDD的每个key,返回该key对应的值列表
 
 返回与上游每个rdd的依赖
 
-参与join的rdd和join后的rdd之间是窄依赖还是宽依赖，取决于rdd和join时指定的分区器是否相同。
+参与join的rdd和join后的rdd之间是窄依赖还是宽依赖(<font color=red>关乎到是否执行shuffle，也就是join的效率</font>)，取决于参与join的rdd的分区器是否相同。<font color=red>这也提供了一个大表join优化的方向： 让他们的分区器相同</font>
 
 ```scala
   override def getDependencies: Seq[Dependency[_]] = {
@@ -346,8 +348,17 @@ private[spark] class CoGroupPartition(
 ### 总结
 
 1. join 算子内部使用了cogroup算子，这个算子返回的是（key,(v1,v2)）这种形式的元组
+
 2. 深入cogroup算子，发现其根据rdd1,rdd2创建了一个CoGroupedRDD
+
 3. 分析了CoGroupedRDD的依赖以及分区的计算，如果和上游某个rdd的依赖关系是窄依赖，则创建NarrowCoGroupSplitDep分区，并计算时直接读取上游rdd的分区；如果是宽依赖，就需要对上游rdd重hash进行shuffle,并通过shuffle reader拉取属于当前分区的数据。
+
+   - 如果需要join的其中一个RDD比较小，可以直接将其存入内存，使用broadcast hash join；
+
+   - 在对两个RDD进行join操作之前，使其使用同一个partitioners，避免join操作的shuffle过程；
+
+   - 如果两个RDD其一存在重复的key也会导致join操作性能变低，因此最好先进行key值的去重处理。
+
 4. CoGroupedRDD的分区函数就是将两个rdd的相同分区索引的分区合成一个新的分区，并且通过NarrowCoGroupSplitDep这个类实现了序列化
 
 
