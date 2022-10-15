@@ -384,5 +384,11 @@ from t_order;
 
 　　注意：　　ntile不支持 rows between
 
+# 分组topN
+
+```sql
+select * from (select *,row_number() over(partition by course order by score desc) as rn from sc ) t where t.rn< 4;
+```
+
 
 

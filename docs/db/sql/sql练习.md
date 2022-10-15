@@ -18,6 +18,9 @@
     * [626. Exchange Seats](#626-exchange-seats)
     <!-- GFM-TOC -->
 
+# 博客
+
+[HiveSql技巧练习](https://blog.csdn.net/godlovedaniel/category_10164466.html)
 
 ## 595. Big Countries
 

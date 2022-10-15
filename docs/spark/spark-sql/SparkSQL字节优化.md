@@ -22,7 +22,7 @@ Hive 的一个 Bucket 一般只包含一个文件，而 Spark SQL 的一个 Buck
 
 只要 Join Key Set 包含了 Bucket Key Set，即可进行 Bucket Join。
 
-## 物化列
+## 物化列解决嵌套数据低效问题
 
 Spark SQL 处理嵌套类型数据时，存在以下问题：
 
