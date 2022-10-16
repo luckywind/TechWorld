@@ -39,10 +39,23 @@ order by user_id;
 
 # 连续时间区间合并
 
+> 这个语句有问题，暂时不关注
+
 [参考](https://stackoverflow.com/questions/15783315/combine-consecutive-date-ranges)
 
 ```sql
-with cte as (
+with  Tbl as (
+select stack(6,
+ 	5, '2007-12-03', '2011-08-26',
+  5, '2013-05-02', null,
+  30, '2006-10-02', '2011-01-16',
+  30, '2011-01-17', '2012-08-12',
+  30, '2012-08-13', null,
+  66, '2007-09-24', null            
+            )
+  as(employmentid,startdate,enddate)
+),
+cte as (
   -- 没有前序可连接的先保留
    select a.employmentid, a.startdate, a.enddate
      from Tbl a
@@ -63,10 +76,18 @@ left join Tbl b on a.employmentid=b.employmentid and a.startdate-1=b.enddate
  order by employmentid
 ```
 
->  这个问题的连续定义是，一个区间的end_date+1=start_date。 可以直接判断是否可连接
->
-> 和下面这个问题还有点不一样, 但给我们提供了一个思路：
-> 能连则连，不能连则保留，最后按start_day合并即可；
+
+
+| employmentid | startdate  | enddate    |      |
+| ------------ | ---------- | ---------- | ---- |
+| 5            | 2007-12-03 | 2011-08-26 |      |
+| 5            | 2013-05-02 |            |      |
+| 30           | 2006-10-02 | 2011-01-16 |      |
+| 30           | 2011-01-17 | 2012-08-12 |      |
+| 30           | 2012-08-13 |            |      |
+| 66           | 2007-09-24 |            |      |
+
+# 履历合并
 
 ```sql
 create table tmp.asume
@@ -74,19 +95,22 @@ id,name,company_name,job_name, entry_time,leave_time
 员工id,姓名,公司,职位,入职时间,离职时间。 null代表至今
 
 中间无跳槽的时间区间需要合并，得出员工公司级别的履历
-id,name,company_name,job_name,entry_time,leave_time
+id,name,company_name,entry_time,leave_time
 
 
 
-insert overwrite table tmp.asume
-values 
-(1, '张三', '华为','数据研发',20181011,20191029) ,
-(1, '张三', '华为','后台研发',20191031,20201101) ,
-(1, '张三', '阿里','数据研发',20201105,20211003) ,
-(1, '张三', '华为','后台研发',20211004,null),
-(2, '李四', '华为','数据研发',20181011,20191029) ,
-(2, '李四', 'oppo','数据研发',20191101,null) 
-;
+with t as (
+select stack(6,
+1, '张三', '华为','数据研发',20181011,20191029,
+1, '张三', '华为','后台研发',20191031,20201101,
+1, '张三', '阿里','数据研发',20201105,20211003,
+1, '张三', '华为','后台研发',20211004,null,
+2, '李四', '华为','数据研发',20181011,20191029,
+2, '李四', 'oppo','数据研发',20191101,null
+)
+as(id,name,company_name,job_name,entry_time,leave_time)
+)
+select * from t
 
 结果： 前两段经历合并
 (1, '张三', '华为',20181011,20201101),
@@ -105,26 +129,41 @@ values
 
 
 ```sql
-with a as (
-select id,name,company_name,entry_time,leave_time,
-    -- 同一个id的履历行号，一定要按id分组
-  row_number()over(partition by id order by entry_time) as rn
-from tmp.asume
+with t as (
+select stack(6,
+1, '张三', '华为','数据研发',20181011,20191029,
+1, '张三', '华为','后台研发',20191031,20201101,
+1, '张三', '阿里','数据研发',20201105,20211003,
+1, '张三', '华为','后台研发',20211004,null,
+2, '李四', '华为','数据研发',20181011,20191029,
+2, '李四', 'oppo','数据研发',20191101,null
 )
-,
-b as (
-select id,name,company_name,
-entry_time,leave_time,
-rn,
--- 计算(ID，company_name）组合内的行号  
-row_number()over(partition by id,company_name order by entry_time) prn,
--- 计算diff,这就是共性，下面就可以利用这个共性进行聚合了  
-rn-row_number()over(partition by id,company_name order by entry_time) as diff
-from a )
+as(id,name,company_name,job_name,entry_time,leave_time)
+),
+a as (
+    select *,
+row_number() OVER (PARTITION by id,name,company_name order by entry_time) as `当前公司第几段履历`,
+row_number() OVER (PARTITION by id order by entry_time) as `第几段履历`,
+-- 在同一个公司的连续n段履历需要合并，即求min(entry_time),max(leave_time)。 他们的共性是什么？
+-- 履历序号和公司内履历序号同步增长，意味着其diff是一样的
+row_number() OVER (PARTITION by id order by entry_time)
+-
+row_number() OVER (PARTITION by id,name,company_name order by entry_time)  as `公司内连续履历id`
+ from t order by id,  entry_time
+)
 
-select id,first_value(name),company_name,min(entry_time) as e_time,max(leave_time) as l_time
-from b
-group by id,company_name,diff
-order by e_time;
+SELECT id, name ,company_name, min(entry_time) `入职时间`,max(leave_time) `离职时间`
+from a 
+group by id,name, company_name,`公司内连续履历id`
+order by  `入职时间`
 ```
 
+
+
+| id   | name | company_name | 入职时间 | 离职时间 |      |
+| ---- | ---- | ------------ | -------- | -------- | ---- |
+| 1    | 张三 | 华为         | 20181011 | 20201101 |      |
+| 2    | 李四 | 华为         | 20181011 | 20191029 |      |
+| 2    | 李四 | oppo         | 20191101 |          |      |
+| 1    | 张三 | 阿里         | 20201105 | 20211003 |      |
+| 1    | 张三 | 华为         | 20211004 |          |      |
