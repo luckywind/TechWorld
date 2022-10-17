@@ -77,29 +77,13 @@ group by Num,id_diff
 having count(1)>=3;
 ```
 
-## 简历合并
+# explode
 
-# lateralView explode表生成函数
-
-## 追加一列
-
-```sql
-with tmp2 as (
-    select stack(5,
-             0,'height',11,
-             1,'weight',33,
-             2,'age',18   ) 
-             as (id,label,value)
-)
-select id,rd,label,value from tmp2
-            lateral view explode(split('0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9',',')) myTable as  rd
-```
+explode在select句中和在from子句中给虚拟字段命名的格式稍微有些差别，select句中需要加括号，from子句中不需要括号。
 
 
 
-
-
-
+# lateralView 表生成函数
 
 
 
@@ -116,6 +100,64 @@ fromClause: FROM baseTable (lateralView)*
 ```
 
 
+
+
+
+lateral view是Hive中提供给UDTF的结合，它可以解决UDTF不能添加额外的select列的问题。
+
+lateral view其实就是用来和想类似explode这种UDTF函数联用的，lateral view会将UDTF生成的结果放到一个虚拟表中，然后这个虚拟表会和输入行进行join来达到连接UDTF外的select字段的目的。
+
+**格式一**
+
+```sql
+lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
+```
+
+> as后面是虚拟表的列名，(,columnAlias)* 说明可以有多个列
+
+- lateral view在UDTF前使用，表示连接UDTF所分裂的字段。
+- UDTF(expression)：使用的UDTF函数，例如explode()。
+- tableAlias：表示UDTF函数转换的虚拟表的名称。
+- columnAlias：表示虚拟表的虚拟字段名称，如果分裂之后有一个列，则写一个即可；如果分裂之后有多个列，按照列的顺序在括号中声明所有虚拟列名，以逗号隔开。
+
+**格式二**
+
+```sql
+from basetable (lateral view)*
+```
+
+- 在from子句中使用，一般和格式一搭配使用，这个格式只是说明了lateral view的使用位置。
+- from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。
+
+**格式三**
+
+```sql
+from basetable (lateral view outer)*
+```
+
+它比格式二只是多了一个outer，这个outer的作用是在UDTF转换列的时候将其中的空也给展示出来，UDTF默认是忽略输出空的，加上outer之后，会将空也输出，显示为NULL。这个功能是在Hive0.12是开始支持的。
+
+
+
+
+
+
+
+
+
+## 追加一列
+
+```sql
+with tmp2 as (
+    select stack(3,
+             0,'height',11,
+             1,'weight',33,
+             2,'age',18   ) 
+             as (id,label,value)
+)
+select id,rd,label,value from tmp2
+            lateral view explode(split('0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9',',')) myTable as  rd
+```
 
 侧视图(Lateral view) 主要与表生成函数联合使用，例如explode（生成的是一张表）。UDTF通常把一行变多行，侧视图首先把udtf应用到基础表的每一行，然后把结果和输入行进行join形成一个虚拟表(这还可以达到连接udtf之外的select 字段的目的，实际上新版本udtf已经支持select其他字段了，主要作用还是把一行炸开)，可提供别名。
 
