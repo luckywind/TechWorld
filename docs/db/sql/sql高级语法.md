@@ -253,13 +253,24 @@ https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF#LanguageManu
 
 | 列类型               | 签名                                                   | 描述                                                         |
 | -------------------- | ------------------------------------------------------ | ------------------------------------------------------------ |
-| int,T                | posexplode(ARRAY<T> a)                                 | 一行变多行，且带有原数组的索引列                             |
+| int,T                | posexplode(ARRAY<T> a)                                 | <font color=red>炸开，且第一列是索引</font>                  |
 | string1,...,stringn  | json_tuple(string jsonStr,string k1,...,string kn)     | 从一个json串中解析出一个数组出来                             |
 | string 1,...,stringn | parse_url_tuple(string urlStr,string p1,...,string pn) | Takes URL string and a set  of n URL parts, and  returns a tuple of n values. This  is similar to the parse_url() UDF but can extract multiple parts at once out of a URL.  Valid part names are: HOST, PATH, QUERY, REF, PROTOCOL, AUTHORITY, FILE,  USERINFO, QUERY:<KEY>. |
-| T                    | explode(ARRAY<T> a)                                    | 把数组展开，其他行复制多行                                   |
+| T                    | explode(ARRAY<T> a)                                    | <font color=red>炸开，并与原表join</font>                    |
 | T1,...,Tn            | inline(ARRAY<STRUCT<f1:T1,...,fn:Tn>> a)               | [Explodes an array of   structs to multiple rows. Returns a row-set with N columns (N =   number of top level elements in the struct), one row per struct from the   array. (As of Hive 0.10.)](https://issues.apache.org/jira/browse/HIVE-3238) |
-| T1,...,Tn/r          | stack(int r,T1 V1,...,Tn/r Vn)                         | Breaks up n values V1,...,Vn into r rows. Each row will have n/r columns. r must be constant. |
+| T1,...,Tn/r          | stack(int r,T1 V1,...,Tn/r Vn)                         | <font color=red>把n个值变成r行，每行n/r列</font>             |
 | Tkey,Tvalue          | explode(MAP<Tkey,Tvalue> m)                            | 把map展开为两列(key,value)，每个kv一行                       |
+
+### poseexplode
+
+```sql
+SELECT posexplode(array(10, 20)) AS (r, elem)
+```
+
+| r    | elem |      |
+| ---- | ---- | ---- |
+| 0    | 10   |      |
+| 1    | 20   |      |
 
 # 函数
 
