@@ -84,7 +84,18 @@ Ingestion Time：指数据进入Flink的时间。适用场景：存在多个 Sou
 ### flink checkpoint
 
 1. 什么时候触发checkpoint?
+
 2. checkpoint过程？
+
+   
+
 3. 检查点是什么结构？
+
+   > CheckpointBarrier extends RuntimeEvent类，有id, timestamp
+
 4. checkpoint listener?
+
 5. checkpoint有哪些接口？
+
+   > - checkpointMode:  exactly_once/atleast_once
+   > - checkpoint触发间隔、超时时间、最小间隔

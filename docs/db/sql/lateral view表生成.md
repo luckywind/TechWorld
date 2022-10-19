@@ -83,7 +83,7 @@ explode在select句中和在from子句中给虚拟字段命名的格式稍微有
 
 
 
-# lateralView 表生成函数
+# lateral View 表生成函数
 
 
 
@@ -92,7 +92,7 @@ explode在select句中和在from子句中给虚拟字段命名的格式稍微有
 语法：
 
 ```sql
-lateralView: LATERAL VIEW udtf(expression) tableAlias AS columnAlias (',' columnAlias)*
+lateralView: LATERAL VIEW  [ OUTER ]  udtf(expression) tableAlias AS columnAlias (',' columnAlias)*
 fromClause: FROM baseTable (lateralView)*
 两个使用地方：
 1. udtf前面
@@ -107,7 +107,7 @@ lateral view是Hive中提供给UDTF的结合，它可以解决UDTF不能添加�
 
 lateral view其实就是用来和想类似explode这种UDTF函数联用的，lateral view会将UDTF生成的结果放到一个虚拟表中，然后这个虚拟表会和输入行进行join来达到连接UDTF外的select字段的目的。
 
-**格式一**
+**格式一:  用在udtf函数之前**
 
 ```sql
 lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
@@ -120,14 +120,14 @@ lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
 - tableAlias：表示UDTF函数转换的虚拟表的名称。
 - columnAlias：表示虚拟表的虚拟字段名称，如果分裂之后有一个列，则写一个即可；如果分裂之后有多个列，按照列的顺序在括号中声明所有虚拟列名，以逗号隔开。
 
-**格式二**
+**格式二： 用在from 语句里**
 
 ```sql
 from basetable (lateral view)*
 ```
 
 - 在from子句中使用，一般和格式一搭配使用，这个格式只是说明了lateral view的使用位置。
-- from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。
+- <font color=red>from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。会依次执行</font>
 
 **格式三**
 

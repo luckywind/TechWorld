@@ -1,3 +1,48 @@
+# 图的构建
+
+## 构建方法
+
+构建图的入口方法有两种，分别是根据边构建和根据边的两个顶点构建。
+
+**根据边构建图(Graph.fromEdges)**
+
+```scala
+def fromEdges[VD: ClassTag, ED: ClassTag](
+       edges: RDD[Edge[ED]],
+       defaultValue: VD,
+       edgeStorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
+       vertexStorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY): Graph[VD, ED] = {
+  GraphImpl(edges, defaultValue, edgeStorageLevel, vertexStorageLevel)
+}
+```
+
+**根据边的两个顶点数据构建(Graph.fromEdgeTuples)**
+
+```scala
+def fromEdgeTuples[VD: ClassTag](
+      rawEdges: RDD[(VertexId, VertexId)],
+      defaultValue: VD,
+      uniqueEdges: Option[PartitionStrategy] = None,
+      edgeStorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY,
+      vertexStorageLevel: StorageLevel = StorageLevel.MEMORY_ONLY): Graph[VD, Int] =
+{
+  val edges = rawEdges.map(p => Edge(p._1, p._2, 1))
+  val graph = GraphImpl(edges, defaultValue, edgeStorageLevel, vertexStorageLevel)
+  uniqueEdges match {
+    case Some(p) => graph.partitionBy(p).groupEdges((a, b) => a + b)
+    case None => graph
+  }
+}
+```
+
+## 构建过程
+
+构建图的过程很简单，分为三步，它们分别是 构建边EdgeRDD、构建顶点VertexRDD、生成Graph对象
+
+
+
+
+
 # 结构操作
 
 ## subgraph
@@ -410,9 +455,56 @@ Pregel API 就是用来进行迭代计算的
 
 ## EdgePartition2D
 
-边基于两个端点的分区方式
+同时采用边的源点和目的点，按邻接矩阵思想把边分配到二维矩阵分区中
+
+```scala
+      __________________________________
+ v0   | P0 *     | P1       | P2    *  |
+ v1   |  ****    |  *       |          |
+ v2   |  ******* |      **  |  ****    |
+ v3   |  *****   |  *  *    |       *  |
+      ----------------------------------
+ v4   | P3 *     | P4 ***   | P5 **  * |
+ v5   |  *  *    |  *       |          |
+ v6   |       *  |      **  |  ****    |
+ v7   |  * * *   |  *  *    |       *  |
+      ----------------------------------
+ v8   | P6   *   | P7    *  | P8  *   *|
+ v9   |     *    |  *    *  |          |
+ v10  |       *  |      **  |  *  *    |
+ v11  | * <-E    |  ***     |       ** |
+      ----------------------------------
+```
+
+
 
 点副本数上限2 * sqrt(numParts)
+
+这个方法的实现分两种情况，即分区数能完全开方和不能完全开方两种情况:
+
+1. 当分区数能完全开方时，采用下面的方法：
+
+   ```scala
+    val col: PartitionID = (math.abs(src * mixingPrime) % ceilSqrtNumParts).toInt
+    val row: PartitionID = (math.abs(dst * mixingPrime) % ceilSqrtNumParts).toInt
+    (col * ceilSqrtNumParts + row) % numParts
+   ```
+
+   
+
+2. 当分区数不能完全开方时，采用下面的方法。这个方法的最后一列允许拥有不同的行数。
+
+```scala
+val cols = ceilSqrtNumParts
+val rows = (numParts + cols - 1) / cols
+//最后一列允许不同的行数
+val lastColRows = numParts - rows * (cols - 1)
+val col = (math.abs(src * mixingPrime) % numParts / rows).toInt
+val row = (math.abs(dst * mixingPrime) % (if (col < cols - 1) rows else lastColRows)).toInt
+col * rows + row
+```
+
+
 
 ## EdgePartition1D
 

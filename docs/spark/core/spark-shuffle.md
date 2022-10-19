@@ -36,7 +36,7 @@ Spark 2.0 Hash Based Shuffle退出历史舞台
 
 # hash shuffle
 
-<font color=red> 输出文件太多: mapper个数*reducer个数</font>
+<font color=red> 输出文件太多: mapper个数*reducer个数:     下一个stage有多少个task,  当前每个shuffle write task就要写多少个文件</font>
 
 ​       spark1.2.0之前默认使用的shuffle算法，存在很多缺点，因为该实现创建的文件太多： 一个mapper task会为每个reducer创建一个不同的文件，当有M个mapper，R个reducer时，就会产生M*R个文件。系统的open files个数以及创建/删除这些文件的速度都会因为文件数太多而出现问题。
 
@@ -65,7 +65,7 @@ Cons:
 
 # Sort Shuffle
 
-<font color=red>只输出一个大文件，该文件按照partitionId和key进行排序。  另外生成一个索引文件对该大文件进行索引。</font>
+<font color=red>不管下游stage有多少个shuffle read task, 当前每个shuffle write task 最后只输出一个文件，该文件按照partitionId和key进行排序。  另外生成一个索引文件对该大文件进行索引，下游stage的每个shuffle read task只读取自己要处理的那部分数据就行。</font>
 
 ## **SortShuffleWriter**
 

@@ -29,7 +29,7 @@ GraphX的核心抽象是Resilient Distributed Property Graph，一种点和边�
 
 [参考](https://www.jianshu.com/p/ad5cedc30ba4)
 
-Graphx借鉴PowerGraph，使用的是Vertex-Cut(点分割)方式存储图，用三个RDD存储图数据信息：
+<font color=red>Graphx借鉴PowerGraph，使用的是Vertex-Cut(点分割)方式存储图，用三个RDD存储图数据信息：</font>
 
 **VertexTable(id, data)**：id为Vertex id，data为Edge data
 
