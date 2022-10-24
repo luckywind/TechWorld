@@ -74,7 +74,7 @@ Cons:
 一个task将所有数据写入内存数据结构的过程中，会发生多次磁盘溢写操作，也会产生多个临时文件。最后会将之前所有的临时磁盘文件都进行合并，由于一个task就只对应一个磁盘文件因此还会单独写一份索引文件，其中标识了下游各个task的数据在文件中的start offset与end offset。
 SortShuffleManager由于有一个磁盘文件merge的过程，因此大大减少了文件数量，由于每个task最终只有一个磁盘文件所以文件个数等于上游shuffle write个数。[参考](https://www.cnblogs.com/xiaodf/p/10650921.html)
 
-
+![image-20221024144015305](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024144015305.png)
 
 ​          有意思的是这个实现在map端排序，但当需要数据顺序时，在reduce端不对排序结果进行merge，而只是re-sort(reduce端re-sort使用TimSort算法实现，它对预排序的数据非常高效)。
 
@@ -108,7 +108,7 @@ Cons:
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/852983-20190510151151027-712712994.jpg" alt="img" style="zoom:50%;" />
 
-此时task会为每个reduce端的task都创建一个临时磁盘文件，并将数据按key进行hash然后根据key的hash值，将key写入对应的磁盘文件之中。当然，写入磁盘文件时也是先写入内存缓冲，缓冲写满之后再溢写到磁盘文件的。最后，同样会将所有临时磁盘文件都合并成一个磁盘文件，并创建一个单独的索引文件。
+**此时task会为每个reduce端的task都创建一个临时磁盘文件**，并将数据按key进行hash然后根据key的hash值，将key写入对应的磁盘文件之中。当然，写入磁盘文件时也是先写入内存缓冲，缓冲写满之后再溢写到磁盘文件的。最后，同样会将所有临时磁盘文件都合并成一个磁盘文件，并创建一个单独的索引文件。
 
 该过程的磁盘写机制其实跟未经优化的HashShuffleManager是一模一样的，因为都要创建数量惊人的磁盘文件，只是在最后会做一个磁盘文件的合并而已。因此少量的最终磁盘文件，也让该机制相对未经优化的HashShuffleManager来说，shuffle read的性能会更好。
 
@@ -165,7 +165,7 @@ ShuffleExternalSorter将数据不断溢出到溢出小文件中，溢出文件�
 # Shuffle Read
 
 1. **在什么时候获取数据**，Parent Stage 中的一个 ShuffleMapTask 执行完还是等全部 ShuffleMapTasks 执行完？
-   当 Parent Stage 的所有 ShuffleMapTasks 结束后再 fetch。
+   <font color=red>当 Parent Stage 的所有 ShuffleMapTasks 结束后再 fetch。</font>
 2. **边获取边处理还是一次性获取完再处理？**
    因为 Spark 不要求 Shuffle 后的数据全局有序，因此没必要等到全部数据 shuffle 完成后再处理，所以是边 fetch 边处理。
 3. 获取来的**数据存放到哪里**？
