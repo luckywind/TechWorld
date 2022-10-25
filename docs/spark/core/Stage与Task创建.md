@@ -148,7 +148,9 @@ stage划分我们上一篇文章  [Spark之调度模块-DAGScheduler](https://mp
 1.  如果rdd触发了action算子，则其创建的stage与之建立绑定关系
 2. 如果rdd的依赖是shuffle依赖，则其创建的stage与父rdd建立绑定关系
 
-<font color=red>另外一点就是stage创建的task个数就是它绑定的那个rdd的分区数, 也是该stage最后一个RDD中的分区数决定。</font>
+<font color=red>另外一点就是stage创建的task个数就是它绑定的那个rdd的分区数, 也是该stage最后一个RDD中的分区数决定。   需要注意的是Spark UI上一个stage的task个数是它的父rdd也就是上一个stage最后一个rdd的分区数</font>
+
+
 
 再有就是shuffleMapStage创建shuffleMapTask，而ResultStage创建ResultTask
 
