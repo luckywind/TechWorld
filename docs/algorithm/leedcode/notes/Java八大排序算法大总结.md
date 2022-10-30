@@ -18,12 +18,14 @@ Java中常见的排序算法有以下八个：
 ### 思想
 
 插入排序：
-把元素依次当作当前插入的元素，前面的是已经排好序的，要插入当前元素，需要从已排序的数组后面开始，依次和当前要插入的元素比较，比插入元素大就要往后移动
-当前元素比要插入元素小时，把要插入元素放到当前元素后面即可。
+<font color=red>把元素依次当作当前插入的元素，前面的是已经排好序的，要插入当前元素，需要从已排序的数组后面开始，依次和当前要插入的元素比较，比插入元素大就要往后移动
+当前元素比要插入元素小时，把要插入元素放到当前元素后面即可。</font>
 
 ![image-20221024095636605](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024095636605.png)
 
 ### 源码
+
+<font color=red>这里注意!!!  insertNum要记下来，因为移动后a[i]已经变了 </font>
 
 ```java
  /**
@@ -39,7 +41,7 @@ Java中常见的排序算法有以下八个：
             while (j >= 0 && a[j] > insertNum) {//当前面的元素a[j]大于插入元素时，需要互换
                 a[j + 1] = a[j];    //把大元素往后移动
                 j--;
-            }
+            } //至此,a[j]不满足a[j]>insertNum,也就是说a[j+1]是第一个大于insertNum的数
             a[j + 1] = insertNum;//把新插入元素放到所有不大于插入元素的最右边
         }
     }
@@ -54,6 +56,8 @@ Java中常见的排序算法有以下八个：
 
 增量递减至1的子序列进行插入排序，当增量为1时，子序列就是整个待排序的数组
 
+![image-20221030171724080](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221030171724080.png)
+
 ### 复杂度分析
 
 是冲破2次复杂度的一种算法，速度较快，其复杂度依赖于增量序列， 当增量序列为2^k-1时，复杂度为O(n^1.5)
@@ -63,7 +67,25 @@ Java中常见的排序算法有以下八个：
 ### 源码
 
 ```java
-  public void shelSort(int[] a) {
+public static void shellSort(int[] arr) {
+    int length = arr.length;
+    int temp;
+  for (int step = length / 2; step >= 1; step /= 2) {// 步长/2逐渐减少 产生多个子序列
+      for (int i = step; i < length; i++) {  //对每个子序列按照插入排序的思想排序
+            temp = arr[i];
+            int j = i - step;
+            while (j >= 0 && arr[j] > temp) {
+                arr[j + step] = arr[j];
+                j -= step;
+            }
+            arr[j + step] = temp;
+        }
+    }
+}
+
+
+
+public void shelSort(int[] a) {
         int length = a.length;
         int d = length / 2;
         while (d > 0) {
@@ -110,7 +132,9 @@ Java中常见的排序算法有以下八个：
         int minIndex;
         int tmp;
         for (int i = 0; i < a.length; i++) {
+						//初始化
             minIndex = i;
+            //找minIndex
             for (int j = i + 1; j < a.length; j++) {
                 if (a[j] < a[minIndex]) {
                     minIndex = j;
@@ -232,9 +256,8 @@ Java中常见的排序算法有以下八个：
 
 
 
-选择一个枢纽元，比它更小的放在左边，比它更大的放在右边。
-     具体办法，是从左边第一个开始找，直到找到一个比枢纽元大的元素，
-     再从右边最后一个开始找，直到找到一个比枢纽元小的元素
+选择一个枢纽元，比它更小的放在左边，比它更大的放在右边，使得枢纽元位置正确。
+     具体办法，从数组两头挑选两个和枢纽元构成逆序的数对，并交换以解决逆序；当所有构成逆序的数对都完成交换后，枢纽元就归位了。
 
 ![image-20221024121438051](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024121438051.png)
 
@@ -277,8 +300,9 @@ Java中常见的排序算法有以下八个：
                     i++;
                     j--;
                 }
-            } while (i <= j);   //到这里，其实枢纽元base已经就位了。
-            if (start < j)  //代表，枢纽元左边有未排序序列， 对左边分区进行排序
+            } while (i <= j);   //到这里，其实[start,end]区间内枢纽元(这里我们选择的是原数组start位置的值，到了这里start位置可能不是枢纽元了)已经排好序了。
+          //推出while循环，说明i>j了， 而do中的while保证了numbers[i]>=base,  numbers[j]<=base, do中的逆序交换保证了
+            if (start < j)  //代表， 枢纽元左边有未排序序列， 对左边分区进行排序
                 quickSort(numbers, start, j);//左端点作为枢纽元
             if (end > i)//代表，枢纽元右边有未排序序列，对右边分区进行排序
                 quickSort(numbers, i, end);

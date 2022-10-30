@@ -1,5 +1,7 @@
 [Spark的五种JOIN策略解析](https://jiamaoxiang.top/2020/11/01/Spark%E7%9A%84%E4%BA%94%E7%A7%8DJOIN%E6%96%B9%E5%BC%8F%E8%A7%A3%E6%9E%90/)
 
+[图解5种Join策略的执行流程](https://www.modb.pro/db/458387)
+
 # 五种join策略
 
 - Shuffle Hash Join
