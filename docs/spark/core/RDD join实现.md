@@ -19,13 +19,15 @@ join通常需要不同rdd中相应的key分布在同一个分区，以便于本�
 
 ## 选择join类型
 
+**join / leftOuterJoin / rightOuterJoin/ fullOuterJoin**
+
 默认的Join只保留同时存在与两个rdd的记录，最好的场景是两个rdd包含相同的key集合，且都不重复，否则数据可能膨胀引起性能问题，若key只存在于一个rdd中则会丢失。
 
 尽量减少join的数据量。
 
 ## 选择一个执行计划
 
-spark的join操作需要数据在同一个分区，spark默认的实现是shuffled hash join。它通过对第二个rdd使用第一个rdd的默认分区器进行分区以确保每个分区包含相同的key，同时相同key的数据也在同一个分区上。这总是奏效，但因为总是要shuffle而更加昂贵。以下场景可避免shuffle:
+spark的join操作需要数据在同一个分区，spark默认的实现是shuffled hash join。<font color=red>它通过对第二个rdd使用第一个rdd的默认分区器进行分区以确保每个分区包含相同的key，同时相同key的数据也在同一个分区上</font>>。这总是奏效，但因为总是要shuffle而更加昂贵。以下场景可避免shuffle:
 
 1. 两个rdd都有一个已知分区器
 2. 一个rdd足够小以放到内存，从而可以采用广播器
@@ -55,9 +57,11 @@ def joinScoresWithAddress3(scoreRDD: RDD[(Long, Double)],
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/hpsp_0404.png" alt="Join both partitioners known" style="zoom:50%;" />
 
 1. 同一个action算子、同一个分区器物化的rdd，则一定是co-located
-2. 最好在重分区后持久化
+2. 最好在重分区后进行persist
 
 ### 使用广播器hash join
+
+<font color=red>sparkSQL可以自动识别小rdd来自动应用broadcast hash join, 但是spark core中，我们只能手动把小rdd collect后广播出去</font>
 
 广播器hash join把小rdd推送到每个节点，然后在大rdd的每个分区进行一个map端合并。注意使用mapPartitions来合并元素。
 
