@@ -40,7 +40,35 @@ from a
 order by userid,month 
 ```
 
-# 
+# 互相关注
+
+```sql
+with t as (
+select   stack(
+    4,
+    'a','b',
+    'b','a',
+    'a','c',
+    'b','d'
+  )as (from_user,to_user)
+),
+a as (
+select from_user,to_user,
+  if(from_user>to_user,concat_ws('_',from_user,to_user), concat_ws('_',to_user,from_user)) as feature
+  from t 
+)
+select 
+ from_user,to_user
+,
+if(count(1) over(partition by feature)>1,1, 0) as if_frends
+from a;
+```
+
+
+
+
+
+# 分组topn
 
 ```
 有50W个京东店铺，每个顾客访客访问任何一个店铺的任何一个商品时都会产生一条访问日志，

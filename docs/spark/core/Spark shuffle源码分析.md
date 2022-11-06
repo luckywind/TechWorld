@@ -30,6 +30,8 @@
 
 当reducer个数很小时，hash到多个文件是比sorting到一个文件快的，因此，sort shuffle有一个回退计划：当reducer个数小于spark.shuffle.sort.bypassMergeThreshold(默认200)个时，启用回退计划，hash到多个文件然后再join到一个文件。该实现的源码参考BypassMergeSortShuffleWriter类。
 
+<font color=red>如果map端没有聚合与排序，且想启用hash shuffle，可以调大spark.shuffle.sort.bypassMergeThreshold</font>
+
 Hash-style shuffle:  每个reducer一个文件，写完后再拼接成一个输出文件
 
 >  SPARK-6026计划删除这个代码路径

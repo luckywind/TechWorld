@@ -6,7 +6,7 @@ kimball和inmon的数仓架构设计有显著的不同，inmon提倡独立数据
 
 把分散的OLTP系统的数据转换成集中存储的数据以供分析，inmon认为数据应该被组织成面向主题的、集成的、非易失的、随时间变化的数据结构。数据可以通过下钻获取明细，上卷获取汇总。数据集市就是数仓的子集。每个数据集市服务于一个特定的部门，为该部门分析需要进行优化。
 
-![image-20200630140206158](Kimball Vs Inmon.assets/image-20200630140206158.png)
+![image-20200630140206158](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20200630140206158.png)
 
 
 

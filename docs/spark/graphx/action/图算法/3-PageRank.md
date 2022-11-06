@@ -16,7 +16,7 @@ alpha是阻尼系数，其意义是：任意时刻，用户访问到某页面后
 
 主要应用包括：
 
-1. 基于人到人的关系图中通过权值排名区分出关键人物
+1. <font color=red>基于人到人的关系图中通过权值排名区分出关键人物</font>
 2. 基于“分享”的社交网络图中对其影响力做等级划分等
 
 ## 算法流程 
@@ -44,3 +44,42 @@ L(X)为顶点X的出度
 如果应用在给社交网络上的用户推荐新人，这样就需要用到个性化PageRank算法进行个性化的定制。
 
 个性化PageRank是PageRank的一个变种，目标是要计算**所有节点相对于目标节点的相关度**。从目标节点开始游走，每到一个节点都以d的概率停止游走并从目标节点重新开始，或者以d的概率继续游走，从当前节点指向的节点中按照均匀分布随机选择一个节点往下游走。这样经过多轮游走之后，每个顶点被访问到的概率也会收敛趋于稳定，这时就可以用概率来进行排名了。当然个性化PageRank算法也有一些缺点：（1）只有一个源顶点可以被指定；（2）不能指定每个顶点的权值。
+
+## 实现
+
+```scala
+ val graph = GraphLoader.edgeListFile(sc, "data/graphx/followers.txt")
+    // Run PageRank
+    /**
+     * 参数tol是精度
+     */
+    val ranks: VertexRDD[Double] = graph.pageRank(0.0001).vertices
+    // Join the ranks with the usernames
+    val users = sc.textFile("data/graphx/users.txt").map { line =>
+      val fields = line.split(",")
+      (fields(0).toLong, fields(1))
+    }
+    val ranksByUsername = users.join(ranks).map {
+      case (id, (username, rank)) => (username, rank)
+    }
+    // Print the result
+    println(ranksByUsername.collect().mkString("\n"))
+    // $example off$
+    spark.stop()
+```
+
+人物关注图如下：
+
+![image-20221104163244488](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221104163244488.png)
+
+输出如下
+
+```shell
+(justinbieber,0.15007622780470478)
+(BarackObama,1.4596227918476916)
+(matei_zaharia,0.7017164142469724)
+(jeresig,0.9998520559494657)
+(odersky,1.2979769092759237)
+(ladygaga,1.3907556008752426)
+```
+
