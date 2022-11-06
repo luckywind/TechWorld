@@ -44,7 +44,7 @@ Spark 2.0 Hash Based Shuffle退出历史舞台
 
 ![spark_hash_shuffle_no_consolidation](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_hash_shuffle_no_consolidation-1024x484.png)
 
-有一种优化版的实现，通过参数spark.shuffle.consolidateFiles(默认false)控制。当启用时，mapper输出文件的个数是固定的，例如集群有E个executor，且每个executor有C个core，每个task申请T个CPU(spark.task.cpus),那么集群execution slots的个数是`E*C/T`, 则原本，shuffle过程中创建的文件个数是`E*C/T*R`，现在只需要`C/T*R`个文件，因为每个Executor都会复用这一组文件。
+有一种优化版的实现，通过参数spark.shuffle.consolidateFiles(默认false)控制。当启用时，mapper输出文件的个数是固定的，例如集群有E个executor，且每个executor有C个core，每个task申请T个CPU(spark.task.cpus),那么集群execution slots的个数是`E*C/T`, 则原本，shuffle过程中创建的文件个数是`E*C/T*R`，现在只需要`C/T*R`个文件，<font color=blue>因为每个Executor都会复用这一组文件。</font>
 
 实现原理：创建一个输出文件池，而不是给每个reducer创建一个文件，当map task开始输出数据，它会从文件池中申请R个文件。当执行结束，它会返回这R个文件到文件池。因为每个executor只能并行执行C/T个Task,它只会创建C/T组输出文件，每组是R个文件。当第一组C/T个并行map task结束，下一组map task可以从文件池中重用这些文件组。看起来如下：
 
@@ -71,8 +71,8 @@ Cons:
 
 ​             从spark1.2.0开始，默认的shuffle算法改成sort了。在该模式下，数据会先写入一个内存数据结构中，此时根据不同的shuffle算子，可能选用不同的数据结构。如果是reduceByKey这种聚合类的shuffle算子，那么会选用Map数据结构，一边通过Map进行聚合，一边写入内存；如果是join这种普通的shuffle算子，那么会选用Array数据结构，直接写入内存。**这个shuffle逻辑类似MR**，只输出一个文件，该文件中的记录首先是按照 Partition Id 排序，每个 Partition 内部再按照 Key 进行排序，Map Task 运行期间会顺序写每个 Partition 的数据，**同时生成一个索引文件**记录每个 Partition 的大小和偏移量,该文件按照reducer_id有序且可索引。这样在fread之前做一个fseek就很方便找到某个reducer相关的数据块。总体上看来 **Sort Shuffle 解决了 Hash Shuffle 的所有弊端**，
 
-一个task将所有数据写入内存数据结构的过程中，会发生多次磁盘溢写操作，也会产生多个临时文件。最后会将之前所有的临时磁盘文件都进行合并，由于一个task就只对应一个磁盘文件因此还会单独写一份索引文件，其中标识了下游各个task的数据在文件中的start offset与end offset。
-SortShuffleManager由于有一个磁盘文件merge的过程，因此大大减少了文件数量，由于每个task最终只有一个磁盘文件所以文件个数等于上游shuffle write个数。[参考](https://www.cnblogs.com/xiaodf/p/10650921.html)
+**一个task将所有数据写入内存数据结构的过程中，会发生多次磁盘溢写操作，也会产生多个临时文件。最后会将之前所有的临时磁盘文件都进行合并**，由于一个task就只对应一个磁盘文件因此还会单独写一份索引文件，其中标识了下游各个task的数据在文件中的start offset与end offset。
+SortShuffleManager由于有一个磁盘文件merge的过程，因此大大减少了文件数量，<font color=red>由于每个task最终只有一个磁盘文件所以文件个数等于上游shuffle write个数。</font>[参考](https://www.cnblogs.com/xiaodf/p/10650921.html)
 
 ![image-20221024144015305](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024144015305.png)
 
@@ -110,7 +110,7 @@ Cons:
 
 **此时task会为每个reduce端的task都创建一个临时磁盘文件**，并将数据按key进行hash然后根据key的hash值，将key写入对应的磁盘文件之中。当然，写入磁盘文件时也是先写入内存缓冲，缓冲写满之后再溢写到磁盘文件的。最后，同样会将所有临时磁盘文件都合并成一个磁盘文件，并创建一个单独的索引文件。
 
-该过程的磁盘写机制其实跟未经优化的HashShuffleManager是一模一样的，因为都要创建数量惊人的磁盘文件，只是在最后会做一个磁盘文件的合并而已。因此少量的最终磁盘文件，也让该机制相对未经优化的HashShuffleManager来说，shuffle read的性能会更好。
+**该过程的磁盘写机制其实跟未经优化的HashShuffleManager是一模一样的，因为都要创建数量惊人的磁盘文件，只是在最后会做一个磁盘文件的合并而已。因此少量的最终磁盘文件，也让该机制相对未经优化的HashShuffleManager来说，shuffle read的性能会更好。**
 
 而该机制与普通SortShuffleManager运行机制的不同在于：
 第一，磁盘写机制不同;
@@ -169,8 +169,8 @@ ShuffleExternalSorter将数据不断溢出到溢出小文件中，溢出文件�
 2. **边获取边处理还是一次性获取完再处理？**
    因为 Spark 不要求 Shuffle 后的数据全局有序，因此没必要等到全部数据 shuffle 完成后再处理，所以是边 fetch 边处理。
 3. 获取来的**数据存放到哪里**？
-   刚获取来的 FileSegment 存放在 softBuffer 缓冲区，经过处理后的数据放在内存 + 磁盘上。
-   内存使用的是AppendOnlyMap ，类似 Java 的HashMap，内存＋磁盘使用的是ExternalAppendOnlyMap，如果内存空间不足时，ExternalAppendOnlyMap可以将 records 进行 sort 后 spill（溢出）到磁盘上，等到需要它们的时候再进行归并
+   **刚获取来的 FileSegment 存放在 softBuffer 缓冲区，经过处理后的数据放在内存 + 磁盘上。**
+   **内存使用的是AppendOnlyMap ，类似 Java 的HashMap，内存＋磁盘使用的是ExternalAppendOnlyMap，如果内存空间不足时，ExternalAppendOnlyMap可以将 records 进行 sort 后 spill（溢出）到磁盘上，等到需要它们的时候再进行归并**
 4. 怎么获得**数据的存放位置**？
    通过请求 Driver 端的 MapOutputTrackerMaster 询问 ShuffleMapTask 输出的数据位置。
 
@@ -212,7 +212,7 @@ rdd.repartiton(largerNumPartition).map(...)...
 >**spark.shuffle.spill.compress**
 >shuffle过程中溢出的文件是否压缩，默认true，使用`spark.io.compression.codec压缩。`
 >**spark.shuffle.file.buffer**
->在内存输出流中 每个shuffle文件占用内存大小，适当提高 可以减少磁盘读写 io次数，初始值为32k
+><font color=red>在内存输出流中 每个shuffle文件占用内存大小，适当提高 可以减少磁盘读写 io次数，初始值为32k</font>
 >**spark.shuffle.memoryFraction**
 >该参数代表了Executor内存中，分配给shuffle read task进行聚合操作的内存比例，默认是20%。
 >cache少且内存充足时，可以调大该参数，给shuffle read的聚合操作更多内存，以避免由于内存不足导致聚合过程中频繁读写磁盘。
