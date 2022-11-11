@@ -68,6 +68,8 @@ GraphX 在顶点 RDD 和边 RDD 的分区中以数组形式存储顶点数据和
 
 
 
+[源码分析](https://github.com/shijinkui/spark_study/blob/master/spark_graphx_analyze.markdown)
+
 ## 图计算模式
 
 Bulk Synchronous Parallell，即整体同步并行，它将计算分成一系列的超步（superstep）的迭代（iteration）。从纵向上看，它是一个串行模式，而从横向上看，它是一个并行的模式，每两个superstep之间设置一个栅栏（barrier），即整体同步点，确定所有并行的计算都完成后再启动下一轮superstep。

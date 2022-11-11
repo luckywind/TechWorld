@@ -169,7 +169,7 @@ CoGroupedRDD的原理： 对于父RDD的每个key,返回该key对应的值列表
 
 返回与上游每个rdd的依赖
 
-参与join的rdd和join后的rdd之间是窄依赖还是宽依赖(<font color=red>关乎到是否执行shuffle，也就是join的效率</font>)，取决于参与join的rdd的分区器是否相同。<font color=red>这也提供了一个大表join优化的方向： 让他们的分区器相同</font>
+参与join的rdd和join后的rdd之间是窄依赖还是宽依赖(<font color=red>关乎到是否执行shuffle，也就是join的效率</font>)，取决于参与join的rdd的分区器与CoGroupedRDD的分区器是否相同。<font color=red>这也提供了一个大表join优化的方向： 让他们的分区器相同</font>
 
 ```scala
   override def getDependencies: Seq[Dependency[_]] = {

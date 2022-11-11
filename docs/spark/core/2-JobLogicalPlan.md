@@ -23,7 +23,7 @@
 
 解决这个问题的初步想法是让每一个 transformation() 方法返回（new）一个 RDD。事实也基本如此，只是**某些 transformation() 比较复杂，会包含多个子 transformation()，因而会生成多个 RDD**。这就是*实际 RDD 个数比我们想象的多一些* 的原因。
 
-**如何计算每个 RDD 中的数据？**逻辑执行图实际上是 computing chain，那么 transformation() 的计算逻辑在哪里被 perform？每个 RDD 里有 compute() 方法，负责接收来自上一个 RDD 或者数据源的 input records，perform transformation() 的计算逻辑，然后输出 records。
+**如何计算每个 RDD 中的数据？**<font color=red>逻辑执行图实际上是 computing chain</font>，那么 transformation() 的计算逻辑在哪里被 perform？每个 RDD 里有 compute() 方法，负责接收来自上一个 RDD 或者数据源的 input records，perform transformation() 的计算逻辑，然后输出 records。
 
 产生哪些 RDD 与 transformation() 的计算逻辑有关，下面讨论一些典型的 [transformation()](http://spark.apache.org/docs/latest/programming-guide.html#transformations) 及其创建的 RDD。官网上已经解释了每个 transformation 的含义。iterator(split) 的意思是 foreach record in the partition。这里空了很多，是因为那些 transformation() 较为复杂，会产生多个 RDD，具体会在下一节图示出来。
 
@@ -56,11 +56,11 @@ RDD 之间的数据依赖问题实际包括三部分：
 
 - RDD 本身的依赖关系。要生成的 RDD（以后用 RDD x 表示）是依赖一个 parent RDD，还是多个 parent RDDs？
 - RDD x 中会有多少个 partition ？
-- RDD x 与其 parent RDDs 中 partition 之间是什么依赖关系？是依赖 parent RDD 中一个还是多个 partition？
+- RDD x 与其 parent RDDs 中 partition 之间是什么依赖关系？是依赖 parent RDD 中一个还是多个 partition？**是完全依赖还是部分依赖？**
 
 第一个问题可以很自然的解决，比如`x = rdda.transformation(rddb)` (e.g., x = a.join(b)) 就表示 RDD x 同时依赖于 RDD a 和 RDD b。
 
-第二个问题中的 partition 个数一般由用户指定，不指定的话一般取`max(numPartitions[parent RDD 1], .., numPartitions[parent RDD n])`。
+<font color=blue>第二个问题中的 partition 个数一般由用户指定，不指定的话一般取`max(numPartitions[parent RDD 1], .., numPartitions[parent RDD n])`。</font>
 
 第三个问题比较复杂。需要考虑这个 transformation() 的语义，不同的 transformation() 的依赖关系不同。比如 map() 是 1:1，而 groupByKey() 逻辑执行图中的 ShuffledRDD 中的每个 partition 依赖于 parent RDD 中所有的 partition，还有更复杂的情况。
 
@@ -124,15 +124,18 @@ union() 将两个 RDD 简单合并在一起，不改变 partition 里面的数�
 groupByKey() 只需要将 Key 相同的 records 聚合在一起，一个简单的 shuffle 过程就可以完成。ShuffledRDD 中的 compute() 只负责将属于每个 partition 的数据 fetch 过来，之后使用 mapPartitions() 操作（前面的 OneToOneDependency 展示过,<font color=red>起到聚合的作用</font>）进行 aggregate，生成 MapPartitionsRDD，到这里 groupByKey() 已经结束。最后为了统一返回值接口，将 value 中的 ArrayBuffer[] 数据结构抽象化成 Iterable[]。
 
 > groupByKey() 没有在 map 端进行 combine，因为 map 端 combine 只会省掉 partition 里面重复 key 占用的空间，当重复 key 特别多时，可以考虑开启 combine。
-> 
+>
 > 这里的 ArrayBuffer 实际上应该是 CompactBuffer，An append-only buffer similar to ArrayBuffer, but more memory-efficient for small buffers.
+>
+> cxf: <font color=red>我们要把shuffle算子当作map和reduce两个操作来看，算子本身(包括传入的分区器)决定了map task如何分发数据，shuffledRDD的分区数决定了reduce task的个数， 而shuffle算子里的逻辑定义了reduce操作如何聚合数据。 </font>
+>
+> <font color=red>例如，`reduceByKey(100)(_+_) `指定map task按照key分发到100个partition上，`_+_` 定义了这100个reduce task拉取数据后进行聚合的逻辑</font>
 
 ParallelCollectionRDD 是最基础的 RDD，直接从 local 数据结构 create 出的 RDD 属于这个类型，比如
 ```scala
 val pairs = sc.parallelize(List(1, 2, 3, 4, 5), 3)
 ```
 生成的 pairs 就是 ParallelCollectionRDD。  
-
 
 **2) reduceByKey(func, numPartitions)**
 
