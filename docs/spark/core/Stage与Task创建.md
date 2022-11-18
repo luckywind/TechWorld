@@ -141,38 +141,6 @@ stage划分我们上一篇文章  [Spark之调度模块-DAGScheduler](https://mp
 
 答案还是上一篇文章，stage的创建是一个递归过程，从后往前递归推动stage的创建，真正的创建动作还是从前往后创建，从而stage序号是递增的。
 
-## 实际案例
-
-代码
-
-```scala
-val res: DataFrame = finalMappingData
-        .map(r=>(r.router_uuid.toString,r))    //行号 423
-        .leftOuterJoin(routerInfo)
-        .map(... ...)      //行号  425
-        .groupByKey(1000)
-        .flatMap(... ...)
-        .repartition(500).toDF()    //行号 458
-        
-  res.saveAsParquet(path)
-```
-
-![image-20221031203401591](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221031203401591.png)
-
-对比代码和Spark UI，可以得到结论：
-
-1. **description列显示的是某个stage最后一个transformation**
-
- 例如stage1630对应代码458行
-
-<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221031203430924.png" alt="image-20221031203430924" style="zoom:50%;" />
-
-
-
-2. **Tasks列对应该stage 的父stage的输出分区个数**
-
-这个stage拉取stage1629的shuffle输出(1000个分区），stage1630发起1000个shuffle read task
-
 
 
 # 总结
@@ -182,7 +150,7 @@ val res: DataFrame = finalMappingData
 1.  如果rdd触发了action算子，则其创建的stage与之建立绑定关系
 2. 如果rdd的依赖是shuffle依赖，则其创建的stage与父rdd建立绑定关系
 
-<font color=red>另外一点就是stage创建的task个数就是它绑定的那个rdd的分区数, 也是该stage最后一个RDD中的分区数决定。   需要注意的是Spark UI上一个stage的task个数是它的父rdd也就是上一个stage最后一个rdd的分区数</font>
+<font color=red>另外一点就是stage创建的task个数就是它绑定的那个rdd的分区数, 也是该stage最后一个RDD中的分区数决定。   需要注意的是Spark UI上,一个stage的task个数是它的父rdd也就是上一个stage最后一个rdd的分区数</font>
 
 >  transformation不改变分区数，shuffle算子才会改变分区数
 

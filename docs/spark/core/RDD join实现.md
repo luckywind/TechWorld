@@ -59,6 +59,81 @@ def joinScoresWithAddress3(scoreRDD: RDD[(Long, Double)],
 1. 同一个action算子、同一个分区器物化的rdd，则一定是co-located
 2. 最好在重分区后进行persist
 
+
+
+分区器均未知的Join
+
+```scala
+  val col1 = Range(1, 50).map(idx => (random.nextInt(10), s"user$idx"))
+    val col2 = Array((0, "BJ"), (1, "SH"), (2, "GZ"), (3, "SZ"), (4, "TJ"), (5, "CQ"), (6, "HZ"), (7, "NJ"), (8, "WH"), (0,"CD"))
+
+
+    val rdd1: RDD[(Int, String)] = sc.makeRDD(col1,3)
+    val rdd2: RDD[(Int, String)] = sc.makeRDD(col2,3)
+
+    println(rdd1.join(rdd2).count())
+```
+
+![image-20221115145858728](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115145858728.png)
+
+分区器相同但分区数不同的Join， 产生的RDD分区数与最大的那个rdd的分区数相同，从而与分区数
+
+```scala
+    val rdd1: RDD[(Int, String)] = sc.makeRDD(col1)
+      .partitionBy(new HashPartitioner(3))      //37行
+    val rdd2: RDD[(Int, String)] = sc.makeRDD(col2) //38行
+      .partitionBy(new HashPartitioner(4))       //39行
+    println(rdd1.dependencies)
+    println(rdd2.dependencies)
+
+    println(rdd1.join(rdd2).count())
+```
+
+![image-20221115150358458](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115150358458.png)
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115151549381.png" alt="image-20221115151549381" style="zoom:50%;" />
+
+
+
+分区器相同的Join
+
+```scala
+    val rdd1: RDD[(Int, String)] = sc.makeRDD(col1)
+      .partitionBy(new HashPartitioner(3))
+    val rdd2: RDD[(Int, String)] = sc.makeRDD(col2)
+      .partitionBy(new HashPartitioner(3))
+    println(rdd1.dependencies)
+    println(rdd2.dependencies)
+
+    println(rdd1.join(rdd2).count())
+```
+
+![image-20221115150447496](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115150447496.png)
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115151320128.png" alt="image-20221115151320128" style="zoom:50%;" />
+
+不同分区器Join，结果RDD的分区器和分区数大的RDD的分区器一样，
+
+```scala
+
+    val rdd1: RDD[(Int, String)] = sc.makeRDD(col1)
+      .partitionBy(new HashPartitioner(3))
+    val rdd2: RDD[(Int, String)] = sc.makeRDD(col2)
+      .partitionBy(new MyPartitioner(2))
+    println(rdd1.dependencies)
+    println(rdd2.dependencies)
+
+    val joined: RDD[(Int, (String, String))] = rdd1.join(rdd2)
+    println(joined.dependencies)
+    println(joined.partitioner)
+    println(joined.toDebugString)
+    println(joined.count())
+```
+
+![image-20221115165926978](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221115165926978.png)
+
+
+
 ### 使用广播器hash join
 
 <font color=red>sparkSQL可以自动识别小rdd来自动应用broadcast hash join, 但是spark core中，我们只能手动把小rdd collect后广播出去</font>

@@ -31,6 +31,26 @@
 - **Shuffle spill (memory)** is the size of the deserialized form of the shuffled data in memory.
 - **Shuffle spill (disk)** is the size of the serialized form of the data on disk.
 
+## task处理的数据量
+
+建议每个read task100-200M之间
+
+每个task处理的数据量： 查看该stage shuffleRead的总数据量，除以task个数
+
+例如下图：每个task处理的数据量=128*1024M/6315=20M
+
+![image-20221114164606973](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221114164606973.png)
+
+task处理的数据量确定后，task个数也就确定了，作业申请的总cpu核心数=task个数/2 OR 3
+
+此外，还应该设置作业的并行度spark.defalut.parallelism
+
+## task日志
+
+缓存失效： 反复读取缓存前面的RDD:  Found block rdd_xx
+
+
+
 ## Jobs
 
 2个task并行
