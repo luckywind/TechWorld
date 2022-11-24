@@ -74,18 +74,18 @@ public static void shellSort(int[] arr) {
       for (int i = step; i < length; i++) {  //对每个子序列按照插入排序的思想排序
             temp = arr[i];
             int j = i - step;
-            while (j >= 0 && arr[j] > temp) {
+            while (j >= 0 && arr[j] > temp) {//前面元素逐个向后移动
                 arr[j + step] = arr[j];
                 j -= step;
             }
-            arr[j + step] = temp;
+            arr[j + step] = temp;//插入当前元素
         }
     }
 }
 
 
 
-public void shelSort(int[] a) {
+public void shellSort(int[] a) {
         int length = a.length;
         int d = length / 2;
         while (d > 0) {
@@ -431,4 +431,5 @@ public void shelSort(int[] a) {
 
 # 复杂度总结
 
-![常见排序算法复杂度](Java八大排序算法大总结.assets/排序算法复杂度.png)
+![排序算法复杂度](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/%E6%8E%92%E5%BA%8F%E7%AE%97%E6%B3%95%E5%A4%8D%E6%9D%82%E5%BA%A6.png)
+
