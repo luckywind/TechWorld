@@ -13,7 +13,9 @@
 
 <div  align="center"><img src="imgs/1.2.png" width = "700" height = "280" alt="1.2" align="center" /></div><br>
 
-&emsp;&emsp;对于线性边界的情况，边界形式可以归纳为如下公式 **(1)**:
+&emsp;&emsp;对于线性边界的情况，边界形式可以归纳为如下公式 **(1)**:  
+
+> 所谓的线性边界，其实就是一个超平面
 
 <div  align="center"><img src="imgs/1.3.png" width = "300" height = "60" alt="1.3" align="center" /></div><br>
 

@@ -133,3 +133,9 @@ spark1.6之后，Excution和Storage可互相借用，且加入了堆外内存，
 
 指定shuffle分区数, 增加repartition提示
 
+# groupbykey实现细节
+
+# sparkonyarn执行流程
+
+# sparkSqlJoin原理
+

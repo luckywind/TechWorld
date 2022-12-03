@@ -85,7 +85,7 @@ explode在select句中和在from子句中给虚拟字段命名的格式稍微有
 
 # lateral View 表生成函数
 
-
+## 语法
 
 这应该是hive独有的一行变多行的语法,[参考](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+LateralView)
 
@@ -101,11 +101,13 @@ fromClause: FROM baseTable (lateralView)*
 
 
 
-
+![image-20221123111014087](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221123111014087.png)
 
 lateral view是Hive中提供给UDTF的结合，它可以解决UDTF不能添加额外的select列的问题。
 
-lateral view其实就是用来和想类似explode这种UDTF函数联用的，lateral view会将UDTF生成的结果放到一个虚拟表中，然后这个虚拟表会和输入行进行join来达到连接UDTF外的select字段的目的。
+lateral view其实就是用来和类似explode这种UDTF函数联用的，
+
+首先，UDTF作用到基表的每一行，lateral view会将UDTF生成的结果放到一个虚拟表中，然后这个虚拟表会和输入行进行join
 
 **格式一:  用在udtf函数之前**
 
@@ -115,9 +117,11 @@ lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
 
 > as后面是虚拟表的列名，(,columnAlias)* 说明可以有多个列
 
+<font color=red>lateral view udtf(expression) 虚拟表 as 虚拟表-列1 (,虚拟表-列2)*</font>
+
 - lateral view在UDTF前使用，表示连接UDTF所分裂的字段。
 - UDTF(expression)：使用的UDTF函数，例如explode()。
-- tableAlias：表示UDTF函数转换的虚拟表的名称。
+- tableAlias：表示UDTF函数转换的虚拟表的名称, 可省略。
 - columnAlias：表示虚拟表的虚拟字段名称，如果分裂之后有一个列，则写一个即可；如果分裂之后有多个列，按照列的顺序在括号中声明所有虚拟列名，以逗号隔开。
 
 **格式二： 用在from 语句里**
@@ -126,7 +130,7 @@ lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
 from basetable (lateral view)*
 ```
 
-- 在from子句中使用，一般和格式一搭配使用，这个格式只是说明了lateral view的使用位置。
+- 在from子句中使用，一般和格式一搭配使用，这个格式只是说明了lateral view的使用位置。<font color=red>from 子句可以是多个表/join</font>
 - <font color=red>from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。会依次执行</font>
 
 **格式三**
@@ -136,12 +140,6 @@ from basetable (lateral view outer)*
 ```
 
 它比格式二只是多了一个outer，这个outer的作用是在UDTF转换列的时候将其中的空也给展示出来，UDTF默认是忽略输出空的，加上outer之后，会将空也输出，显示为NULL。这个功能是在Hive0.12是开始支持的。
-
-
-
-
-
-
 
 
 
@@ -159,7 +157,79 @@ select id,rd,label,value from tmp2
             lateral view explode(split('0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9',',')) myTable as  rd
 ```
 
-侧视图(Lateral view) 主要与表生成函数联合使用，例如explode（生成的是一张表）。UDTF通常把一行变多行，侧视图首先把udtf应用到基础表的每一行，然后把结果和输入行进行join形成一个虚拟表(这还可以达到连接udtf之外的select 字段的目的，实际上新版本udtf已经支持select其他字段了，主要作用还是把一行炸开)，可提供别名。
+## 追加两列
+
+```sql
+with tmp2 as (
+    select stack(3,
+             0,'height',11,
+             1,'weight',33,
+             2,'age',18   ) 
+             as (id,label,value)
+)
+
+select * from tmp2 
+lateral view explode(
+          map(
+             "k1",value,
+             "k2",value+10
+            )
+        ) vals as k, val 
+```
+
+| id   | label  | value | k    | val  |      |
+| ---- | ------ | ----- | ---- | ---- | ---- |
+| 0    | height | 11    | k1   | 11   |      |
+| 0    | height | 11    | k2   | 21   |      |
+| 1    | weight | 33    | k1   | 33   |      |
+| 1    | weight | 33    | k2   | 43   |      |
+| 2    | age    | 18    | k1   | 18   |      |
+| 2    | age    | 18    | k2   | 28   |      |
+
+
+
+## 复杂from
+
+```sql
+with tmp2 as (
+    select stack(3,
+             0,'height',11,
+             1,'weight',33,
+             2,'age',18   ) 
+             as (id,label,value)
+             ),
+tmp1 as (
+    select stack(3,
+             0,'height',111,
+             1,'weight',222,
+             2,'age',222   ) 
+             as (id,label,value)
+             )
+
+select 
+tmp1.id, tmp1.value, tmp2.value, vals.k,vals.val
+from tmp2 join tmp1
+on tmp1.id=tmp2.id
+lateral view explode(
+          map(
+             "k1",tmp2.value,      
+             "k2",tmp2.value+10
+            )
+        ) vals as k, val 
+```
+
+| id   | value | value | k    | val  |      |
+| ---- | ----- | ----- | ---- | ---- | ---- |
+| 1    | 222   | 33    | k1   | 33   |      |
+| 1    | 222   | 33    | k2   | 43   |      |
+| 2    | 222   | 18    | k1   | 18   |      |
+| 2    | 222   | 18    | k2   | 28   |      |
+| 0    | 111   | 11    | k1   | 11   |      |
+| 0    | 111   | 11    | k2   | 21   |      |
+
+
+
+
 
 ```sql
 insert overwrite table dwm.lateral_explode_tmp
@@ -257,7 +327,7 @@ https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF#LanguageManu
 | string1,...,stringn  | json_tuple(string jsonStr,string k1,...,string kn)     | 从一个json串中解析出一个数组出来                             |
 | string 1,...,stringn | parse_url_tuple(string urlStr,string p1,...,string pn) | Takes URL string and a set  of n URL parts, and  returns a tuple of n values. This  is similar to the parse_url() UDF but can extract multiple parts at once out of a URL.  Valid part names are: HOST, PATH, QUERY, REF, PROTOCOL, AUTHORITY, FILE,  USERINFO, QUERY:<KEY>. |
 | T                    | explode(ARRAY<T> a)                                    | <font color=red>炸开，并与原表join</font>                    |
-| T1,...,Tn            | inline(ARRAY<STRUCT<f1:T1,...,fn:Tn>> a)               | [Explodes an array of   structs to multiple rows. Returns a row-set with N columns (N =   number of top level elements in the struct), one row per struct from the   array. (As of Hive 0.10.)](https://issues.apache.org/jira/browse/HIVE-3238) |
+| T1,...,Tn            | inline(ARRAY<STRUCT<f1:T1,...,fn:Tn>> a)               | [Explodes an array of   structs to multiple rows. Returns a row-set with N columns (N =   number of top level elements in the struct), one row per struct from the   array. (As of Hive 0.10.)](https://issues.apache.org/jira/browse/HIVE-3238) <br><font color=red>把struct数组炸开，每一行一个struct</font> |
 | T1,...,Tn/r          | stack(int r,T1 V1,...,Tn/r Vn)                         | <font color=red>把n个值变成r行，每行n/r列</font>             |
 | Tkey,Tvalue          | explode(MAP<Tkey,Tvalue> m)                            | 把map展开为两列(key,value)，每个kv一行                       |
 

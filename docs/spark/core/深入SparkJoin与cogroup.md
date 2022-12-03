@@ -334,7 +334,7 @@ ExternalAppendOnlyMap也在内存维护了一个SizeTrackingAppendOnlyMap(*继�
 
 
 
-这里主要看下CoGroupPartition,它其实是一个Partition实现，只不过将分区序号作为哈希code进行分区,这样保证窄依赖分区是一一对应的
+这里主要看下CoGroupPartition,它其实是一个Partition实现，只不过<font color=red>将分区序号作为哈希code进行分区,这样保证窄依赖分区是一一对应的</font>
 
 ```scala
 private[spark] class CoGroupPartition(

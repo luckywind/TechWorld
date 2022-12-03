@@ -33,13 +33,17 @@ reduceByKey是shuffle操作，该操作分别是stage0/1的最后一个操作，
 
 # Join分区方式与关系
 
+## Join结果的分区方式
+
 两个RDD join时，结果RDD(以下记为RDDX)的分区器，分区数，以及与两个父RDD的依赖是如何确定的？ 
 
 1. 当两个RDD都没有分区器时，RDDX使用默认的HashPartitioner,分区数取最大值，且与父RDD是shuffleDependency
 2. 当两个RDD其中有一个有分区器时，RDDX的分区方式与它保持一致(分区器和分区数都一样)，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
 3. 当两个RDD都有分区器，且分区数不一样时，RDDX的分区器与分区数大的那个RDD保持一致，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
 4. 当两个RDD都有分区器，且分区数一样，但分区器不一样时， RDDX的分区器优先取HashPartitioner(父RDD有的话)，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
-5. 当两个RDD都有分区器，且分区器与分区数都一样时，RDDX的分区方式与它们保持一致，从而与两个RDD都是OneToOneDependency
+5. 当两个RDD都有分区器，都是默认的HashPartitioner且分区数都一样时，RDDX的分区方式与它们保持一致，从而与两个RDD都是OneToOneDependency
+
+   > 自定义分区器不能达到这个目的
 
 > 有的transformation例如map会丢失partitioner哦
 
@@ -53,6 +57,30 @@ Description列显示的是stage最后一个tranformation的名字，stage内task
 
 1. stage里如果只有一个算子，那一定是shuffle类算子，该stage的task个数就是这个shuffle算子指定的分区数。
 2. 如果stage里有多个算子，则除了第一个算子是shuffle类算子(除开读文件的情况)外，后续都是transformation，那么该stage的task个数就是第一个算子的并行度，也就是第一个RDD的分区数
+
+## 分区器丢失
+
+```sql
+    val rdd2: RDD[(Int, String)] = sc.makeRDD(col2)
+      .partitionBy(new MyPartitioner(3))
+      .map(r=>(r._1,r._2+"__"))
+```
+
+rdd2的分区器是什么呢？ 答案是没有！因为map操作不保留分区器， 而mapValues操作保留分区器，因为它不会改变key。
+
+所以，尽量在重分区前进行map；或者重分区后采用mapValues这样的算子来保留分区器。
+
+同理，mapPartition/ flatMap也会丢失分区器
+
+filter不会丢失分区器
+
+
+
+
+
+
+
+
 
 # Spark作业并行度
 

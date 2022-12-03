@@ -14,8 +14,8 @@ join通常需要不同rdd中相应的key分布在同一个分区，以便于本�
 
 注意：
 
-1. 两个rdd如果是同一个action算子产生的且分区器一样，则数据一定是在一起的
-2. Core 模块的Join是使用cogroup函数实现的
+1. <font color=red>两个rdd如果是同一个action算子产生的且分区器一样，则数据一定是在一起的</font>
+2. <font color=red>Core 模块的Join是使用cogroup函数实现的</font>
 
 ## 选择join类型
 
@@ -29,7 +29,7 @@ join通常需要不同rdd中相应的key分布在同一个分区，以便于本�
 
 spark的join操作需要数据在同一个分区，spark默认的实现是shuffled hash join。<font color=red>它通过对第二个rdd使用第一个rdd的默认分区器进行分区以确保每个分区包含相同的key，同时相同key的数据也在同一个分区上</font>>。这总是奏效，但因为总是要shuffle而更加昂贵。以下场景可避免shuffle:
 
-1. 两个rdd都有一个已知分区器
+1. 两个rdd有相同的分区器
 2. 一个rdd足够小以放到内存，从而可以采用广播器
 
 ### 提供一个已知分区器来加速join

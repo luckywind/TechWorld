@@ -141,7 +141,7 @@ spark1.5开始，Spark 开始了钨丝计划（Tungsten），目的是优化内�
 
 1. 没有聚合，聚合意味着需要存储反序列化的值来聚合新值，这样就丢了最大的优势了
 2. shuffle序列化器支持序列化值的重定向(当前KryoSerializer and Spark SQL’s custom serializer是支持的)
-3. shuffle产生的分区数不超过16777216
+3. shuffle产生的分区数不超过16,777,216
 4. 记录序列化后不能超过128M
 
 但这种方式无法利用mapper端的预排序优势，且貌似不稳定。但是使用 Tungsten-Sort Based Shuffle 有几个限制，Shuffle 阶段不能有 aggregate 操作，分区数不能超过一定大小（2^24-1，这是可编码的最大 Parition Id），所以像 reduceByKey 这类有 aggregate 操作的算子是不能使用 Tungsten-Sort Based Shuffle，它会退化采用 Sort Shuffle。图示如下：
