@@ -1,10 +1,16 @@
 [SparkSQL源码解析系列一](https://zhuanlan.zhihu.com/p/367590611)
 
-[是sql](https://mp.weixin.qq.com/s/awT4aawtTIkNKGI_2zn5NA)
+[是时候学习真正的 spark 技术了](https://mp.weixin.qq.com/s/awT4aawtTIkNKGI_2zn5NA)
 
 [InfoQ Sparksql内核剖析](https://xie.infoq.cn/article/2a70e9fb993bed9bc9ed02c46)
 
 [是时候学习真正的 spark 技术了](https://mp.weixin.qq.com/s/awT4aawtTIkNKGI_2zn5NA)写的不错 https://tech.xiaomi.com/#/pc/article-detail?id=15736
+
+[spark-sql源码剖析和最佳实践精品系列教程](http://spark.coolplayer.net/?page_id=240)
+
+[The Internals of Spark SQL Online Book](https://github.com/japila-books/spark-sql-internals)
+
+[你真的懂Spark SQL原理吗？——SparkSQL源码解析系列](https://zhuanlan.zhihu.com/p/367590611)
 
 # 通过案例研究源码
 

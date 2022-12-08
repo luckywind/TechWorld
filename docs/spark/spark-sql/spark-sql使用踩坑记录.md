@@ -111,11 +111,24 @@ object DwmOneTrackAppUsage {
 
 可取之处：
 
-1. struct可把多个字段组合成一个struct字段
-2. Collect_list可聚合多个Row为一个list字段
-3. withColumn可新增字段，这里可用udf生成新字段，udf可处理list字段，并返回一个tuple，后续可用._x的方式获取指定元素
-4. lit可产生常量字段
-5. list.: _* 可把list拆分为多个参数
+1. 获取Row的某个字段: Try包裹getAs解决异常数据
+
+   ```scala
+   Try(e.getAs[String]("duration")).getOrElse(0l)
+   ```
+
+   
+
+2. struct可把多个字段组合成一个struct字段
+
+3. Collect_list可聚合多个Row为一个list字段
+
+4. withColumn可新增字段，这里可用udf生成新字段，udf可处理list字段，并返回一个tuple，后续可用._x的方式获取指定元素
+
+5. lit可产生常量字段
+
+6. list.: _* 可把list拆分为多个参数,配合isin方法使用
+
 5. spark3不支持$魔法了，用col代替
 
 

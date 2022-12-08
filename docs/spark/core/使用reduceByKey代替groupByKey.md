@@ -1,3 +1,4 @@
+# 案例
 ```scala
 val words = Array("one", "two", "two", "three", "three", "three")
 val wordPairsRDD = sc.parallelize(words).map(word => (word, 1))
@@ -134,6 +135,73 @@ val wordCountsWithGroup = wordPairsRDD
 reduceByKey 和 groupByKey 都是通过combineByKeyWithClassTag函数实现的。
 但是它们调用combineByKeyWithClassTag的参数不同，返回值不同。
 
+# groupByKey的实现
+
+groupByKey最终是调用combineByKeyWithClassTag实现的，所以只需要看combineByKeyWithClassTag就行
+
+```scala
+  def groupByKey(partitioner: Partitioner): RDD[(K, Iterable[V])] = self.withScope {
+    //创建三个聚合函数
+    val createCombiner = (v: V) => CompactBuffer(v)//初始化聚合值
+    val mergeValue = (buf: CompactBuffer[V], v: V) => buf += v  //合并值
+    val mergeCombiners = (c1: CompactBuffer[V], c2: CompactBuffer[V]) => c1 ++= c2//分区间合并
+    val bufs = combineByKeyWithClassTag[CompactBuffer[V]](
+      createCombiner, mergeValue, mergeCombiners, partitioner, mapSideCombine = false)
+    bufs.asInstanceOf[RDD[(K, Iterable[V])]]
+  }
+
+
+
+def combineByKeyWithClassTag[C](
+      createCombiner: V => C,
+      mergeValue: (C, V) => C,
+      mergeCombiners: (C, C) => C,
+      partitioner: Partitioner,
+      mapSideCombine: Boolean = true,
+      serializer: Serializer = null)(implicit ct: ClassTag[C]): RDD[(K, C)] = self.withScope {
+
+  
+    val aggregator = new Aggregator[K, V, C](
+      self.context.clean(createCombiner),
+      self.context.clean(mergeValue),
+      self.context.clean(mergeCombiners))
+   //如果没有更改分区方式，则在每个分区上执行aggregator.combineValuesByKey
+    if (self.partitioner == Some(partitioner)) {
+      self.mapPartitions(iter => {
+        val context = TaskContext.get()
+        new InterruptibleIterator(context, aggregator.combineValuesByKey(iter, context))
+      }, preservesPartitioning = true)
+    } else {
+   //如果更改了分区方式，则执行shuffle,产生shuffledRDD
+      new ShuffledRDD[K, V, C](self, partitioner)
+        .setSerializer(serializer)
+        .setAggregator(aggregator)
+        .setMapSideCombine(mapSideCombine)
+    }
+  }
+```
+
+
+
+我们先看无需shuffle的方式,combineValuesByKey会把分区数据插入到ExternalAppendOnlyMap里， 逐条插入，每插入一条就和已有数据进行聚合，当内存不足时spill到磁盘。
+
+```scala
+  def combineValuesByKey(
+      iter: Iterator[_ <: Product2[K, V]],
+      context: TaskContext): Iterator[(K, C)] = {
+    val combiners = new ExternalAppendOnlyMap[K, V, C](createCombiner, mergeValue, mergeCombiners)
+    combiners.insertAll(iter)
+    updateMetrics(context, combiners)
+    combiners.iterator
+  }
+```
+
+
+
+
+
+
+
 先看返回值，groupByKey()返回值是RDD[(K, Iterable[V])]，包含了每个key的分组数据。reduceByKey()的返回值是RDD[(K, C)]，只是一个普通的RDD。
 再看调用参数，groupByKey调用时的泛型参数是CompactBuffer[V]：
 combineByKeyWithClassTag[CompactBuffer[V]](
@@ -160,5 +228,4 @@ val wordCountsWithGroup = wordPairsRDD.groupByKey().map(t => (t._1, t._2.sum))
 
 reduceByKey使用“ _ + _ ”这样的自定义函数来预聚合，groupByKey没有这种参数，
 当调用groupByKey时，所有的 key-value pair 都会被移动，发送本机所有的map，在一个机器上suffle，集群节点之间传输的开销很大。
-
 

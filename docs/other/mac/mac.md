@@ -86,6 +86,10 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 
 https://www.macwk.com/soft/all/p1
 
+上面的网站永久关闭了，可用下面这个
+
+https://macpedia.xyz/
+
 ## 打不开无法检查
 
 [打开任意](https://www.yaxi.net/2020-05-09/1990.html)
