@@ -21,7 +21,7 @@ shuffle通常有两个重要的参数：
 
 spark中有多种shuffle实现，通过参数***spark.shuffle.manager\*** 指定，可选值有hash、sort和tungsten-sort. 在spark1.2.0之前，sort是默认的shuffle实现。
 
-前一个stage 的 ShuffleMapTask 进行 shuffle write， 把数据存储在 blockManager 上面， 并且把数据位置元信息上报到 driver 的 mapOutTrack 组件中， 下一个 stage 根据数据位置元信息， 进行 shuffle read， 拉取上个stage 的输出数据。
+前一个stage 的 ShuffleMapTask 进行 shuffle write， 把数据存储在 blockManager 上面， 并且把数据位置元信息上报到 <font color=red>driver</font> 的 mapOutTrack 组件中， 下一个 stage 根据数据位置元信息， 进行 shuffle read， 拉取上个stage 的输出数据。
 
 ## Spark shuffle 发展史
 
@@ -65,9 +65,56 @@ Cons:
 
 # Sort Shuffle
 
-<font color=red>不管下游stage有多少个shuffle read task, 当前每个shuffle write task 最后只输出一个文件，该文件按照partitionId和key进行排序。  另外生成一个索引文件对该大文件进行索引，下游stage的每个shuffle read task只读取自己要处理的那部分数据就行。</font>
+## shuffle writer
 
-## **SortShuffleWriter**
+<font color=red>不管下游stage有多少个shuffle read task(下游stage的ShuffleMapTask/ResultTask), 当前每个shuffle write task 最后只输出一个文件(非bypass)，该文件按照partitionId和key进行排序。  另外生成一个索引文件对该大文件进行索引，下游stage的每个shuffle read task只读取自己要处理的那部分数据就行。</font>
+
+
+
+### 框架
+
+以下是当前Spark支持的一个shuffle操作对shuffle框架的需求：
+
+![image-20221222215810529](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222215810529.png)
+
+>  可以发现目前的shuffle算子都不支持在shuffle write端排序，但是当前的框架设计的是支持wirte端排序的，可能未来会有这样的算子出现。
+
+<font color=red>**Shuffle Write框架需要执行的3个步骤是** :  **聚合**-> **排序** ->**分区**</font>
+
+![image-20221223102014783](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223102014783.png)
+
+**分区数小且不需要聚合与排序**： 
+
+​		直接采用 BypassMergeSortShuffleWriter
+
+> 例如groupByKey(100),  partitionBy(100),  sortByKey(100)
+>
+> **map输出好<K,V>对并计算好分区ID后根据分区ID，Spark根据分区ID把数据分发到不同的buffer中再溢写到文件**
+
+![image-20221222231510544](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222231510544.png)
+
+**分区数大**：
+
+​		<font color=red>需要排序</font>：基于Array的SortShuffleWriter按照**PartitionId+Key**进行排序
+
+>   Array: 具体为PartitionedPairBuffer<(PID,K), V>按照PartitionId+Key排序后输出到一个文件就OK 
+>
+>  目前Spark还没有这样的操作，但是不排除未来会提供/用户自定义
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222233556173.png" alt="image-20221222233556173" style="zoom:50%;" />
+
+​       <font color=red>不需要聚合与排序</font>:基于Array的SortShuffleWriter按照**PartitionId**进行排序 
+
+>   只按照PartitionId排序后输出到一个文件就OK        
+
+<font color=red>需要map端聚合</font>：基于HashMap的SortShuffleWriter按照PartitionId(Key)进行排序
+
+> 只需要把Array结构换成支持聚合与排序的PartitionAppendOnlyMap 
+>
+> HashMap中的Key是 **partitionId+Key**,  聚合后，如果需要排序 ，则按照PartitionId+Key排序，如果不需要排序，则只按照PartitionId排序; 最终输出到一个文件中。   在实现中，Spark使用一个同时支持聚合和排序的数据结构PartitonedAppendOnlyMap,相当于HashMap和Array的合体。
+> ![image-20221222224735310](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222224735310.png)
+
+### **SortShuffleWriter**
 
 ​             从spark1.2.0开始，默认的shuffle算法改成sort了。在该模式下，数据会先写入一个内存数据结构中，此时根据不同的shuffle算子，可能选用不同的数据结构。如果是reduceByKey这种聚合类的shuffle算子，那么会选用Map数据结构，一边通过Map进行聚合，一边写入内存；如果是join这种普通的shuffle算子，那么会选用Array数据结构，直接写入内存。**这个shuffle逻辑类似MR**，只输出一个文件，该文件中的记录首先是按照 Partition Id 排序，每个 Partition 内部再按照 Key 进行排序，Map Task 运行期间会顺序写每个 Partition 的数据，**同时生成一个索引文件**记录每个 Partition 的大小和偏移量,该文件按照reducer_id有序且可索引。这样在fread之前做一个fseek就很方便找到某个reducer相关的数据块。总体上看来 **Sort Shuffle 解决了 Hash Shuffle 的所有弊端**，
 
@@ -100,7 +147,7 @@ Cons:
 1. Sorting is slower than hashing. It might worth tuning the bypassMergeThreshold parameter for your own cluster to find a sweet spot, but in general for most of the clusters it is even too high with its default
 2. In case you use SSD drives for the temporary data of Spark shuffles, hash shuffle might work better for you
 
-## **BypassMergeSortShuffleWriter**
+### **BypassMergeSortShuffleWriter**
 
 但是因为需要其 Shuffle 过程需要对记录进行排序，所以**在性能上有所损失**。.当然，当reducer个数很小时，hash到多个文件是比sorting到一个文件快的，因此，sort shuffle有一个回退计划：**当reducer个数小于spark.shuffle.sort.bypassMergeThreshold(默认200)个且非reduceBykey类的聚合shuffle 算子，启用回退计划，hash到多个文件然后再join到一个文件**。该实现的源码参考BypassMergeSortShuffleWriter类。
 
@@ -123,6 +170,64 @@ Cons:
 ### 源码解析
 
 [参考](https://www.cnblogs.com/johnny666888/p/11291592.html)
+
+## shuffle read
+
+### 框架
+
+shuffle read数据操作需要3个功能: <font color=red>**跨节点数据获取、聚合、排序**, 可见Shuffle Read是不需要分区的，所以比Shuffle write要简单</font>。
+
+为了支持所有的shuffle算子，Spark也设计了一个通用的Shuffle Read框架。框架的计算顺序就是 数据获取->聚合->排序。
+![image-20221222223128683](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222223128683.png)
+
+1. 无需聚合与排序
+   拉取的数据直接放到buffer中， 下游直接从buffer中取即可。   例如partitionBy()
+
+2. 需要排序
+
+   拉取的数据会放到Array结构里，按照Key进行排序，内存不足会spill。  例如sortByKey()、sortBy()
+
+3. 需要聚合
+
+   - 仍然使用HashMap对数据按照Key聚合，value就是当前key的聚合结果。
+
+     > 这里也是用了一个特殊优化的HashMap，ExternalAppendOnlyMap同时支持聚合和排序
+     >
+     > reduceByKey \ aggretateByKey, foldByKey, distinct等
+
+   - 如果需要按照Key进行排序，则拷贝到一个Array中进行排序
+
+     
+
+### 几个细节
+
+- **在什么时候 fetch？**当 parent stage 的所有 ShuffleMapTasks 结束后再 fetch。理论上讲，一个 ShuffleMapTask 结束后就可以 fetch，但是为了迎合 stage 的概念（即一个 stage 如果其 parent stages 没有执行完，自己是不能被提交执行的），还是选择全部 ShuffleMapTasks 执行完再去 fetch。因为 fetch 来的 FileSegments 要先在内存做缓冲，所以一次 fetch 的 FileSegments 总大小不能太大。Spark 规定这个缓冲界限不能超过 `spark.reducer.maxMbInFlight`，这里用 **softBuffer** 表示，默认大小为 48MB。一个 softBuffer 里面一般包含多个 FileSegment，但如果某个 FileSegment 特别大的话，这一个就可以填满甚至超过 softBuffer 的界限。
+
+- **边 fetch 边处理还是一次性 fetch 完再处理？**边 fetch 边处理。本质上，MapReduce shuffle 阶段就是边 fetch 边使用 combine() 进行处理，只是 combine() 处理的是部分数据。MapReduce 为了让进入 reduce() 的 records 有序，必须等到全部数据都 shuffle-sort 后再开始 reduce()。因为 Spark 不要求 shuffle 后的数据全局有序，因此没必要等到全部数据 shuffle 完成后再处理。**那么如何实现边 shuffle 边处理，而且流入的 records 是无序的？**答案是使用可以 aggregate 的数据结构，比如 HashMap。每 shuffle 得到（从缓冲的 FileSegment 中 deserialize 出来）一个 \<Key, Value\> record，直接将其放进 HashMap 里面。如果该 HashMap 已经存在相应的 Key，那么直接进行 aggregate 也就是 `func(hashMap.get(Key), Value)`，比如上面 WordCount 例子中的 func 就是 `hashMap.get(Key) ＋ Value`，并将 func 的结果重新 put(key) 到 HashMap 中去。这个 func 功能上相当于 reduce()，但实际处理数据的方式与 MapReduce reduce() 有差别，差别相当于下面两段程序的差别。
+
+  ```java
+  // MapReduce
+  reduce(K key, Iterable<V> values) { 
+  	result = process(key, values)
+  	return result	
+  }
+  
+  // Spark
+  reduce(K key, Iterable<V> values) {
+  	result = null 
+  	for (V value : values) 
+  		result  = func(result, value)
+  	return result
+  }
+  ```
+
+  MapReduce 可以在 process 函数里面可以定义任何数据结构，也可以将部分或全部的 values 都 cache 后再进行处理，非常灵活。而 Spark 中的 func 的输入参数是固定的，一个是上一个 record 的处理结果，另一个是当前读入的 record，它们经过 func 处理后的结果被下一个 record 处理时使用。因此一些算法比如求平均数，在 process 里面很好实现，直接`sum(values)/values.length`，而在 Spark 中 func 可以实现`sum(values)`，但不好实现`/values.length`。更多的 func 将会在下面的章节细致分析。
+
+- **fetch 来的数据存放到哪里？**刚 fetch 来的 FileSegment 存放在 softBuffer 缓冲区，经过处理后的数据放在内存 + 磁盘上。这里我们主要讨论处理后的数据，可以灵活设置这些数据是“只用内存”还是“内存＋磁盘”。如果`spark.shuffle.spill = false`就只用内存。内存使用的是`AppendOnlyMap` ，类似 Java 的`HashMap`，内存＋磁盘使用的是`ExternalAppendOnlyMap`，如果内存空间不足时，`ExternalAppendOnlyMap`可以将 \<K, V\> records 进行 sort 后 spill 到磁盘上，等到需要它们的时候再进行归并，后面会详解。**使用“内存＋磁盘”的一个主要问题就是如何在两者之间取得平衡？**在 Hadoop MapReduce 中，默认将 reducer 的 70% 的内存空间用于存放 shuffle 来的数据，等到这个空间利用率达到 66% 的时候就开始 merge-combine()-spill。在 Spark 中，也适用同样的策略，一旦 ExternalAppendOnlyMap 达到一个阈值就开始 spill，具体细节下面会讨论。
+
+- **怎么获得要 fetch 的数据的存放位置？**在上一章讨论物理执行图中的 stage 划分的时候，我们强调 “一个 ShuffleMapStage 形成后，会将该 stage 最后一个 final RDD 注册到 `MapOutputTrackerMaster.registerShuffle(shuffleId, rdd.partitions.size)`，这一步很重要，因为 shuffle 过程需要 MapOutputTrackerMaster 来指示 ShuffleMapTask 输出数据的位置”。因此，reducer 在 shuffle 的时候是要去 driver 里面的 MapOutputTrackerMaster 询问 ShuffleMapTask 输出的数据位置的。每个 ShuffleMapTask 完成时会将 FileSegment 的存储位置信息汇报给 MapOutputTrackerMaster。
+
+
 
 # Unsafe Shuffle or Tungsten Sort(钨丝计划)
 
@@ -157,22 +262,6 @@ spark1.5开始，Spark 开始了钨丝计划（Tungsten），目的是优化内�
 ShuffleExternalSorter将数据不断溢出到溢出小文件中，溢出文件内的数据是按分区规则排序的，分区内的数据是乱序的。
 
 多个分区的数据同时溢出到一个溢出文件，最后使用三种归并方式中的一种将多个溢出文件归并到一个文件，分区内的数据是乱序的。最终数据的格式跟第一种shuffle写操作的结果是一样的，即有分区的shuffle数据文件和记录分区大小的shuffle索引文件。
-
-# Sort ShuffleV2
-
-从 Spark-1.6.0 开始，把 Sort Shuffle 和 Tungsten-Sort Based Shuffle 全部统一到 Sort Shuffle 中，如果检测到满足 Tungsten-Sort Based Shuffle 条件会自动采用 Tungsten-Sort Based Shuffle，否则采用 Sort Shuffle。从Spark-2.0.0开始，Spark 把 Hash Shuffle 移除，可以说目前 Spark-2.0 中只有一种 Shuffle，即为 Sort Shuffle。
-
-# Shuffle Read
-
-1. **在什么时候获取数据**，Parent Stage 中的一个 ShuffleMapTask 执行完还是等全部 ShuffleMapTasks 执行完？
-   <font color=red>当 Parent Stage 的所有 ShuffleMapTasks 结束后再 fetch。</font>
-2. **边获取边处理还是一次性获取完再处理？**
-   因为 Spark 不要求 Shuffle 后的数据全局有序，因此没必要等到全部数据 shuffle 完成后再处理，所以是边 fetch 边处理。
-3. 获取来的**数据存放到哪里**？
-   **刚获取来的 FileSegment 存放在 softBuffer 缓冲区，经过处理后的数据放在内存 + 磁盘上。**
-   **内存使用的是AppendOnlyMap ，类似 Java 的HashMap，内存＋磁盘使用的是ExternalAppendOnlyMap，如果内存空间不足时，ExternalAppendOnlyMap可以将 records 进行 sort 后 spill（溢出）到磁盘上，等到需要它们的时候再进行归并**
-4. 怎么获得**数据的存放位置**？
-   通过请求 Driver 端的 MapOutputTrackerMaster 询问 ShuffleMapTask 输出的数据位置。
 
 # Spark Shuffle 相关调优
 
@@ -286,7 +375,7 @@ Shuffle 取过来的数据全部存放在内存中，对于数据量比较小或
 
 
 
-# Spark shuffle原理
+
 
 ## MR的shuffle过程
 
@@ -304,62 +393,3 @@ Shuffle中的缓冲区大小会影响到mapreduce程序的执行效率，原则�
 
 ![preview](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/v2-7922486f9a5b271abe91e63f17cf3ca3_r.jpg)
 
-## Spark shuffle
-
-1、什么是Shuffle
-
-**如果在重分区的过程中，如果数据发生了跨节点移动，就被称为 Shuffle**，在 Spark 中Shuffle 负责将 Map 端的处理的中间结果传输到 Reduce 端供 Reduce 端聚合，Spark 对 Shuffle 的实现方式有两种：Hash based Shuffle 与 Sort based Shuffle。
-
-2、Shuffle的特点：
-
-- 只有Key-value型的RDD才会有shuffle操作
-- 早期版本的shuffle是HashShuffle，后来改为SortShuffle更适合大吞吐量的场景。
-- shuffle分为两端：Mapper端把发给Reducer的数据放在文件中，Reducer端通过拉取文件获取数据
-
-
-
-### hashShuffle
-
-[参考](https://zhuanlan.zhihu.com/p/136466667)
-
-### SortShuffle
-
-SortShuffle在map端有三种实现，分别是UnsafeShuffleWriter、BypassMergeSortShuffleWriter、SortShuffleWriter，三种ShuffleWriter实现均由SortShuffleManager管理。
-
-1、三种ShuffleWriter使用时机：
-
-UnsafeShuffleWriter：map端没有聚合操作，RDD的Partition数小于 16777216，Serializer支持relocation
-
-BypassMergeSortShuffleWriter：map端没有聚合操作，RDD的Partition数小于200
-
-SortShuffleWriter：map端支持聚合操作，也支持排序操作。
-
-![image-20211124102436911](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211124102436911.png)
-
-# Shuffle read
-
-- **在什么时候 fetch？**当 parent stage 的所有 ShuffleMapTasks 结束后再 fetch。理论上讲，一个 ShuffleMapTask 结束后就可以 fetch，但是为了迎合 stage 的概念（即一个 stage 如果其 parent stages 没有执行完，自己是不能被提交执行的），还是选择全部 ShuffleMapTasks 执行完再去 fetch。因为 fetch 来的 FileSegments 要先在内存做缓冲，所以一次 fetch 的 FileSegments 总大小不能太大。Spark 规定这个缓冲界限不能超过 `spark.reducer.maxMbInFlight`，这里用 **softBuffer** 表示，默认大小为 48MB。一个 softBuffer 里面一般包含多个 FileSegment，但如果某个 FileSegment 特别大的话，这一个就可以填满甚至超过 softBuffer 的界限。
-
-- **边 fetch 边处理还是一次性 fetch 完再处理？**边 fetch 边处理。本质上，MapReduce shuffle 阶段就是边 fetch 边使用 combine() 进行处理，只是 combine() 处理的是部分数据。MapReduce 为了让进入 reduce() 的 records 有序，必须等到全部数据都 shuffle-sort 后再开始 reduce()。因为 Spark 不要求 shuffle 后的数据全局有序，因此没必要等到全部数据 shuffle 完成后再处理。**那么如何实现边 shuffle 边处理，而且流入的 records 是无序的？**答案是使用可以 aggregate 的数据结构，比如 HashMap。每 shuffle 得到（从缓冲的 FileSegment 中 deserialize 出来）一个 \<Key, Value\> record，直接将其放进 HashMap 里面。如果该 HashMap 已经存在相应的 Key，那么直接进行 aggregate 也就是 `func(hashMap.get(Key), Value)`，比如上面 WordCount 例子中的 func 就是 `hashMap.get(Key) ＋ Value`，并将 func 的结果重新 put(key) 到 HashMap 中去。这个 func 功能上相当于 reduce()，但实际处理数据的方式与 MapReduce reduce() 有差别，差别相当于下面两段程序的差别。
-
-  ```java
-  // MapReduce
-  reduce(K key, Iterable<V> values) { 
-  	result = process(key, values)
-  	return result	
-  }
-  
-  // Spark
-  reduce(K key, Iterable<V> values) {
-  	result = null 
-  	for (V value : values) 
-  		result  = func(result, value)
-  	return result
-  }
-  ```
-
-  MapReduce 可以在 process 函数里面可以定义任何数据结构，也可以将部分或全部的 values 都 cache 后再进行处理，非常灵活。而 Spark 中的 func 的输入参数是固定的，一个是上一个 record 的处理结果，另一个是当前读入的 record，它们经过 func 处理后的结果被下一个 record 处理时使用。因此一些算法比如求平均数，在 process 里面很好实现，直接`sum(values)/values.length`，而在 Spark 中 func 可以实现`sum(values)`，但不好实现`/values.length`。更多的 func 将会在下面的章节细致分析。
-
-- **fetch 来的数据存放到哪里？**刚 fetch 来的 FileSegment 存放在 softBuffer 缓冲区，经过处理后的数据放在内存 + 磁盘上。这里我们主要讨论处理后的数据，可以灵活设置这些数据是“只用内存”还是“内存＋磁盘”。如果`spark.shuffle.spill = false`就只用内存。内存使用的是`AppendOnlyMap` ，类似 Java 的`HashMap`，内存＋磁盘使用的是`ExternalAppendOnlyMap`，如果内存空间不足时，`ExternalAppendOnlyMap`可以将 \<K, V\> records 进行 sort 后 spill 到磁盘上，等到需要它们的时候再进行归并，后面会详解。**使用“内存＋磁盘”的一个主要问题就是如何在两者之间取得平衡？**在 Hadoop MapReduce 中，默认将 reducer 的 70% 的内存空间用于存放 shuffle 来的数据，等到这个空间利用率达到 66% 的时候就开始 merge-combine()-spill。在 Spark 中，也适用同样的策略，一旦 ExternalAppendOnlyMap 达到一个阈值就开始 spill，具体细节下面会讨论。
-
-- **怎么获得要 fetch 的数据的存放位置？**在上一章讨论物理执行图中的 stage 划分的时候，我们强调 “一个 ShuffleMapStage 形成后，会将该 stage 最后一个 final RDD 注册到 `MapOutputTrackerMaster.registerShuffle(shuffleId, rdd.partitions.size)`，这一步很重要，因为 shuffle 过程需要 MapOutputTrackerMaster 来指示 ShuffleMapTask 输出数据的位置”。因此，reducer 在 shuffle 的时候是要去 driver 里面的 MapOutputTrackerMaster 询问 ShuffleMapTask 输出的数据位置的。每个 ShuffleMapTask 完成时会将 FileSegment 的存储位置信息汇报给 MapOutputTrackerMaster。

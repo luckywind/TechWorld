@@ -35,6 +35,29 @@ group by user_id,b.dt
 having co>=3  
 )c
 order by user_id;
+
+
+
+
+with user_log as (
+select stack(5,
+1, 20191001,
+1, 20191002,
+1, 20191003,
+1, 20191004,
+2, 20191001
+             ) 
+             as (uid,dt)
+),
+--连续登陆N天
+a as (
+SELECT 
+uid,date_sub(cast(dt as string),rk) as diff
+from (
+SELECT uid, dt , row_number() over(partition by uid order by dt) as rk  
+ from user_log )
+)
+SELECT uid,count(1) from a group by uid, diff having count(1)>=3
 ```
 
 # 连续时间区间合并
@@ -167,3 +190,25 @@ order by  `入职时间`
 | 2    | 李四 | oppo         | 20191101 |          |      |
 | 1    | 张三 | 阿里         | 20201105 | 20211003 |      |
 | 1    | 张三 | 华为         | 20211004 |          |      |
+
+```sql
+with t as (
+select stack(6,
+1, '张三', '华为','数据研发',20181011,20191029,
+1, '张三', '华为','后台研发',20191031,20201101,
+1, '张三', '阿里','数据研发',20201105,20211003,
+1, '张三', '华为','后台研发',20211004,null,
+2, '李四', '华为','数据研发',20181011,20191029,
+2, '李四', 'oppo','数据研发',20191101,null
+)
+as(id,name,company_name,job_name,entry_time,leave_time)
+),
+a as (
+select  id, name ,company_name,job_name,entry_time,leave_time,
+row_number()over(partition by id order by entry_time) as  user_rk,
+row_number()over(partition by id,company_name order by entry_time) as  user_comp_rk
+from t ),
+b as (SELECT *, user_comp_rk-user_rk as diff  from a)
+select id, name, min(entry_time) as entry_time, max(leave_time) as leave_time from b  group by id,name,diff order by id;
+```
+

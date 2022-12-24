@@ -1,4 +1,12 @@
-# 内存管理
+# diver内存
+
+- 创建spark环境
+- 提交spark作业
+- 把作业解析为task
+- 协调executor的任务调度
+- sparkUI数据
+
+# executor内存管理
 
 ## 实例创建
 
@@ -59,12 +67,12 @@ Executor 的内存管理建立在 JVM 的内存管理之上，Spark 对 JVM 的�
 
 默认情况下，Spark 仅仅使用了堆内内存。Executor 端的堆内内存区域大致可以分为以下四大块：
 
-- **Execution 内存**：主要用于存放 Shuffle、Join、Sort、Aggregation 等计算过程中的临时数据
+- **Execution 内存**：主要用于存放 <font color=red>Shuffle、Join、Sort、Aggregation</font> 等计算过程中的临时数据
 - **Storage 内存**：主要用于存储 spark 的 cache 数据，例如RDD的缓存、unroll数据(unroll memory和storage memory本质上是同一份内存，只是在任务执行的不同阶段的不同逻辑表述形式。在partition数据的读取存储过程中，这份内存叫做unroll memory，而当成功读取存储了所有reocrd到内存中后，这份内存就改了个名字叫storage memory了)；
 - **用户内存（User Memory）**：主要用于存储 RDD 转换操作所需要的数据，例如 RDD 依赖等信息。
 - **预留内存（Reserved Memory）**：系统预留内存，会用来存储Spark内部对象。
 
-<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_on_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 150%;" />
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_on_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 50%;" />
 
 1. `systemMemory = Runtime.getRuntime.maxMemory`，其实就是通过参数 `spark.executor.memory` 或 `--executor-memory` 配置的。
 
@@ -91,6 +99,15 @@ Spark 1.6 开始引入了Off-heap memory(详见[SPARK-11389](https://www.iteblog
 ### Execution 内存和 Storage 内存动态调整
 
 ![Spark 内存管理](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_memory-management_iteblog.png)
+
+Storage多占用的内存可被淘汰，但是Execution多占的内存只能等待被释放
+
+具体的实现逻辑如下：
+
+- 程序提交的时候我们都会设定基本的 Execution 内存和 Storage 内存区域（通过 `spark.memory.storageFraction` 参数设置）；
+- 在程序运行时，如果双方的空间都不足时，则存储到硬盘；将内存中的块存储到磁盘的策略是按照 LRU 规则进行的。若己方空间不足而对方空余时，可借用对方的空间;（存储空间不足是指不足以放下一个完整的 Block）
+- <font color=red>Execution 内存的空间被对方占用后，可让对方将占用的部分转存到硬盘，然后"归还"借用的空间</font>
+- Storage 内存的空间被对方占用后，目前的实现是无法让对方"归还"，因为需要考虑 Shuffle 过程中的很多因素，实现起来较为复杂；而且 Shuffle 过程产生的文件在后面一定会被使用到，而 Cache 在内存的数据不一定在后面使用。
 
 > 注意，上面说的借用对方的内存需要借用方和被借用方的内存类型都一样，都是堆内内存或者都是堆外内存，不存在堆内内存不够去借用堆外内存的空间。
 
@@ -250,8 +267,6 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 
 
-
-
 ```shell
 spark.storage.memoryFraction 0.6(默认 )
 spark.storage.safetyFraction 0.5(默认 )
@@ -268,7 +283,7 @@ Executor内存(GB)=
 
 设置堆外内存的参数为spark.executor.memoryOverhead与spark.memory.offHeap.size(需要与 spark.memory.offHeap.enabled同时使用)，其中这两个都是描述堆外内存的，但是它们有什么区别么？
 
-spark.memory.offHeap.size是spark Core(memory manager)使用的，真正作用于spark executor的堆外内存。
+spark.memory.offHeap.size是spark Core(memory manager)使用的，真正作用于spark executor的堆外内存（只是只有执行内存和存储内存）。
 spark.executor.memoryOverhead是资源管理器使用的，例如YARN;通知yarn我要使用堆外内存和使用内存的大小，相当于spark.memory.offHeap.size +  spark.memory.offHeap.enabled，设置参数的大小并非实际使用内存大小
 
 spark2.4.5之前的版本，我们在设置spark.executor.memoryOverhead的时候，应该把spark.memory.offHeap.size加上，因为Yarn申请内存时没考虑spark.memory.offHeap.size：
@@ -317,9 +332,132 @@ spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
 
 ![image-20220416162818460](Spark统一内存管理/image-20220416162818460.png)
 
-
+<font color=red>和spark.executor.memory一样，spark.memory.offHeap.size也是Spark Core要使用的(只是只有存储内存和执行内存)。</font>
 
 [Java-直接内存 DirectMemory 详解](https://cloud.tencent.com/developer/article/1586341)
+
+
+
+## UI指标分析实例
+
+为了更好的理解上面堆内内存和堆外内存的使用情况，这里给出一个简单的例子。
+
+### 只用了堆内内存
+
+现在我们提交的 Spark 作业关于内存的配置如下：
+
+```
+--executor-memory 18g
+```
+
+由于没有设置 `spark.memory.fraction` 和 `spark.memory.storageFraction` 参数，我们可以看到 Spark UI 关于 Storage Memory 的显示如下：![spark_memory_usage2](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/spark_memory_usage2.png)
+
+上图很清楚地看到 Storage Memory 的可用内存是 10.1GB，这个数是咋来的呢？根据前面的规则，我们可以得出以下的计算：
+
+```shell
+systemMemory = spark.executor.memory
+reservedMemory = 300MB
+usableMemory = systemMemory - reservedMemory
+StorageMemory= usableMemory * spark.memory.fraction * spark.memory.storageFraction
+```
+
+如果我们把数据代进去，得出以下的结果：
+
+```scala
+systemMemory = 18Gb = 19327352832 字节
+reservedMemory = 300MB = 300 * 1024 * 1024 = 314572800
+usableMemory = systemMemory - reservedMemory = 19327352832 - 314572800 = 19012780032
+StorageMemory= usableMemory * spark.memory.fraction * spark.memory.storageFraction
+             = 19012780032 * 0.6 * 0.5 = 5703834009.6 = 5.312109375GB
+```
+
+不对啊，和上面的 10.1GB 对不上啊。为什么呢？这是因为 Spark UI 上面显示的 Storage Memory 可用内存其实等于 Execution 内存和 Storage 内存之和，也就是 *usableMemory \* spark.memory.fraction*：
+
+```scala
+StorageMemory= usableMemory * spark.memory.fraction
+             = 19012780032 * 0.6 = 11407668019.2 = 10.62421GB
+```
+
+还是不对，这是因为我们虽然设置了 *--executor-memory 18g*，但是 Spark 的 Executor 端通过 *Runtime.getRuntime.maxMemory* 拿到的内存其实没这么大，只有 17179869184 字节，所以 *systemMemory = 17179869184*，然后计算的数据如下：
+
+```scala
+systemMemory = 17179869184 字节
+reservedMemory = 300MB = 300 * 1024 * 1024 = 314572800
+usableMemory = systemMemory - reservedMemory = 17179869184 - 314572800 = 16865296384
+StorageMemory= usableMemory * spark.memory.fraction
+             = 16865296384 * 0.6 = 9.42421875 GB
+```
+
+我们通过将上面的 16865296384 * 0.6 字节除于 1024 * 1024 * 1024 转换成 9.42421875 GB，和 UI 上显示的还是对不上，这是因为 Spark UI 是通过除于 1000 * 1000 * 1000 将字节转换成 GB，如下：
+
+```scala
+systemMemory = 17179869184 字节
+reservedMemory = 300MB = 300 * 1024 * 1024 = 314572800
+usableMemory = systemMemory - reservedMemory = 17179869184 - 314572800 = 16865296384
+StorageMemory= usableMemory * spark.memory.fraction
+             = 16865296384 * 0.6 字节 =  16865296384 * 0.6 / (1000 * 1000 * 1000) = 10.1GB
+```
+
+现在终于对上了。
+
+具体将字节转换成 GB 的计算逻辑如下(core 模块下面的 */core/src/main/resources/org/apache/spark/ui/static/utils.js*)：
+
+```scala
+function formatBytes(bytes, type) {
+    if (type !== 'display') return bytes;
+    if (bytes == 0) return '0.0 B';
+    var k = 1000;
+    var dm = 1;
+    var sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
+```
+
+我们设置了 *--executor-memory 18g*，但是 Spark 的 Executor 端通过 *Runtime.getRuntime.maxMemory* 拿到的内存其实没这么大，只有 17179869184 字节，这个数据是怎么计算的？
+*Runtime.getRuntime.maxMemory* 是程序能够使用的最大内存，其值会比实际配置的执行器内存的值小。这是因为内存分配池的堆部分分为 Eden，Survivor 和 Tenured 三部分空间，而这里面一共包含了两个 Survivor 区域，而这两个 Survivor 区域在任何时候我们只能用到其中一个，所以我们可以使用下面的公式进行描述：
+
+
+
+```scala
+ExecutorMemory = Eden + 2 * Survivor + Tenured
+Runtime.getRuntime.maxMemory =  Eden + Survivor + Tenured
+```
+
+上面的 17179869184 字节可能因为你的 GC 配置不一样得到的数据不一样，但是上面的计算公式是一样的。
+
+### 用了堆内和堆外内存
+
+现在如果我们启用了堆外内存，情况咋样呢？我们的内存相关配置如下：
+
+```shell
+spark.executor.memory           18g
+spark.memory.offHeap.enabled    true
+spark.memory.offHeap.size       10737418240
+```
+
+从上面可以看出，堆外内存为 10GB，现在 Spark UI 上面显示的 Storage Memory 可用内存为 20.9GB，如下：
+
+[![Spark 内存管理](https://s.iteblog.com/pic/spark/spark_memory_usage1.png)](https://s.iteblog.com/pic/spark/spark_memory_usage1.png)
+
+其实 Spark UI 上面显示的 Storage Memory 可用内存等于堆内内存和堆外内存之和，计算公式如下：
+
+```shell
+堆内
+systemMemory = 17179869184 字节
+reservedMemory = 300MB = 300 * 1024 * 1024 = 314572800
+usableMemory = systemMemory - reservedMemory = 17179869184 - 314572800 = 16865296384
+totalOnHeapStorageMemory = usableMemory * spark.memory.fraction
+                         = 16865296384 * 0.6 = 10119177830
+ 
+堆外
+totalOffHeapStorageMemory = spark.memory.offHeap.size = 10737418240
+ 
+StorageMemory = totalOnHeapStorageMemory + totalOffHeapStorageMemory
+              = (10119177830 + 10737418240) 字节
+              = (20856596070 / (1000 * 1000 * 1000)) GB
+              = 20.9 GB
+```
 
 
 
@@ -393,12 +531,12 @@ CoarseGrainedExecutorBackend进程主要的作用究竟是什么？ 由于Coarse
 
 该类错误一般是由于 Heap（M2）已达上限，Task 需要更多的内存，而又得不到足够的内存而导致。因此，解决方案要从增加每个 Task 的内存使用量，满足任务需求 或 降低单个 Task 的内存消耗量，从而使现有内存可以满足任务运行需求两个角度出发。因此有如下解决方案:
 
-法一：增加单个task的内存使用量
+<font color=red>法一：增加单个task的内存使用量</font>
 
 - 增加最大 Heap值，即上图中 M2 的值，使每个 Task 可使用内存增加。
-- 降低 Executor 的可用 Core 的数量 N , 使 Executor 中同时运行的任务数减少，在总资源不变的情况下，使每个 Task 获得的内存相对增加。当然，这会使得 Executor 的并行度下降。可以通过调高 `spark.executor.instances` 参数来申请更多的 executor 实例（或者通过 `spark.dynamicAllocation.enabled` 启动动态分配），提高job的总并行度。
+- <font color=red>降低 Executor 的可用 Core 的数量 N , 使 Executor 中同时运行的任务数减少，在总资源不变的情况下，使每个 Task 获得的内存相对增加。</font>当然，这会使得 Executor 的并行度下降。可以通过调高 `spark.executor.instances` 参数来申请更多的 executor 实例（或者通过 `spark.dynamicAllocation.enabled` 启动动态分配），提高job的总并行度。
 
-法二： 降低单个Task的内存消耗量
+<font color=red>法二： 降低单个Task的内存消耗量</font>
 
 降低单个Task的内存消耗量可从配置方式和调整应用逻辑两个层面进行优化:
 
@@ -415,17 +553,19 @@ P = spark.sql.shuffle.partition (SQL 应用)
 
 Executor OOM 一般发生 Shuffle 阶段，该阶段需求计算内存较大，且应用逻辑对内存需求有较大影响
 
-1、选择合适的算子，如 groupByKey 转换为 reduceByKey
+<font color=red>1、选择合适的算子，如 groupByKey 转换为 reduceByKey</font>
 
 一般情况下，groupByKey 能实现的功能使用 reduceByKey 均可实现，而 ReduceByKey 存在 Map 端的合并，可以有效减少传输带宽占用及 Reduce 端内存消耗。
 
 ![image-20210705212152809](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20210705212152809.png)
 
-2、 避免数据倾斜
+<font color=red>2、 避免数据倾斜</font>
 
 ### GC
 
 [Spark GC调优](https://cloud.tencent.com/developer/article/1032521)
+
+<font color=red>就是依据minor gc/mafor gc频率 调整新生代/老年代大小</font>
 
 Spark应用程序GC调优的目标是，确保生命周期比较长的RDD保存在老年代，新生代有足够的空间保存生命周期比较短的对象。这有助于避免触发Full GC去收集task运行期间产生的临时变量。
 
@@ -439,7 +579,7 @@ Spark应用程序GC调优的目标是，确保生命周期比较长的RDD保存�
 [Spark JVM调优](https://bbs.huaweicloud.com/blogs/235943)
 
 1. 统一内存管理机制下，Storage 和 Execution是动态调整的，无需手动调节。
-2. 调节Executor堆外内存
+2. 调节Executor memoryOverhead
 
 Executor 的堆外内存主要用于程序的共享库、Perm Space、 线程Stack和一些Memory mapping等, 或者类C方式allocate object。
 

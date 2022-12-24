@@ -1,3 +1,26 @@
+
+
+# spark调优经验： 
+
+1. 并行度优化
+   1. 增加executor个数提升并行能力
+   2. 增加分区数
+2. Join优化
+   1. 采用广播器进行Join代替shuffle Join
+   2. 让两个RDD共享分区器避免shuffle Join
+3. 缓存优化
+   1. 公用RDD进行缓存
+   2. checkpoint的使用
+4. 算子优化
+   1. reduceByKey代替groupByKey
+5. 调节数据本地性等待时长
+
+
+
+
+
+
+
 # 小文件问题
 
 ## 问题

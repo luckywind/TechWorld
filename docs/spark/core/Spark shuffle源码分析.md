@@ -102,7 +102,7 @@ private[spark] object SortShuffleWriter {
         shuffleId, numMaps, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
     } else if (SortShuffleManager.canUseSerializedShuffle(dependency)) {
       // Otherwise, try to buffer map outputs in a serialized form, since this is more efficient: UnsafeShuffleWriter
-      //  
+      // 尝试把map输出以序列化形式缓存起来，使用UnsafeShuffleWriter 
       new SerializedShuffleHandle[K, V](
         shuffleId, numMaps, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
     } else {

@@ -1,4 +1,6 @@
-# 执行环境
+# DataSourceAPI
+
+## 执行环境
 
 从1.12.0版本起，Flink实现了API上的流批统一。DataStream API新增了一个重要特性： 可以支持不同执行模式，通过简单设置就可以让一段Flink程序在流处理和批处理之间切换。这样以来，DataSet API就没有存在的必要了。
 
@@ -9,7 +11,7 @@
    1. 命令行传参数： -Dexecution.runtime-mode=BATCH
    2. 代码指定
 
-#   Source
+##   Source
 
 需要实现 SourceFunction 接口
 
@@ -40,7 +42,7 @@ env.socketTextStream("localhost", 7777)
 </dependency>
 ```
 
-# flink支持的数据类型
+## flink支持的数据类型
 
 使用TypeInfomation来统一表示数据类型
 
@@ -57,9 +59,17 @@ env.socketTextStream("localhost", 7777)
 
      建的一个 Scala 样例类，使用起来非常方便。
 
-# 聚合算子
+## 聚合算子
 
-flink中要聚合，需要先通过keyBy()算子进行分区，分区字段可以通过lambda表达式，属性，自定义KeySelector指定
+### keyBy(按键分区)
+
+对于 Flink 而言，DataStream 是没有直接进行聚合的 API 的。因为我们对海量数据做聚合 肯定要进行分区并行处理，这样才能提高效率。所以在 Flink 中，要做聚合，需要先进行分区; 这个操作就是通过 keyBy()来完成的。分区字段可以通过lambda表达式，属性，自定义KeySelector指定
+
+keyBy()是聚合前必须要用到的一个算子。keyBy()通过指定键(key)，可以将一条流从逻 辑上划分成不同的分区(partitions)。这里所说的分区，其实就是并行处理的子任务，也就对 应着任务槽(task slots)。
+
+### min/max/sum简单聚合
+
+Flink 为我们 内置实现了一些最基本、最简单的聚合 API
 
 ```scala
     val stream=env.fromElements(
@@ -86,7 +96,11 @@ flink中要聚合，需要先通过keyBy()算子进行分区，分区字段可�
     stream1.keyBy(_.user).max("timestamp").print()
 ```
 
-# udf
+### (reduce)规约聚合
+
+与简单聚合类似，reduce()操作也会将 KeyedStream 转换为 DataStream。它不会改变流的 元素数据类型，所以输出类型和输入类型是一样的。调用 KeyedStream 的 reduce()方法时，需要传入一个参数，实现 ReduceFunction 接口
+
+## udf
 
 1. 函数类
    Flink 暴露了所有 UDF 函数的接口，具体实现方式为接口或者抽象类， 例如 MapFunction、FilterFunction、ReduceFunction 等
@@ -102,18 +116,25 @@ flink中要聚合，需要先通过keyBy()算子进行分区，分区字段可�
 
 ⚫ close()方法，是生命周期中的最后一个调用的方法，类似于解构方法。一般用来做一 些清理工作。
 
-# 物理分区
+## 重分区
 
-keyBy是逻辑分区操作，如何实现数据流的重分区？ 
+flink中的重分区算子定义上下游subtask之间数据传递的方式。SubTask之间进行数据传递模式有两种，一种是one-to-one(forwarding)模式，另一种是redistributing的模式。
 
-1. 随机分区， shuffle()方法，随机均匀分配到下游
-2. 轮询分区(Round-Robin), rebalance()方法，平均分配到下游的并行任务中
-3. 重缩放分区,rescale()方法，底层也是Round-Robin算法轮询，但只会轮询到下游并行任务中的一部分任务中
-4. 广播， broadcast()方法，数据会在不同的分区都保留一份，可能进行重复处理
-5. 全局分区， global()方法，全发送到下游第一个字任务中去
+One-to-one：数据不需要重新分布，上游SubTask生产的数据与下游SubTask受到的数据完全一致，数据不需要重分区，也就是数据不需要经过IO，比如上图中source->map的数据传递形式就是One-to-One方式。常见的map、fliter、flatMap等算子的SubTask的数据传递都是one-to-one的对应关系。类似于spark中的窄依赖。
+Redistributing：数据需要通过shuffle过程重新分区，需要经过IO，比如上图中的map->keyBy。创建的keyBy、broadcast、rebalance、shuffle等算子的SubTask的数据传递都是Redistributing方式，但它们具体数据传递方式是不同的。类似于spark中的宽依赖； [参考](https://blog.csdn.net/qq_37555071/article/details/122415430)
+
+“分区”(partitioning)操作就是要将数据进行重新分布，**传递到不同的流分区去进行下一 步计算**。keyBy()是一种逻辑分区(logical partitioning)操作。
+
+flink中的重分区算子除了keyBy以外，还有broadcast、rebalance、shuffle、rescale、global、partitionCustom等多种算子，它们的分区方式各不相同。需要注意的是，这些算子中除了keyBy能将DataStream转化为KeyedStream外，其它重分区算子均不会改变Stream的类型
+
+1. shuffle()方法，随机均匀分配到下游算子的并行任务中去
+2. rebalance()方法，轮询分区(Round-Robin), 平均分配到下游的并行任务中，上下游并行度不同时的默认方式
+3. rescale()方法，重缩放分区,底层也是Round-Robin算法轮询，<font color=red>但只会轮询到下游并行任务中的一部分任务中</font>
+4. broadcast()方法，广播， 数据会在不同的分区都保留一份，可能进行重复处理
+5.  global()方法，全局分区，全发送到下游第一个字任务中去
 6. 自定义分区，实现Partitioner
 
-# Sink
+## Sink
 
 实现的是 SinkFunction 接口
 
@@ -130,18 +151,128 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 ⚫ 行编码:StreamingFileSink.forRowFormat t(basePath,rowEncoder)。
  ⚫ 批量编码:StreamingFileSink.forBulkFormat(basePath,bulkWriterFactory)。
 
+
+
+# 运行时架构
+
+## JobManager(作业管理器)
+
+JobManager 是一个 Flink 集群中任务管理和调度的核心，是控制应用执行的主进程,包含3个不同的组件。
+
+1. **JobMaster**,多个，每个负责处理单独的Job
+   1. 和Job一一对应，多个job可以同时运行在一个 Flink 集群中, 每个 job 都有一个自己的 JobMaster。
+   2. jobMaster把JobGraph转换成一个执行图，包含了所有可并发执行的任务
+   3. 向资源管理器申请资源，并把执行图分发到TaskManager上
+   4. 运行过程中，还会负责检查点等协调工作
+2. **资源管理器**(ResourceManager)
+   1. 在Flink集群中只有一个
+   2. ”资源“ 就是TaskManager的任务槽(task slot)
+3. **分发器**(Dispatcher)
+   1. Dispatcher 主要负责提供一个 REST 接口，用来提交作业
+   2. 负责为每一个新提交的作 业启动一个新的 JobMaster 组件
+   3. Dispatcher 也会启动一个 Web UI，用来方便地展示和监控作 业执行的信息
+
+## TaskManager(任务管理器)
+
+TaskManager 是 Flink 中的工作进程，负责数据流的具体计算任务(task)。  启动之后，TaskManager 会向资源管理器注册它的 slots
+
+## 作业提交流程
+
+### 抽象视角
+
+![image-20221223211249390](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223211249390.png)
+
+(1)一般情况下，由客户端(App)通过分发器提供的 REST 接口，将作业提交给 JobManager。
+
+(2)由分发器启动 JobMaster，并将作业(包含 JobGraph)提交给 JobMaster。
+
+(3)JobMaster 将 JobGraph 解析为可执行的 ExecutionGraph，得到所需的资源数量，然后 向资源管理器请求任务槽资源(slots)。
+
+(4)资源管理器判断当前是否由足够的可用资源;如果没有，启动新的 TaskManager。
+
+ (5)TaskManager 启动之后，向 ResourceManager 注册自己的可用任务槽(slots)。 
+
+(6)资源管理器通知 TaskManager 为新的作业提供 slots。
+ (7)TaskManager 连接到对应的 JobMaster，提供 slots。
+
+(8)JobMaster 将需要执行的任务分发给 TaskManager。
+
+ (9)TaskManager 执行任务，互相之间可以交换数据。
+
+### Yarn集群
+
+[参考](https://blog.csdn.net/nazeniwaresakini/category_9705501.html)
+
+#### session模式
+
+Session模式是预分配资源的，也就是提前根据指定的资源参数初始化一个Flink集群，并常驻在YARN系统中，拥有固定数量的JobManager和TaskManager（注意JobManager只有一个）。提交到这个集群的作业可以直接运行，免去每次分配资源的overhead。但是Session的资源总量有限，多个作业之间又不是隔离的，故可能会造成资源的争用；如果有一个TaskManager宕机，它上面承载着的所有作业也都会失败。另外，启动的作业越多，JobManager的负载也就越大。所以，Session模式一般用来部署那些对延迟非常敏感但运行时长较短的作业。
+
+#### 单作业(Per-Job)模式
+
+顾名思义，在Per-Job模式下，每个提交到YARN上的作业会各自形成单独的Flink集群，拥有专属的JobManager和TaskManager。可见，以Per-Job模式提交作业的启动延迟可能会较高，但是作业之间的资源完全隔离，一个作业的TaskManager失败不会影响其他作业的运行，JobManager的负载也是分散开来的，不存在单点问题。当作业运行完成，与它关联的集群也就被销毁，资源被释放。所以，Per-Job模式一般用来部署那些长时间运行的作业。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223214332978.png" alt="image-20221223214332978" style="zoom:50%;" />
+
+(1)客户端将作业提交给 YARN 的资源管理器，这一步中会同时将 Flink 的 Jar 包和配置 上传到 HDFS，以便后续启动 Flink 相关组件的容器。
+
+(2)YARN的资源管理器分配容器(container)资源，启动Flink JobManager，并将作业 提交给 JobMaster。这里省略了 Dispatcher 组件。
+
+(3)JobMaster 向资源管理器请求资源(slots)。
+ (4)资源管理器向 YARN 的资源管理器请求容器(container)。
+ (5)YARN 启动新的 TaskManager 容器。
+ (6)TaskManager 启动之后，向 Flink 的资源管理器注册自己的可用任务槽。 
+
+(7)资源管理器通知 TaskManager 为新的作业提供 slots。 
+
+(8)TaskManager 连接到对应的 JobMaster，提供 slots。
+ (9)JobMaster 将需要执行的任务分发给 TaskManager，执行任务。
+
+#### 应用(Application)模式
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223213458922.png" alt="image-20221223213458922" style="zoom: 25%;" />
+
+对于上面的两种模式，在main()方法开始执行直到env.execute()方法之前，客户端也需要做一些工作，即：
+
+- 获取作业所需的依赖项；
+- 通过执行环境分析并取得逻辑计划，即StreamGraph→JobGraph；
+- 将依赖项和JobGraph上传到集群中。
+
+如果所有用户都在同一个客户端节点上提交作业，较大的依赖会消耗更多的带宽，而较复杂的作业逻辑翻译成JobGraph也需要吃掉更多的CPU和内存，客户端的资源反而会成为瓶颈——不管Session还是Per-Job模式都存在此问题。为了解决它，社区在传统部署模式的基础上实现了Application模式。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223213533150.png" alt="image-20221223213533150" style="zoom:25%;" />
+
+
+
+可见，原本需要客户端做的三件事被转移到了JobManager里，也就是说main()方法在集群中执行（入口点位于ApplicationClusterEntryPoint），客户端只需要负责发起部署请求了。<font color=red>另外，如果一个main()方法中有多个env.execute()/executeAsync()调用，在Application模式下，这些作业会被视为属于同一个应用，在同一个集群中执行（如果在Per-Job模式下，就会启动多个集群）。可见，Application模式本质上是Session和Per-Job模式的折衷。</font>
+
+#### slot与slot共享
+
+可以通过集群的配置文件来设定 TaskManager 的 slots 数量: `taskmanager.numberOfTaskSlots: 8`
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221224085118283.png" alt="image-20221224085118283" style="zoom: 50%;" />
+
+默认情况下，Flink 允许子任务共享 slots。如图所示，只要属于同一个作业，那么对 于不同任务节点的并行子任务，就可以放到同一个 slot 上执行。
+
+如果希望某个算子对应的任务完全独占一个 slot，或者只有某一部分算子共享 slots，我们也可以通过设置“slot 共享组”
+
+
+
+
+
 # 时间
+
+**时间语义**： <font color=red>我们定义的窗口操作以哪种时间作为衡量标准？</font>
 
 1. 处理时间：执行处理操作的机器的系统时间，最简单的时间语义
 2. 事件时间：每个事件在对应设备上发生的时间，即数据生成的时间，是数据的时间戳
 
 > 但是由于网络等原因，数据的时间戳不能直接当作时钟，因为总有乱序数据，导致时间倒退的情况，这需要用到事件时间的**水位线**来标志事件时间进展
 
-
-
 ## 水位线
 
-水位线可以看作一条特殊的数据记录，是插入到数据流中的一个标记点，主要内容就是一个时间戳，用来指示当前的事件时间。而它插入流中的位置，就应该是在某个 数据到来之后;这样就可以从这个数据中提取时间戳，作为当前水位线的时间戳了
+### 什么是水位线
+
+<font color=red>水位线可以看作一条特殊的数据记录，是插入到数据流中的一个标记点，主要内容就是一个时间戳，用来指示当前的事件时间。而它插入流中的位置，就应该是在某个 数据到来之后;这样就可以从这个数据中提取时间戳，作为当前水位线的时间戳了</font>
 
 ![image-20220827141440516](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220827141440516.png)
 
@@ -155,42 +286,39 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 
 ![image-20220827143849490](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220827143849490.png)
 
-```
-我们可以总结一下水位线的特性:
-```
+<font color=red>**我们可以总结一下水位线的特性:**</font>
 
-- ⚫  水位线是插入到数据流中的一个标记，可以认为是一个特殊的数据
+-  水位线是插入到数据流中的一个标记，可以认为是一个特殊的数据
 
-- ⚫  水位线主要的内容是一个时间戳，用来表示当前事件时间的进展
+- 水位线主要的内容是一个时间戳，用来表示当前事件时间的进展
 
-- ⚫  水位线是基于数据的时间戳生成的
+- 水位线是基于数据的时间戳生成的
 
-- ⚫  水位线的时间戳必须单调递增，以确保任务的事件时间时钟一直向前推进
+- 水位线的时间戳必须单调递增，以确保任务的事件时间时钟一直向前推进
 
-- ⚫  水位线可以通过设置延迟，来保证正确处理乱序数据
+- <font color=red>水位线可以通过设置延迟，来保证正确处理乱序数据（这其实相当于把系统时钟延迟了,牺牲了时效性。更推荐的方式是通过设置窗口等待来处理迟到数据）</font>
 
-- ⚫  一个水位线 Watermark(t)，表示在当前流中事件时间已经达到了时间戳 t, 这代表 t 之
+-  一个水位线 Watermark(t)，表示在当前流中事件时间已经达到了时间戳 t, 这代表 t 之
 
   前的所有数据都到齐了，之后流中不会出现时间戳 t’ ≤ t 的数据
    水位线是 Flink 流处理中保证结果正确性的核心机制，它往往会跟窗口一起配合，完成对
 
   乱序数据的正确处理。Flink 中的水位线，其实是流处理中对低延迟和结果正确性的一个权衡机制，而且把 控制的权力交给了程序员，我们可以在代码中定义水位线的生成策略。
 
-  ### 水位线的生成策略
+### 水位线的生成策略
 
-  assignTimestampsAndWatermarks()
-  它主要用来为流中的数据分配时间戳，并生成水位线来指 示事件时间。
+  <font color=red>stream.assignTimestampsAndWatermarks(WatermarkStrategy)</font>
+
+它主要用来为流中的数据分配时间戳，并生成水位线来指 示事件时间。
 
   ```scala
   public interface WatermarkStrategy<T>
   extends TimestampAssignerSupplier<T>,
             WatermarkGeneratorSupplier<T>{
-  //提取时间戳
-  @Override
+  //(一)时间戳分配器
      TimestampAssigner<T>
   createTimestampAssigner(TimestampAssignerSupplier.Context context);
-  //基于时间戳生成水位线
-  @Override
+  //(二)基于时间戳生成水位线
      WatermarkGenerator<T>
   createWatermarkGenerator(WatermarkGeneratorSupplier.Context context);
   }
@@ -204,9 +332,9 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
   
   ```
 
-  
 
-### 内置水位线生成器
+
+#### 内置水位线生成策略
 
 水位线的生成策略可以分为两类：
 
@@ -256,6 +384,7 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 (1)周期性水位线生成器(Periodic Generator)
  周期性生成器一般是通过 onEvent()观察判断输入的事件，而在 onPeriodicEmit()里发出水位线。
  (2)断点式水位线生成器(Punctuated Generator)
+不停地检测 onEvent()中的事件，当发现带有水位线信息的特殊事件时， 就立即发出水位线
 
 ```scala
     stream.assignTimestampsAndWatermarks( new WatermarkStrategy[Event] {
@@ -294,15 +423,21 @@ StreamingFileSink 支持行编码(Row-encoded)和批量编码(Bulk-encoded，比
 
 ### 水位线的传递
 
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221224114514677.png" alt="image-20221224114514677" style="zoom:50%;" />
+
 **上游不同分区进度不同时 ，以最慢的那个时钟，即最小的那个水位线为准。**
 
 # 窗口
 
 将无限的数据流切割成有限的“数据块”进行处理，这就是窗口，是无界流处理的核心。
 
-1. 为了明确数据划分到哪一个窗口，定义窗口都是包含起始时间、不包含结束时间 的，用数学符号表示就是一个左闭右开的区间。
+1. 为了明确数据划分到哪一个窗口，定义窗口都是包含起始时间、不包含结束时间 的，用数学符号表示就是一个<font color=red>左闭右开</font>的区间。
 
-2. Flink 中窗口并不是静态准备好的，而是动态创建——当有落在这个 窗口区间范围的数据达到时，才创建对应的窗口
+2. Flink 中窗口并不是静态准备好的，而是<font color=red>动态创建</font>——当有落在这个 窗口区间范围的数据达到时，才创建对应的窗口
+
+3. <font color=red>我们可以把窗口理解成一个桶，每个数据都会分发到对应的桶中</font> 
+
+   > 窗口[0,10)因为设置了两秒延时，虽然它在水位线到达12时才关闭窗口，但11/12这两条数据是不会进入到这个窗口的
 
 ![image-20220827161712320](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220827161712320.png)
 
@@ -589,14 +724,14 @@ Flink 提供了 8 个不同的处理函数:
 
 ## 迟到数据的处理
 
-1. 设置水位线延迟时间
+1. **设置水位线延迟时间**
    调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。
 
-2. 允许窗口处理迟到数据
+2. **允许窗口处理迟到数据**
 
    水位线到达窗口结束时间时，快速输出一个近似结果，然后保持窗口继续等待延迟数据，每来一条数据窗口就重新计算更新结果。
 
-3. 迟到数据放入侧输出流
+3. **迟到数据放入侧输出流**
 
 # 处理函数
 
@@ -616,7 +751,7 @@ Flink 提供了 8 个不同的处理函数:
    称之类的运行时信息
 4. ProcessFunction可以访问事件的时间戳、水位线信息
 
-处理函数提供了一个“定时服务”(TimerService),我们可以通过它访问流中的事件(event)、时间戳(timestamp)、水位线(watermark),甚至可以注册“定时事件”。而且处理函数继承了 AbstractRichFunction 抽象类,所以拥有富函数类的所有特性,同样可以访问状态(state)和其他运行时信息。此外,处理函数还可以直接将数据输出到侧输出流(side output)中。所以,处理函数是最为灵活的处理方法,可以实现各种自定义的业务逻辑;同时也是整个DataStream API 的底层基础。
+<font color=red>处理函数提供了一个“定时服务”(TimerService),我们可以通过它访问流中的事件(event)、时间戳(timestamp)、水位线(watermark),甚至可以注册“定时事件”。而且处理函数继承了 AbstractRichFunction 抽象类,所以拥有富函数类的所有特性,同样可以访问状态(state)和其他运行时信息。此外,处理函数还可以直接将数据输出到侧输出流(side output)中。所以,处理函数是最为灵活的处理方法,可以实现各种自定义的业务逻辑;同时也是整个DataStream API 的底层基础。</font>
 
 1. 抽象方法 processElement()
 该方法用于“处理元素”
@@ -838,6 +973,8 @@ stream1
 
 # 状态编程
 
+状态：就是程序用来计算输出结果所依赖的所有数据
+
 ## 状态分类
 
 1. **托管状态**(Managed State)和**原始状态**(Raw State)
@@ -848,7 +985,7 @@ stream1
 
 
 
-状态在任务间是天然隔离(不同slot计算资源是物理隔离的)的，对于有状态的操作，状态应该在key之间隔离。
+<font color=red>状态在任务间是天然隔离(不同slot计算资源是物理隔离的)的，对于有状态的操作，状态应该在key之间隔离。</font>
 
 所以，按照状态的隔离可以这样分(只考虑托管状态)：
 
@@ -1012,6 +1149,68 @@ IDE中使用RocksDB状态后端，需要加依赖
 
 检查点是 Flink 容错机制的核心。这里所谓的“检查”，其实是针对故障恢复的结果而言 的:故障恢复之后继续处理的结果，应该与发生故障前完全一致，我们需要“检查”结果的正 确性。所以，有时又会把 checkpoint 叫作“一致性检查点”。
 
+### 参数
+
+```java
+StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+// 每 60s 做一次 checkpoint
+env.enableCheckpointing(60000);
+
+// 高级配置：
+
+// checkpoint 语义设置为 EXACTLY_ONCE，这是默认语义
+env.getCheckpointConfig().setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE);
+
+// 两次 checkpoint 的间隔时间至少为 1 s，默认是 0，立即进行下一次 checkpoint
+env.getCheckpointConfig().setMinPauseBetweenCheckpoints(1000);
+
+// checkpoint 必须在 60s 内结束，否则被丢弃，默认是 10 分钟
+env.getCheckpointConfig().setCheckpointTimeout(60000);
+
+// 同一时间只能允许有一个 checkpoint
+env.getCheckpointConfig().setMaxConcurrentCheckpoints(1);
+
+// 最多允许 checkpoint 失败 3 次
+env.getCheckpointConfig().setTolerableCheckpointFailureNumber(3);
+
+// 当 Flink 任务取消时，保留外部保存的 checkpoint 信息
+env.getCheckpointConfig().enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION);
+
+// 当有较新的 Savepoint 时，作业也会从 Checkpoint 处恢复
+env.getCheckpointConfig().setPreferCheckpointForRecovery(true);
+
+// 允许实验性的功能：非对齐的 checkpoint，以提升性能
+env.getCheckpointConfig().enableUnalignedCheckpoints();
+```
+
+### checkpoint实现
+
+[参考](https://cloud.tencent.com/developer/article/1766130)
+
+Flink 的 checkpoint coordinator （JobManager 的一部分）会周期性的在流事件中插入一个 barrier 事件（栅栏），用来隔离不同批次的事件，如下图红色的部分。checkpoint barrier n-1 处的 barrier 是指 Job 从开始处理到 barrier n -1 所有的状态数据，checkpoint barrier n 处的 barrier 是指 Job 从开始处理到 barrier n 所有的状态数据。
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1620.png)
+
+每个算子遇到barrier，就把状态保存，并向 CheckpointCoordinator报告自己快照制作情况，同时向自身所有下游算子广播该barrier：
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1620-20221224174054612.png" alt="img" style="zoom: 67%;" /><img src="https://ask.qcloudimg.com/http-save/yehe-4153409/20tnnqi0ji.png?imageView2/2/w/1620" alt="img" style="zoom: 67%;" />
+
+当 Operator 2 收到barrier后，会触发自身进行快照，把自己当时的状态存储下来，向 CheckpointCoordinator 报告 自己快照制作情况。因为这是一个 sink ，状态存储成功后，意味着本次 checkpoint 也成功了。
+
+<font color=red>总结： </font>
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221224182144200.png" alt="image-20221224182144200" style="zoom:50%;" />
+
+1. JobManager 端的 CheckPointCoordinator 会定期向所有 SourceTask 发送 CheckPointTrigger，Source Task 会在数据流中安插 Checkpoint barrier；
+2. 当 task 收到上游所有实例的 barrier 后，向自己的下游继续传递 barrier，然后自身同步进行快照，并将自己的状态异步写入到持久化存储中
+
+- 如果是增量 Checkpoint，则只是把最新的一部分更新写入到外部持久化存储中
+- 为了下游尽快进行 Checkpoint，所以 task 会先发送 barrier 到下游，自身再同步进行快照；
+
+3. 当 task 将状态信息完成备份后，会将备份数据的地址（state handle）通知给 JobManager 的CheckPointCoordinator，如果 Checkpoint 的持续时长超过了 Checkpoint 设定的超时时间CheckPointCoordinator 还没有收集完所有的 State Handle，CheckPointCoordinator 就会认为本次 Checkpoint 失败，会把这次 Checkpoint 产生的所有状态数据全部删除；
+4. 如果 CheckPointCoordinator 收集完所有算子的 State Handle，CheckPointCoordinator 会把整个 StateHandle 封装成 completed Checkpoint Meta，写入到外部存储中，Checkpoint 结束；
+
 ### 检查点的保存
 
 - 周期性触发
@@ -1019,7 +1218,7 @@ IDE中使用RocksDB状态后端，需要加依赖
 
   > 如果出现故障， 故障时正在处理的所有数据都需要重新处理，所以我们只需要让源任务请求重放数据即可。
   >
-  > 触发检查点保存的这个数据也叫做<font color=red>检查点分界线</font>，是由Source算子注入的特殊数据，其位置是限定号的， 在任何算子中不能被其他数据超过，它也不会超过其他任何数据。
+  > 触发检查点保存的这个数据也叫做<font color=red>检查点分界线</font>，是由Source算子注入的特殊数据，其位置是限定好的， 在任何算子中不能被其他数据超过，它也不会超过其他任何数据。
   
   举例来说：下面这个wordcount例子里，所有算子处理完前3条数据时，可以进行检查点保存
 
@@ -1039,33 +1238,6 @@ val wordCountStream = env.addSource(...)
 发生故障时，找到最近一次成功保存的检查点来恢复状态：
 
 重启任务，读取检查点，把状态分别填充到对应的状态中。Source任务重放故障时未处理完成的数据
-
-### 检查点配置
-
-```scala
-val env =
-StreamExecutionEnvironment.getExecutionEnvironment
-// 启用检查点，间隔时间 1 秒
-env.enableCheckpointing(1000)
-CheckpointConfig checkpointConfig = env.getCheckpointConfig
-// 设置精确一次模式 
-checkpointConfig.setCheckpointingMode(CheckpointingMode.EXACTLY_ONCE) 
-// 最小间隔时间 500 毫秒 
-checkpointConfig.setMinPauseBetweenCheckpoints(500)
-// 超时时间 1 分钟
-checkpointConfig.setCheckpointTimeout(60000) 
-// 同时只能有一个检查点 
-checkpointConfig.setMaxConcurrentCheckpoints(1) 
-// 开启检查点的外部持久化保存，作业取消后依然保留 
-checkpointConfig.enableExternalizedCheckpoints(
-ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
-// 启用不对齐的检查点保存方式 
-checkpointConfig.enableUnalignedCheckpoints
-// 设置检查点存储，可以直接传入一个 String，指定文件系统的路径 
-checkpointConfig.setCheckpointStorage("hdfs://my/checkpoint/dir")
-```
-
-
 
 ### 检查点算法
 

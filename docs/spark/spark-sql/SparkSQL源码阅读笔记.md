@@ -1,3 +1,9 @@
+[spark sql是如何变成执行计划的](https://www.yisu.com/zixun/504112.html)
+
+[](https://jtlibrain.github.io/2020/09/11/spark/Spark-SQL-Catalyst-details/)
+
+[SparkSql的Catalyst之图解简易版](https://cloud.tencent.com/developer/article/1032525)youtube
+
 [参考](https://zhuanlan.zhihu.com/p/367590611)
 
 [Spark Sql 执行流程源码阅读笔记](https://cloud.tencent.com/developer/article/1820090)
@@ -29,30 +35,33 @@
 ![在这里插入图片描述](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzMwMDMxMjIx,size_16,color_FFFFFF,t_70.png)
 
 > [参考](https://blog.csdn.net/qq_30031221/article/details/109222355)
+>
+> 
 
 主要步骤：
 
 1. 输入sql，dataFrame或者dataSet
 
 2. 经过Catalyst过程，生成最终我们得到的最优的物理执行计划
-   1. parser阶段
+   1. parser阶段得到<font color=red>未解析的逻辑计划</font>
 
-- 主要是通过Antlr4解析SqlBase.g4 ，所有spark支持的语法方式都是定义在sqlBase.g4里面了，生成了我们的语法解析器SqlBaseLexer.java和词法解析器SqlBaseParser.java
-
-- parse阶段 --> antlr4 —> 解析 —> SqlBase.g4 —> 语法解析器SqlBaseLexer.java + 词法解析器SqlBaseParser.java
-
-  2. analyzer阶段
-
+- 主要是通过Antlr4解析SqlBase.g4 ，所有spark支持的语法方式都是定义在sqlBase.g4里面了，生成了我们的语法解析器SqlBaseLexer.java和词法解析器SqlBaseParser.java生成**语法树**
+- astBuilder把语法树转成未解析的逻辑计划
+2. analyzer阶段生成<font color=red>解析后的逻辑计划</font>，实际就是对树节点进行转换，把未解析的关系/属性节点解析成有类型的对象
 - 使用基于Rule的规则解析以及Session Catalog来实现函数资源信息和元数据管理信息
-- Analyzer 阶段 --> 使用 --> Rule + Session Catalog --> 多个rule --> 组成一个batch --> session CataLog --> 保存函数资源信息以及元数据信息等
-    3. optimizer阶段
+- 未解析的逻辑算子树中未被解析的有 UnresolvedRelation和 UnresolvedAttribute两种对象。实际上， Analyzer所起到的主要作用就是将这两种节点或表达式解析成有类型的(Typed)对象。 在此过 程中，需要用到Catalog的相关信息。
+- Rule是什么？ 例如，with子句优化，遇到with节点时，将子LogicalPlan替换成解析后的CTE，其作用是将多个LogicPlan合并成一个LogicPlan；spark2.0中支持group by列索引，就是通过规则把索引替换成表达式映射到对应的列。
+    3. optimizer阶段生成<font color=red>优化后的逻辑计划</font>
+       方法和anlyzer类似，optimizer调优阶段 --> 基于规则的RBO优化rule-based optimizer --> 谓词下推 + 列剪枝 + 常量替换 + 常量累加
+
+​		 4. planner阶段<font color=red>生成物理计划</font>，将树节点转化成 RDD、 Transformation 和 Action等
+
+这里和前面逻辑计划绑定和优化不一样，这里使用的是策略（Strategy），而且前面介绍的逻辑计划绑定和优化经过 Transformations 动作之后，树的类型并没有改变，也就是说：Expression 经过 Transformations 之后得到的还是 Expression ；Logical Plan 经过 Transformations 之后得到的还是 Logical Plan。而到了这个阶段，经过 Transformations 动作之后，树的类型改变了，由 Logical Plan 转换成 Physical Plan 了。
 
 
-optimizer调优阶段 --> 基于规则的RBO优化rule-based optimizer --> 谓词下推 + 列剪枝 + 常量替换 + 常量累加
-
-​		 4. planner阶段
 
 生成多个物理计划 --> 经过Cost Model进行最优选择 --> 基于代价的CBO优化 --> 最终选定得到的最优物理执行计划
+
     5. 选定最终的物理计划，准备执行
 
 最终选定的最优物理执行计划 --> 准备生成代码去开始执行
@@ -366,6 +375,16 @@ Optimizer 同样继承自 RuleExecutor 类，parkOptimizer继承自Optimizer，O
 
 **(3)提交前进行准备工作，进行一些分区排序方面的处理，确保 SparkPlan各节点能够正确 执行，这一步通过 prepareForExecution()方法调用若干规则(Rule)进行转换。**
 
+
+
+前面介绍的逻辑计划在 Spark 里面其实并不能被执行的，为了能够执行这个 SQL，一定需要翻译成物理计划，到这个阶段 Spark 就知道如何执行这个 SQL 了。和前面逻辑计划绑定和优化不一样，这里使用的是策略（Strategy），而且前面介绍的逻辑计划绑定和优化经过 Transformations 动作之后，树的类型并没有改变，也就是说：Expression 经过 Transformations 之后得到的还是 Transformations ；Logical Plan 经过 Transformations 之后得到的还是 Logical Plan。而到了这个阶段，经过 Transformations 动作之后，树的类型改变了，由 Logical Plan 转换成 Physical Plan 了。
+
+一个逻辑计划（Logical Plan）经过一系列的策略处理之后，得到多个物理计划（Physical Plans），物理计划在 Spark 是由 SparkPlan 实现的。多个物理计划再经过代价模型（Cost Model）得到选择后的物理计划（Selected Physical Plan）。
+
+### QueryPlanner
+
+`QueryPlanner`使用策略将`LogicalPlan`转换为一个或多个物理计划。子类负责指定一组`GenericStrategy`对象，每个`GenericStrategy`对象可以返回一组可能的物理计划。如果一个策略不能计划好逻辑计划树中剩余的运算符，那么它会调用`GenericStrategy.planLater()`方法来返回一个占位对象，该占位对象会被收集起来，然后使用其它可用的策略来填补。
+
 ### SparkPlan
 
 <font color=red>在物理算子树 中，叶子类 型的 SparkPlan节点负责从无到有地创建RDD，每个非叶子类型的 SparkPlan节点等价于在 RDD 上进行一次 Transformation</font>
@@ -425,6 +444,8 @@ SparkPlan 的主要功能可以划分为 3 大块
 
 -  PhysicalOperation:匹配逻辑算子树中 的 Project和Filter等节点，返回投影列、过滤条件集合和子节点 。
 
+
+
 ## 执行前的准备
 
 在 QueryExection 中，最后阶段由 prepareforExecution 方法对传入的 SparkPlan 进行处理而 生成 executedPlan，处理过程仍然基于若干规则(如表 6.3 所示)，主要包括对 Python 中 UDF 的 提取、子查询的计划生成等 。
@@ -458,7 +479,6 @@ SparkPlan 的主要功能可以划分为 3 大块
 
    全阶段代码生成（Whole-stage Code Generation），用来将多个处理逻辑整合到单个代码模块中，其中也会用到上面的表达式代码生成。和前面介绍的表达式代码生成不一样，这个是对整个 SQL 过程进行代码生成，前面的表达式代码生成仅对于表达式的。
    
-
 3. 加速序列化和反序列化
 
 **代码生成是在 Driver 端进行的，而代码编译是在 Executor 端进行的。**

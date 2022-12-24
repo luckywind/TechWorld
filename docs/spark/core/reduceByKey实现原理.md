@@ -4,7 +4,7 @@
 
 ## 总结
 
-1. reduceBykey未必会shuffle,得看rdd本身的分区器和传入的分区是否相同(不传则是默认的hash分区器)，如果相同，则不会进行shuffle
+1. <font color=red>reduceBykey 极端情况下未必会shuffle,得看rdd本身是否已经分区过，且和传入的分区器是否相同(不传则是默认的hash分区器)，如果相同，则不会进行shuffle</font>
 2. reduceBykey传入的代码逻辑将作为数据聚合的逻辑，就是聚合器
 
 ![在这里插入图片描述](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM1Njg4MTQw,size_16,color_FFFFFF,t_70.png)
