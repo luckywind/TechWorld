@@ -131,7 +131,8 @@ env.execute("Java WordCount from SocketTextStream Example");
 ```
 远程模式和本地模式有一点不同，我们先按本地模式来调试。
 我们跟进源码，（在本地调试模式下）会启动一个miniCluster，然后开始执行代码：
-```
+
+```java
 // LocalStreamEnvironment.java
 
 	@Override
@@ -156,7 +157,7 @@ env.execute("Java WordCount from SocketTextStream Example");
 ```
 
 这个方法里有一部分逻辑是与生成图结构相关的，我们放在第二章里讲；现在我们先接着往里跟：
-```
+```java
 //MiniCluster.java
 public JobExecutionResult executeJobBlocking(JobGraph job) throws JobExecutionException, InterruptedException {
 		checkNotNull(job, "job is null");
@@ -172,7 +173,7 @@ public JobExecutionResult executeJobBlocking(JobGraph job) throws JobExecutionEx
 	}
 ```
 正如我在注释里写的，这一段代码核心逻辑就是调用那个```submitJob```方法。那么我们再接着看这个方法：
-```
+```java
 	public CompletableFuture<JobSubmissionResult> submitJob(JobGraph jobGraph) {
 		final DispatcherGateway dispatcherGateway;
 		try {
@@ -276,7 +277,7 @@ StreamTransformation代表了从一个或多个DataStream生成新DataStream的�
 
 #### 2.2.2 StreamGraph生成函数分析
 我们从StreamGraphGenerator.generate()方法往下看：
-```
+```java
 	public static StreamGraph generate(StreamExecutionEnvironment env, List<StreamTransformation<?>> transformations) {
 		return new StreamGraphGenerator(env).generateInternal(transformations);
 	}
@@ -1469,7 +1470,7 @@ Flink的分布式快照的核心是其轻量级异步分布式快照机制。为
 ![image_1ceot7q13apu1a04170af7j1jao34.png-66.6kB][21]
 有时，有的算子的上游节点和下游节点都不止一个，应该怎么处理呢？如果有不止一个下游节点，就向每个下游发送barrier。同理，如果有不止一个上游节点，那么就要等到所有上游节点的同一批次的barrier到达之后，才能触发checkpoint。因为每个节点运算速度不同，所以有的上游节点可能已经在发下个barrier周期的数据了，有的上游节点还没发送本次的barrier，这时候，当前算子就要缓存一下提前到来的数据，等比较慢的上游节点发送barrier之后，才能处理下一批数据。
 
-当整个程序的最后一个算子sink都收到了这个barrier，也就意味着这个barrier和上个barrier之间所夹杂的这批元素已经全部落袋为安。这时，最后一个算子通知JobManager整个流程已经完成，而JobManager随后发出通知，要求所有算子删除本次快照内容，以完成清理。这整个部分，就是Flink的**两阶段提交的checkpoint过程**，如下面四幅图所示：
+当整个程序的最后一个算子sink都收到了这个barrier，也就意味着这个barrier和上个barrier之间所夹杂的这批元素已经全部落袋为安。这时，最后一个算子通知JobManager整个流程已经完成，而JobManager随后发出通知，要求所有算子删除本次快照内容，以完成清理。这整个部分，就是Flink的<font color=red>**两阶段提交的checkpoint过程**</font>，如下面四幅图所示：
 ![image_1ceot517e14g31u2u1mnt12o91dkb1g.png-175.5kB][22]
 
 ![image_1ceot5kqbnik1f2i1dss1q5c1a1t.png-221.3kB][23]
@@ -1659,8 +1660,9 @@ StreamTask是这样实现的：
 第四章时，我们已经了解了StreamOperator的类关系，这里，我们就直接接着上一节的```checkpointStreamOperator(op)```方法往下讲。
 顺便，前面也提到了，在进行checkpoint之前，operator初始化时，会执行一个```initializeState```方法，在该方法中，如果task是从失败中恢复的话，其保存的state也会被restore进来。
 
-传递barrier是在进行本operator的statesnapshot之前完成的，我们先来看看其逻辑，其实和传递一条数据是类似的，就是生成一个```CheckpointBarrier```对象，然后向每个streamOutput写进去：
-```
+<font color=red>传递barrier是在进行本operator的statesnapshot之前完成的，我们先来看看其逻辑，其实和传递一条数据是类似的，就是生成一个```CheckpointBarrier```对象，然后向每个streamOutput写进去：</font>
+
+```java
     public void broadcastCheckpointBarrier(long id, long timestamp, CheckpointOptions checkpointOptions) throws IOException {
 		try {
 			CheckpointBarrier barrier = new CheckpointBarrier(id, timestamp, checkpointOptions);
@@ -1778,7 +1780,6 @@ kafka的snapshot逻辑就是记录一下当前消费的offsets，然后做成tup
 ```
 
 注释写的很清楚，我就不多说了。
-
 
 4.**后继operatorChain的checkpoint过程**
 前面说到，在flink的流中，barrier流过时会触发checkpoint。在上面第1步中，上游节点已经发出了Barrier，所以在我们的keyed aggregation -> sink 这个operatorchain中，我们将首先捕获这个barrier。

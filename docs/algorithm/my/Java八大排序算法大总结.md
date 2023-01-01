@@ -21,7 +21,7 @@ Java中常见的排序算法有以下八个：
 <font color=red>把元素依次当作当前插入的元素，前面的是已经排好序的，要插入当前元素，需要从已排序的数组后面开始，依次和当前要插入的元素比较，比插入元素大就要往后移动
 当前元素比要插入元素小时，把要插入元素放到当前元素后面即可。</font>
 
-![image-20221024095636605](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024095636605.png)
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024095636605.png" alt="image-20221024095636605" style="zoom:50%;" />
 
 ### 源码
 

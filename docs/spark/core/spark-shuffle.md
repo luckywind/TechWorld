@@ -89,7 +89,7 @@ Cons:
 
 > 例如groupByKey(100),  partitionBy(100),  sortByKey(100)
 >
-> **map输出好<K,V>对并计算好分区ID后根据分区ID，Spark根据分区ID把数据分发到不同的buffer中再溢写到文件**
+> **map输出好<K,V>对并计算好分区ID，Spark根据分区ID把数据分发到不同的buffer中再溢写到文件**
 
 ![image-20221222231510544](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221222231510544.png)
 
@@ -121,7 +121,7 @@ Cons:
 **一个task将所有数据写入内存数据结构的过程中，会发生多次磁盘溢写操作，也会产生多个临时文件。最后会将之前所有的临时磁盘文件都进行合并**，由于一个task就只对应一个磁盘文件因此还会单独写一份索引文件，其中标识了下游各个task的数据在文件中的start offset与end offset。
 SortShuffleManager由于有一个磁盘文件merge的过程，因此大大减少了文件数量，<font color=red>由于每个task最终只有一个磁盘文件所以文件个数等于上游shuffle write个数。</font>[参考](https://www.cnblogs.com/xiaodf/p/10650921.html)
 
-![image-20221024144015305](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024144015305.png)
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221024144015305.png" alt="image-20221024144015305" style="zoom:50%;" />
 
 ​          有意思的是这个实现在map端排序，但当需要数据顺序时，在reduce端不对排序结果进行merge，而只是re-sort(reduce端re-sort使用TimSort算法实现，它对预排序的数据非常高效)。
 

@@ -51,7 +51,7 @@
 
 该方式是在没有合适的JOIN机制可供选择时，最终会选择该种join策略。优先级为：*Broadcast Hash Join > Sort Merge Join > Shuffle Hash Join > cartesian Join > Broadcast Nested Loop Join*.
 
-最小的数据集被广播到另一个数据集的每个分区上，执行一个<font color=red>嵌套循环</font>来执行join, 也就是说数据集1的每条记录都尝试join数据集2的每条记录(最笨的方法)，效率比较低。既可以做等值join也可以做非等值join，而且是非等值join的默认策略。 
+最小的数据集被广播到另一个数据集的**每个分区**上，执行一个<font color=red>嵌套循环</font>来执行join, 也就是说数据集1的每条记录都尝试join数据集2的每条记录(最笨的方法)，效率比较低。既可以做等值join也可以做非等值join，而且是非等值join的默认策略。 
 
 <font color=red>没有排序，就是广播小表到每个分区上，尝试join每条记录，效率低！</font>
 

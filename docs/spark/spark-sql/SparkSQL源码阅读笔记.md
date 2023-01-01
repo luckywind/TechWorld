@@ -42,12 +42,14 @@
 
 1. 输入sql，dataFrame或者dataSet
 
-2. 经过Catalyst过程，生成最终我们得到的最优的物理执行计划
+2. 经过Catalyst过程，生成最终的最优的物理执行计划
    1. parser阶段得到<font color=red>未解析的逻辑计划</font>
 
 - 主要是通过Antlr4解析SqlBase.g4 ，所有spark支持的语法方式都是定义在sqlBase.g4里面了，生成了我们的语法解析器SqlBaseLexer.java和词法解析器SqlBaseParser.java生成**语法树**
 - astBuilder把语法树转成未解析的逻辑计划
-2. analyzer阶段生成<font color=red>解析后的逻辑计划</font>，实际就是对树节点进行转换，把未解析的关系/属性节点解析成有类型的对象
+
+​       2. analyzer阶段生成<font color=red>解析后的逻辑计划</font>，实际就是对树节点进行转换，把未解析的关系/属性节点解析成有类型的对象
+
 - 使用基于Rule的规则解析以及Session Catalog来实现函数资源信息和元数据管理信息
 - 未解析的逻辑算子树中未被解析的有 UnresolvedRelation和 UnresolvedAttribute两种对象。实际上， Analyzer所起到的主要作用就是将这两种节点或表达式解析成有类型的(Typed)对象。 在此过 程中，需要用到Catalog的相关信息。
 - Rule是什么？ 例如，with子句优化，遇到with节点时，将子LogicalPlan替换成解析后的CTE，其作用是将多个LogicPlan合并成一个LogicPlan；spark2.0中支持group by列索引，就是通过规则把索引替换成表达式映射到对应的列。
@@ -62,7 +64,7 @@
 
 生成多个物理计划 --> 经过Cost Model进行最优选择 --> 基于代价的CBO优化 --> 最终选定得到的最优物理执行计划
 
-    5. 选定最终的物理计划，准备执行
+​        5. 选定最终的物理计划，准备执行
 
 最终选定的最优物理执行计划 --> 准备生成代码去开始执行
 3. 将最终得到的物理执行计划进行代码生成，提交代码去执行我们的最终任务
