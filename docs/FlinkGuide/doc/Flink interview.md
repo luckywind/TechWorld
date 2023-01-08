@@ -1,3 +1,5 @@
+[大数据兵工厂: 2万字50张图玩转Flink面试体系](https://bbs.huaweicloud.com/blogs/367983)
+
 [参考](https://cloud.tencent.com/developer/article/1506784)
 
 [参考1](https://www.modb.pro/db/108234)

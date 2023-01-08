@@ -13,6 +13,12 @@ IDE里需要：它是 Table API 的核心组件，负责提供 运行时环境�
    <artifactId>flink-table-planner-blink_${scala.binary.version}</artifactId>
    <version>${flink.version}</version>
 </dependency>
+另外，如果想实现自定义的数据格式来做序列化，可以引入下面的依赖:
+<dependency>
+   <groupId>org.apache.flink</groupId>
+<artifactId>flink-table-common</artifactId>
+   <version>${flink.version}</version>
+</dependency>
 ```
 
 实例
@@ -48,6 +54,11 @@ IDE里需要：它是 Table API 的核心组件，负责提供 运行时环境�
 +I[./home, Cary]
 +I[./prod?id=3, Bob]
 +I[./prod?id=7, Alice]
+
+ // 用 Table API 方式提取数据
+val clickTable2 = eventTable.select($("url"), $("user"))
+// 这里的$符号是 Table API 中定义的“表达式”类 Expressions 中的一个静态方法，传入一 个字段名称，就可以指代数据中对应字段，这个方法需要使用如下的方式进行手动导入。
+import org.apache.flink.table.api.Expressions.$
 ```
 
 ## 程序架构
@@ -109,7 +120,8 @@ tableEnv.createTemporaryView("NewTable", newTable)
 val tableEnv = ...
 // 创建表
 tableEnv.executeSql("CREATE TABLE EventTable ... WITH ( 'connector' = ... )")
-// 查询用户 Alice 的点击事件，并提取表中前两个字段 val aliceVisitTable = tableEnv.sqlQuery(
+// 查询用户 Alice 的点击事件，并提取表中前两个字段 
+val aliceVisitTable = tableEnv.sqlQuery(
    "SELECT user, url " +
    "FROM EventTable " +
    "WHERE user = 'Alice' "
@@ -136,22 +148,24 @@ executeInsert()方法
 ```scala
 // 注册表，用于输出数据到外部系统
 tableEnv.executeSql("CREATE TABLE OutputTable ... WITH ( 'connector' = ... )")
-// 经过查询转换，得到结果表 val result = ...
-// 将结果表写入已注册的输出表中 result.executeInsert("OutputTable")
+// 经过查询转换，得到结果表 
+val result = ...
+// 将结果表写入已注册的输出表中 
+result.executeInsert("OutputTable")
 ```
 
 ### 表和流的转换
 
 #### 表转流
 
-- 调用 toDataStream()方法
+- <font color=red>调用 toDataStream()方法</font>
   这种简单的结果不会变的查询可以直接输出
 
 ```scala
-    val eventTable = tableEnv.fromDataStream(eventStream)
+    val eventTable = tableEnv.fromDataStream(eventStream)//流转表
     // 用执行 SQL 的方式提取数据
-    val visitTable = tableEnv.sqlQuery("select url, user from " + eventTable) // 将表转换成数据流，打印输出
-     tableEnv.toDataStream(visitTable).print() // 执行程序
+    val visitTable = tableEnv.sqlQuery("select url, user from " + eventTable) //表
+     tableEnv.toDataStream(visitTable).print() // 表转流
 ```
 
 但是如果，查询结果会随时间变化，则不支持输出：
@@ -166,15 +180,15 @@ tableEnv.executeSql("CREATE TABLE OutputTable ... WITH ( 'connector' = ... )")
         .print()
 ```
 
-因为，group by user后，user只能有一条数据，不同时间统计的结果可能会变化，所以Sink操作不允许。要想输出，则可使用toChangelogStream
+因为，group by user后，user只能有一条数据，不同时间统计的结果可能会变化，所以Sink操作（print也是一个Sink操作）不允许。要想输出，则可使用toChangelogStream
 
-- 调用 toChangelogStream()方法
+- <font color=red>有更新的表调用 toChangelogStream()方法进行Sink</font>
 
-这种流的Sink操作不受限制
+对于有更新操作的表， 记录它的"更新日志"，这样所有的更新操作就变成了一条更新日志的流，这样就可以转换成流打印输出了，  这种流的Sink操作不受限制
 
 #### 流转表
 
-- **调用 fromDataStream()方法**
+- <font color=red>**调用 fromDataStream()方法**</font>
 
 ```scala
 //可选择提取流中部分字段
@@ -185,7 +199,7 @@ val eventTable2 = tableEnv.fromDataStream(eventStream, $("timestamp").as("ts"), 
 val table = tableEnv.fromDataStream(stream, $("myLong"))
 ```
 
-- **调用 createTemporaryView()方法**
+- <font color=red>**调用 createTemporaryView()方法**</font>
   这种好处是可在sql中直接使用表名
 
 ```scala
@@ -205,7 +219,7 @@ $("timestamp").as("ts"),$("url"));
 2. tuple
 3. case class
 4. Row
-   Row是更通用的数据类型，Row 类型还附加了一个属性 RowKind，用来表示当前行在更新操作中的类型。这样， Row 就可以用来表示更新日志流(changelog stream)中的数据，从而架起了 Flink 中流和表的 转换桥梁。所以在更新日志流中，元素的类型必须是 Row，而且需要调用 ofKind()方法来指定更新类 型
+   <font color=red>Row是更通用的数据类型，Row 类型还附加了一个属性 RowKind，用来表示当前行在更新操作中的类型。这样， Row 就可以用来表示更新日志流(changelog stream)中的数据，从而架起了 Flink 中流和表的 转换桥梁。所以在更新日志流中，元素的类型必须是 Row，而且需要调用 ofKind()方法来指定更新类 型</font>
 
 #### 动态表转流
 
@@ -227,17 +241,32 @@ $("timestamp").as("ts"),$("url"));
 
 ## 流处理中的表
 
-### 动态表
+### 动态表和持续查询
 
 - 动态表： 随着新数据的加入，基于某个sql查询的到的表就会不断变化，称为动态表，是Flink Sql中的核心概念。
-
 - 思想： 数据库中的表是一系列Insert/update/delete的更新日志流执行的结果，基于某一时刻的快照读取更新日志流就可以得到最终结果。
-
 - 动态查询： 对动态表定义的查询操作，都是持续查询;而持续查询的结果也会是一个动态表。
+
+
+
+![image-20230102164912099](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230102164912099.png)
+
+​       动态表可以像静态的批处理表一样进行查询操作。由于数据在不断变化，因此基于它定义 的 SQL 查询也不可能执行一次就得到最终结果。这样一来，我们对动态表的查询也就永远不 会停止，<font color=red>一直在随着新数据的到来而继续执行</font>。这样的查询就被称作“持续查询”(Continuous Query)。对动态表定义的查询操作，都是持续查询;而持续查询的结果也会是一个动态表。
+
+持续查询的步骤如下:
+ (1)流(stream)被转换为动态表(dynamic table); 
+
+(2)对动态表进行持续查询(continuous query)，生成新的动态表; 
+
+(3)生成的动态表被转换成流。
+
+<font color=red>这样，只要 API 将流和动态表的转换封装起来，我们就可以直接在数据流上执行 SQL 查询，用处理表的方式来做流处理了。</font>
+
+
 
 ### 流转动态表
 
-流其实是一个insert-only的更新日志
+流其实是一个insert-only的更新日志, 我们要做的就是把一个只有插入操作的更新日志构建一个表
 
 ```scala
 // 获取流环境
@@ -254,7 +283,7 @@ val eventStream = env
 )
 // 获取表环境
 val tableEnv = StreamTableEnvironment.create(env)
-// 将数据流转换成表
+// 将数据流转换成动态表
 tableEnv.createTemporaryView("EventTable", eventStream, $("user"), $("url"), $("timestamp").as("ts"))
 // 统计每个用户的点击次数
 val urlCountTable = tableEnv.sqlQuery("SELECT user, COUNT(url) as cnt FROM EventTable GROUP BY user")
@@ -264,45 +293,118 @@ tableEnv.toChangelogStream(urlCountTable).print("count")
 env.execute()
 ```
 
-### 持续查询
+### 用SQL持续查询
 
 1. **更新查询**
 
-随着新数据的到来，查询可能会得到新的数据，也可能会更新之前的查询结果，也就是说持续查询的到的更新日志流包含了insert和update两种操作，如果要转成流，就只能调用toChangelogStream()方法。
+随着新数据的到来，查询可能会得到新的数据，也可能会更新之前的查询结果，也就是说持续查询的更新日志流包含了insert和update两种操作，如果要转成流，就只能调用toChangelogStream()方法。
 
 ```scala
  val urlCountTable = tableEnv.sqlQuery("SELECT user, COUNT(url) as cnt FROM
 EventTable GROUP BY user")
 ```
 
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230102170112673.png" alt="image-20230102170112673" style="zoom: 50%;" />
+
+具体步骤解释如下:
+ (1)当查询启动时，原始动态表 EventTable 为空;
+ (2)当第一行 Alice 的点击数据插入 EventTable 表时，查询开始计算结果表，urlCountTable中插入一行数据[Alice，1]。
+ (3)当第二行 Bob 点击数据插入 EventTable 表时，查询将更新结果表并插入新行[Bob，1]。
+ (4)第三行数据到来，同样是 Alice 的点击事件，这时不会插入新行，而是生成一个针对已有行的更新操作。这样，结果表中第一行[Alice，1]就更新为[Alice，2]。 (5)当第四行 Cary 的点击数据插入到 EventTable 表时，查询将第三行[Cary，1]插入到结果表中。
+
 2. **追加查询**
 
-查询只会追加结果，也就是一个insert流，这种查询称为追加查询，转换成 DataStream 调用方法 没有限制，可以直接用 toDataStream()，也可以像更新查询一样调用 toChangelogStream()。
+​       查询只会追加结果，也就是一个insert流，这种查询称为**追加查询**，转换成 DataStream 调用方法 没有限制，可以直接用 toDataStream()，也可以像更新查询一样调用 toChangelogStream()。
 
 ```scala
 val aliceVisitTable = tableEnv.sqlQuery("SELECT url, user FROM EventTable WHERE
 user = 'Alice'")
 ```
 
+```scala
+   val env = StreamExecutionEnvironment.getExecutionEnvironment
+    env.setParallelism(1)
+    // 读取数据源，并分配时间戳、生成水位线
+    val eventStream = env
+      .fromElements(
+        Event("Alice", "./home", 1000L),
+        Event("Bob", "./cart", 1000L),
+        Event("Alice", "./prod?id=1", 25 * 60 * 1000L),
+        Event("Alice", "./prod?id=4", 55 * 60 * 1000L),
+        Event("Bob", "./prod?id=5", 3600 * 1000L + 60 * 1000L),
+        Event("Cary", "./home", 3600 * 1000L + 30 * 60 * 1000L),
+        Event("Cary", "./prod?id=7", 3600 * 1000L + 59 * 60 * 1000L)
+      )
+      .assignAscendingTimestamps(_.timestamp) // 创建表环境
+    val tableEnv = StreamTableEnvironment.create(env) // 将数据流转换成表，并指定时间属性
+    val eventTable = tableEnv.fromDataStream(
+      eventStream,
+      $("user"),
+      $("url"), $("timestamp").rowtime().as("ts")
+      // 将 timestamp 指定为事件时间，并命名为 ts
+    )
+    // 为方便在 SQL 中引用，在环境中注册表 EventTable
+    tableEnv.createTemporaryView("EventTable", eventTable); // 设置 1 小时滚动窗口，执行 SQL 统计查询
+    val result = tableEnv
+      .sqlQuery(
+        "SELECT " +
+          "user, " +
+          "window_end AS endT, " + // 窗口结束时间
+           "COUNT(url) AS cnt " + // 统计 url 访问次数
+           "FROM TABLE( " +
+          "TUMBLE( TABLE EventTable, " + // 1 小时滚动窗口
+           "DESCRIPTOR(ts), " +
+          "INTERVAL '1' HOUR)) " +
+          "GROUP BY user, window_start, window_end "
+      )
+    tableEnv.toDataStream(result).print()
+    env.execute()
+输出
++I[Alice, 1970-01-01T01:00, 3]
++I[Bob, 1970-01-01T01:00, 1]
++I[Bob, 1970-01-01T02:00, 1]
++I[Cary, 1970-01-01T02:00, 2]
+```
+
+
+
+3. 查询限制
+
+实际应用中，一些持续查询会因为代价太高而受到限制：
+
+- 状态太大
+- 新数据带来大量更新
+
 ### 动态表转流
+
+**与关系型数据库中的表一样**，动态表也可以通过插入(insert)、更新(update)和删除(delete) 操作，进行持续的更改。
 
 动态表的持续更改需要编码后通知外部系统要进行的操作，Flink API和SQL支持三种编码方式:
 
 1. 仅追加(append-only)流:  只有insert操作
+
 2. 撤回(retract)流: 
    1. add： insert操作
    2. retract：delete;  update被编码为一个retract和一个add消息
+   
 3. 更新插入(upsert)流
-   1. upsert
+   1. upsert： INSERT插入操作和 UPDATE 更新操作，统一被编码为 upsert 消息
    2. delete 
+   
+   > 更新插入流不区分更新和插入，所以动态表中必须有唯一的键，来确定是更新还是插入。
 
 ## 时间属性和窗口
+
+谓的时间属性(time attributes)，其实就是每个表模式结构(schema)的一部分。 它可以在创建表的 DDL 里直接定义为一个字段，也可以在流转换成表时定义。一旦定义了时 间属性，它就可以作为一个普通字段引用，并且可以在基于时间的操作中使用。
+
+时间属性的数据类型为 TIMESTAMP，它的行为类似于常规时间戳，可以直接访问并且进 行计算。
 
 ### 事件时间
 
 事件时间属性可以在创建表 DDL 中定义，也可以在数据流和表的转换中定义。
 
-1. DDL中定义
+1. **DDL中定义**
+   通过WATERMARK语句定义水位线生成表达式
 
 ```sql
 CREATE TABLE EventTable(
@@ -328,7 +430,7 @@ user STRING,
 );
 ```
 
-2. 数据流转为表时定义
+2. **数据流转为表时定义**
 
 ```scala
 // 方法一:
@@ -343,7 +445,66 @@ val stream = inputStream.assignTimestampsAndWatermarks(...)
 val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").rowtime())
 ```
 
+### 处理时间
+
+相比之下处理时间就比较简单了，它就是我们的系统时间，使用时不需要提取时间戳 (timestamp)和生成水位线(watermark)。因此在定义处理时间属性时，必须要额外声明一个 字段，专门用来保存当前的处理时间。
+
+1. 在创建表的DDL中定义
+   通过PROCTIME()函数指定当前的处理时间属性。
+
+```sql
+CREATE TABLE EventTable(
+  user STRING,
+  url STRING,
+  ts AS PROCTIME()
+) WITH ( ...
+);
+```
+
+2. 在数据流转换为表时定义
+
+```sql
+val stream = ...
+// 声明一个额外的字段作为处理时间属性字段
+val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
+```
+
+
+
+
+
+
+
 ### 窗口
+
+1. 分组窗口（老版本）
+
+   > 分组窗口的功能比较有限，只支持窗口聚合，所以目前已经处于弃用(deprecated)的状 态。
+
+   <font color=red>TUMBLE()、HOP()、SESSION()，传入时间属性字段、窗口大小等参数就可以了</font>。以滚动窗口为例:
+
+   ```sql
+   TUMBLE(ts, INTERVAL '1' HOUR)
+   ```
+
+   在进行窗口计算时，分组窗口是将窗口本身当作一个字段对数据进行分组的，可以对组内 的数据进行聚合。基本使用方式如下:
+
+   ```scala
+   val result = tableEnv.sqlQuery(
+                     "SELECT " +
+                         "user, " +
+                         "TUMBLE_END(ts, INTERVAL '1' HOUR) as endT, " +
+                         "COUNT(url) AS cnt " +
+   "FROM EventTable " +
+   "GROUP BY " + // 使用窗口和用户名进行分组
+   "user, " +
+   "TUMBLE(ts, INTERVAL '1' HOUR)" // 定义 1 小时滚动窗口
+    ) 
+   ```
+
+   
+
+2. 窗口表值函数(新版本)
 
 使用窗口表值函数(结果是一个Table)来定义窗口：
 
@@ -352,7 +513,7 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").rowtime())
  ⚫ 累积窗口(Cumulate Windows);
  ⚫ 会话窗口(Session Windows，目前尚未完全支持)。
 
-返回值中，除去原始表中的所有列，还增加了用来描述窗口的额外 3 个列:“窗口起始点”(window_start)、“窗口结束点”(window_end)、“窗口时间”(window_time)
+<font color=red>返回值中，除去原始表中的所有列，还增加了用来描述窗口的额外 3 个列:“窗口起始点”(window_start)、“窗口结束点”(window_end)、“窗口时间”(window_time)</font>
 
 ```sql
 -- 滚动窗口
@@ -362,6 +523,12 @@ HOP(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '5' MINUTES, INTERVAL '1' HOURS))
 -- 累积窗口
 CUMULATE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOURS, INTERVAL '1' DAYS))
 ```
+
+
+
+
+
+
 
 ## 聚合
 

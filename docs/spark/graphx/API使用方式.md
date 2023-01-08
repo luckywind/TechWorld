@@ -637,9 +637,7 @@ pregel的功能其实和迭代版本的aggregateMessages有点像，但有一些
 
 1. aggregateMessages只需要定义两个函数定义它的行为： sendMsg 和 mergeMsg.
 
-在aggregateMessages中，mergeMsg函数将返回的消息结果直接对顶点更新，而pregel的mergeMsg函数将返回的消息结果传递给顶点处理程序vprog
-
-vprog提供了更灵活的逻辑，一些场景下点的数据类型和消息的类型相同，只需要简单的逻辑就可以更新点的值。 还有一些情况，点的值类型和消息类型不同，就需要vprog。
+<font color=red>在aggregateMessages中，mergeMsg函数将返回的消息结果直接对顶点更新，而pregel的mergeMsg函数将返回的消息结果传递给顶点处理程序vprog 。 vprog提供了更灵活的逻辑，一些场景下点的数据类型和消息的类型相同，只需要简单的逻辑就可以更新点的值。 还有一些情况，点的值类型和消息类型不同，就需要vprog。</font>
 
 2. **sendMsg函数的签名**
 
@@ -657,7 +655,7 @@ EdgeContext额外增加了两个方法sendToSrc 和 sendToDst.
 
 用户需要通过Iterator[(VertexId,A)]指定发送哪些消息，发给那些节点，发送的内容是什么，因为在一条边上可以发送多个消息，所以这里是个Iterator，每一个元素是一个tuple，其中的vertexId表示要接收此消息的节点的id，它只能是该边上的srcId或dstId，而A就是要发送的内容，因此如果是需要由src发送一条消息A给dst，则有：Iterator((dstId,A))；如果什么消息也不发送，则可以返回一个空的Iterator：Iterator.empty
 
-3. **mergeMsg: 邻**居节点收到多条消息时的合并逻辑，注意它区别于vprog函数，mergeMsg仅能合并消息内容，但合并后并不会更新到节点中去？，而vprog函数可以根据收到的消息(就是mergeMsg产生的结果)更新节点属性。
+3. **mergeMsg: 邻**居节点收到多条消息时的合并逻辑，注意它区别于vprog函数，mergeMsg仅能合并消息内容，但合并后并不会直接更新到节点中去，而vprog函数可以根据收到的消息(就是mergeMsg产生的结果)更新节点属性。
 3. aggregateMessages返回的是一个VertexRDD对象，而pregel直接返回一个新的Graph对象。
 3. Pregel的终止条件是不再有需要发送的消息，所以要求有更灵活的终止条件的算法可以用aggregateMessages()实现。
 

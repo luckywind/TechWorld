@@ -44,7 +44,7 @@ IndexTable的RowKey由四部分组成，按顺序依次是：DataTable Region St
 
 2. <font color=red>IndexName</font>。
 
-在一张DataTable的基础上可以定义多个索引，如果为每个索引创建一个IndexTable，则在实际应用过程中，势必会产生大量的IndexTable，当DataTable Region分裂时，还需要对与之关联的所有IndexTable Region分别执行分裂操作，这将消耗大量的系统资源，并且不易维护。因此，我们考虑将一张DataTable的所有索引数据，存放到同一张IndexTable中，**不同索引的数据以IndexName进行区分。**
+**在一张DataTable的基础上可以定义多个索引**，如果为每个索引创建一个IndexTable，则在实际应用过程中，势必会产生大量的IndexTable，当DataTable Region分裂时，还需要对与之关联的所有IndexTable Region分别执行分裂操作，这将消耗大量的系统资源，并且不易维护。因此，我们考虑将一张DataTable的所有索引数据，存放到同一张IndexTable中，**不同索引的数据以IndexName进行区分。**
 
 3. <font color=red>IndexValue</font>。如果索引是单列索引，IndexValue就是DataTable Row的某个Column Value，如果索引是组合索引的话，则IndexValue就是DataTable Row的多个Column Value组合而成的。
 

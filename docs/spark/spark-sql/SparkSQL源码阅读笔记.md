@@ -340,7 +340,7 @@ Expression是表达式体系，是指不需要执行引擎计算，而可以直�
 
 这个阶段的优化器主要是基于规则的（Rule-based Optimizer，简称 RBO），而绝大部分的规则都是启发式规则，也就是基于直观或经验而得出的规则。
 
-Optimizer 同样继承自 RuleExecutor 类，parkOptimizer继承自Optimizer，Optimizer本身定 义了 12 个规则 Batch，在 SparkOptimizer 类中又添加了 4 个 Batch。
+Optimizer 同样继承自 RuleExecutor 类，SparkOptimizer继承自Optimizer，Optimizer本身定 义了 12 个规则 Batch，在 SparkOptimizer 类中又添加了 4 个 Batch。
 
 ![image-20221208174518505](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221208174518505.png)
 
@@ -471,13 +471,13 @@ SparkPlan 的主要功能可以划分为 3 大块
 - 加速序列化和反序列化（speed up serialization/deserialization）
 
 1. 表达式代码生成
-   表达式代码生成主要是想解决大量虚函数调用（Virtual Function Calls），泛化的代价等
+   表达式代码生成主要是想解决<font color=red>大量虚函数调用（Virtual Function Calls），泛化的代价等</font>
 
 表达式代码生成的基类是 org.apache.spark.sql.catalyst.expressions.codegen.CodeGenerator，其下有七个子类：
 ![在这里插入图片描述](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzMwMDMxMjIx,size_16,color_FFFFFF,t_70-20221208114404708.png)
 
 2. 全阶段代码生成
-   通过引入全阶段代码生成，大大减少了虚函数的调用，减少了 CPU 的调用，使得 SQL 的执行速度有很大提升。
+   <font color=red>通过引入全阶段代码生成，大大减少了虚函数的调用，减少了 CPU 的调用，使得 SQL 的执行速度有很大提升。</font>
 
    全阶段代码生成（Whole-stage Code Generation），用来将多个处理逻辑整合到单个代码模块中，其中也会用到上面的表达式代码生成。和前面介绍的表达式代码生成不一样，这个是对整个 SQL 过程进行代码生成，前面的表达式代码生成仅对于表达式的。
    
