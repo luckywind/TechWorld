@@ -205,7 +205,7 @@ TaskManager 是 Flink 中的工作进程，负责数据流的具体计算任务(
 
 (2)由分发器启动 JobMaster，并将作业(包含 JobGraph)提交给 JobMaster。
 
-(3)JobMaster 将 JobGraph 解析为可执行的 ExecutionGraph，得到所需的资源数量，然后 向资源管理器请求任务槽资源(slots)。
+(3)JobMaster 将 JobGraph 解析为可执行的 ExecutionGraph（此时才知道并行度），得到所需的资源数量，然后 向资源管理器请求任务槽资源(slots)。
 
 (4)资源管理器判断当前是否由足够的可用资源;如果没有，启动新的 TaskManager。
 
@@ -224,11 +224,11 @@ TaskManager 是 Flink 中的工作进程，负责数据流的具体计算任务(
 
 #### session模式
 
-Session模式是预分配资源的，也就是提前根据指定的资源参数初始化一个Flink集群，并常驻在YARN系统中，拥有固定数量的JobManager和TaskManager（注意JobManager只有一个）。提交到这个集群的作业可以直接运行，免去每次分配资源的overhead。但是Session的资源总量有限，多个作业之间又不是隔离的，故可能会造成资源的争用；如果有一个TaskManager宕机，它上面承载着的所有作业也都会失败。另外，启动的作业越多，JobManager的负载也就越大。所以，Session模式一般用来部署那些对延迟非常敏感但运行时长较短的作业。
+Session模式是预分配资源的，也就是提前根据指定的资源参数初始化一个Flink集群，并常驻在YARN系统中，拥有固定数量的JobManager和TaskManager（注意JobManager只有一个）。**提交到这个集群的作业可以直接运行，免去每次分配资源的overhead。但是Session的资源总量有限，多个作业之间又不是隔离的，故可能会造成资源的争用；如果有一个TaskManager宕机，它上面承载着的所有作业也都会失败。另外，启动的作业越多，JobManager的负载也就越大。所以，Session模式一般用来部署那些对延迟非常敏感但运行时长较短的作业。**
 
 #### 单作业(Per-Job)模式
 
-顾名思义，在Per-Job模式下，每个提交到YARN上的作业会各自形成单独的Flink集群，拥有专属的JobManager和TaskManager。可见，以Per-Job模式提交作业的启动延迟可能会较高，但是作业之间的资源完全隔离，一个作业的TaskManager失败不会影响其他作业的运行，JobManager的负载也是分散开来的，不存在单点问题。当作业运行完成，与它关联的集群也就被销毁，资源被释放。所以，Per-Job模式一般用来部署那些长时间运行的作业。
+顾名思义，在Per-Job模式下，<font color=red>每个提交到YARN上的作业会各自形成单独的Flink集群，拥有专属的JobManager和TaskManager</font>。可见，以Per-Job模式提交作业的启动延迟可能会较高，但是作业之间的资源完全隔离，一个作业的TaskManager失败不会影响其他作业的运行，JobManager的负载也是分散开来的，不存在单点问题。当作业运行完成，与它关联的集群也就被销毁，资源被释放。所以，Per-Job模式一般用来部署那些长时间运行的作业。
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221223214332978.png" alt="image-20221223214332978" style="zoom:50%;" />
 
@@ -291,7 +291,7 @@ Session模式是预分配资源的，也就是提前根据指定的资源参数�
 
 是处理延迟数据的优化机制
 
-**watermark的定义是**：比如在一个窗口内，当位于窗口最小`watermark`（水位线）的数据达到后，表明（约定）该窗口内的所有数据均已达到，此时不再等待数据，直接触发窗口计算。
+**watermark的定义是**：比如在一个窗口内，当位于窗口最大`watermark`（水位线）的数据达到后，表明（约定）该窗口内的所有数据均已达到，此时不再等待数据，直接触发窗口计算。
 
 ### 什么是水位线
 
@@ -1270,7 +1270,7 @@ val wordCountStream = env.addSource(...)
 
 我们现在的目标是，在不暂停流处理的前提下，让每个任务“认出”触发检查点保存的那 个数据。
 
-可以借鉴水位线(watermark)的设计，在数据流中插入一个特殊的数据结构(就叫CheckpointBarrier,有id,timestamp)，专门 用来表示触发检查点保存的时间点。收到保存检查点的指令后，Source 任务可以在当前数据 流中插入这个结构;之后的所有任务只要遇到它就开始对状态做持久化快照保存。这种特殊的数据形式，把一条流上的数据按照不同的检查点分隔开，所以就叫作检查点的 “分界线”(Checkpoint Barrier)。
+**可以借鉴水位线(watermark)的设计，在数据流中插入一个特殊的数据结构(就叫CheckpointBarrier,有id,timestamp)，专门 用来表示触发检查点保存的时间点。收到保存检查点的指令后，Source 任务可以在当前数据 流中插入这个结构;之后的所有任务只要遇到它就开始对状态做持久化快照保存。这种特殊的数据形式，把一条流上的数据按照不同的检查点分隔开，所以就叫作检查点的 “分界线”(Checkpoint Barrier)。**
 
 与水位线很类似，检查点分界线也是一条特殊的数据，由 Source 算子注入到常规的数据 流中，它的位置是限定好的，不能超过其他数据，也不能被后面的数据超过。检查点分界线中 带有一个检查点 ID，这是当前要保存的检查点的唯一标识。
 
