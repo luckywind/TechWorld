@@ -54,6 +54,12 @@ Spark中实现了两种类型的分片函数，一个是基于哈希的HashParti
     sc.stop()
 ```
 
+## RDD分区数如何确定
+
+spark读[hdfs](https://so.csdn.net/so/search?q=hdfs&spm=1001.2101.3001.7020)文件的分区数由hdfs文件占用的文件块数决定。
+
+shuffle算子可指定产生的RDD的分区数
+
 # 生成RDD的两种方式
 
 ```scala
@@ -61,4 +67,3 @@ sc.textFile
 sc.parallize()
 ```
 
-![image-20200110235344451](../../../../../Library/Application Support/typora-user-images/image-20200110235344451.png)

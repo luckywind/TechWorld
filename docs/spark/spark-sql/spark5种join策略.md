@@ -2,6 +2,16 @@
 
 [图解5种Join策略的执行流程](https://www.modb.pro/db/458387)
 
+# join基本流程
+
+Spark将参与Join的两张表抽象为流式遍历表(streamIter)和查找表(buildIter)，通常streamIter为大表，buildIter为小表，我们不用担心哪个表为streamIter，哪个表为buildIter，这个spark会根据join语句自动帮我们完成。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1620-20230202093751156.png" alt="img" style="zoom:50%;" />
+
+对于每条来自streamIter的记录，都要去buildIter中查找匹配的记录，所以buildIter一定要是查找性能较优的数据结构。spark提供了三种join实现：sort merge join、broadcast join以及hash join。
+
+
+
 # 五种join策略
 
 - Shuffle Hash Join
@@ -22,13 +32,19 @@
 
 > 注意，和broadcast hash join的区别，这里并没有广播小表，在双方shuffle后的分区内，小表转成Hash桶与大表进行hash join。
 
-条件与特点
+苛刻的条件：
+
+- buildIter总体估计大小超过spark.sql.autoBroadcastJoinThreshold设定的值，即不满足broadcast join条件
+- 开启尝试使用hash join的开关，spark.sql.join.preferSortMergeJoin=false
+- 每个分区的平均大小不超过spark.sql.autoBroadcastJoinThreshold设定的值，即shuffle read阶段每个分区来自buildIter的记录要能放到内存中
+- streamIter的大小是buildIter三倍以上
+
+特点：
 
 - 仅支持等值连接，join key不需要排序
 - 支持除了全外连接(full outer joins)之外的所有join类型
 - 需要对小表构建Hash map，属于内存密集型的操作，如果构建Hash表的一侧数据比较大，可能会造成OOM，不适合严重倾斜的join
 - 对于FullOuter Join，需要建立双向hash表，代价太大。因此FullOuterJoin默认都是基于SortJoin来实现
-- 将参数*spark.sql.join.prefersortmergeJoin (default true)*置为false
 
 ### Broadcast Hash Join
 

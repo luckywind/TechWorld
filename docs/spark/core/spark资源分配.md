@@ -1,0 +1,7 @@
+# 动态资源分配
+
+在spark提交作业以后默认是静态资源分配的，如果有些Executor执行完以后，只要job没有结束，它就会一直占用资源，所以我们要根据情况配置动态资源分配
+
+## 动态资源分配原理
+
+当调度程序检查到有很多的Task是pending状态的时候，那么它就会尝试去申请新的Executor，如果Executor执行完了以后，就会把资源释放掉给其他的Job使用,它是由spark.dynamicAllocation.schedulerBacklogTimeout这个参数设置的，默认1秒就去检查一次，它申请资源的时候是成倍的去申请的，比如第一次1个，第二次2个，第三次4个，<font color=red>当Executor释放的时候，shuffle写出的数据不会在job停止之前删除，但是Executor缓存的 数据会被删除</font>

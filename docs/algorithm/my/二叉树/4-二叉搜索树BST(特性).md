@@ -8,6 +8,8 @@
 
 <font color=red>**从做算法题的角度来看 BST，除了它的定义，还有一个重要的性质：BST 的中序遍历结果是有序的（升序）。 当然如果想要降序，改一下递归顺序，先递归右子树，后递归左子树就行了**。</font> 
 
+
+
 # 第K小的元素
 
 [力扣](https://leetcode.cn/problems/kth-smallest-element-in-a-bst/)
