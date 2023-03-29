@@ -17,6 +17,22 @@ git add forgotten_file
 git commit --amend
 ```
 
+#### 合并多个提交
+
+有时commit了多次来干一件事，怎么合并为一个commit?
+
+```shell
+git log    # 列出commit，确定想从哪个commit开始合并(不包括它)，假如是28d145(不包括)
+git rebase -i 28d145    
+ #第一步：此时除了第一行外，其余行开头的pick都改为s，  可用:%s/pick/s/g 全局替换
+ #第二步：修改评论
+完成
+```
+
+
+
+
+
 ### 撤销
 
 ```shell
@@ -79,6 +95,9 @@ git tag v1.4  轻量级标签
 git push origin 标签名
 git push origin --tags 也可以一次推送所有tag
 
+
+检出tag
+git checkout 2.0.0
 ```
 
 ## 分支操作
@@ -99,6 +118,21 @@ git rebase master
 原理： 从共同祖先开始，子分支的所有提交逐个应用到主分支上，并产生一个新的提交；主分支再快进到这个提交。
 
 ![image-20220825100100492](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220825100100492.png)
+
+
+
+2. 撤销merge
+
+```shell
+如果是冲突了，想撤销本次merge
+git merge --abort
+
+如果没冲突，但想回到merge之前的版本
+git log 找到版本号
+git reset --hard xxxx
+```
+
+
 
 #### 分支操作
 
@@ -128,11 +162,13 @@ git checkout  --track  远程仓库/远程分支
 #### stashing
 
 ```shell
-git stash 储藏
+git stash 储藏，这会创建一个stash，即使没有改动代码
+	 git stash save 可加注释
 git stash list 查看现有储藏
-git stash apply 使用最新的储藏
+git stash pop 应用并删除stash
+git stash apply 使用最新的储藏, 但不删除stash
 git stash apply stash@{第几个储藏}
-git stash drop 移除储藏
+git stash drop 移除储藏,从最老的开始drop
 git stash branch 新分支   用stash中的修改创建一个新的分支，创建成功后会删除此stash
 ```
 

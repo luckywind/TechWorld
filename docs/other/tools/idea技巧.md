@@ -110,3 +110,10 @@ command+alt+B
 # spark
 
 [如何使用IDEA远程调试spark](https://support.huaweicloud.com/devg3-mrs/mrs_07_410141.html)
+
+# 时序图
+
+[参考](https://www.bilibili.com/video/BV1LL4y1P7JC/?spm_id_from=333.337.search-card.all.click&vd_source=fa2aaef8ece31d2c310d46092c301b46)
+
+用Sequence Diagram 自动生成 UML文件，然后在IDEA中打开\编辑，PlantUML插件实时查看
+

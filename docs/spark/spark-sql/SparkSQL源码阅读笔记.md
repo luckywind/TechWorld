@@ -14,7 +14,9 @@
 
 基于spark3.0.2
 
+[Spark-SQL源码分析之核心流程](https://blog.csdn.net/Happy_Sunshine_Boy/article/details/108519396)
 
+[Spark SQL 工作流程源码解析（一）总览](https://blog.csdn.net/Shockang/article/details/122181886)
 
 一些视频
 
@@ -244,10 +246,10 @@ parsePlan其实就是调用了一下parse，传入一个sql语句和一个返回
 	}
 ```
 
-#### Tree
+#### TreeNode
 
-Tree是Catalyst执行计划表示的数据结构。LogicalPlans，Expressions和Pysical Operators都可以使用Tree来表示。Tree具备一些Scala Collection的操作能力和树遍历能力。
-Tree有三种
+TreeNode是Catalyst执行计划表示的数据结构。LogicalPlans，Expressions和Pysical Operators都可以使用Tree来表示。TreeNode具备一些Scala Collection的操作能力和树遍历能力。
+TreeNode有三种
 
 UnaryNode：一元节点，即只有一个子节点 ag: Project
 BinaryNode：二元节点，即有左右子节点的二叉节点 ag : Join
@@ -255,6 +257,8 @@ LeafNode：叶子节点，没有子节点的节点 ag: HiveTableRelation
 Tree有两个子类继承体系，即QueryPlan和Expression
 QueryPlan下面的两个子类分别是LogicalPlan（逻辑执行计划）和SparkPlan（物理执行计划）
 Expression是表达式体系，是指不需要执行引擎计算，而可以直接计算或处理的节点
+
+
 
 
 
@@ -419,7 +423,7 @@ SparkPlan 的主要功能可以划分为 3 大块
 
 ### SparkPlan生成
 
-在 Spark SQL 中，当逻辑计划处理完毕后，会构造 SparkPlanner 并执行 plan() 方法对 LogicalPlan进行处理，得到对应的物理计划 。 实际上， 一个逻辑计划可能会对应多个物理计划， 因此， SparkPlanner得到的是一个物理计划的列表 (Iterator[SparkPlan])。
+在 Spark SQL 中，当逻辑计划处理完毕后，会构造 SparkPlanner 并执行 plan() 方法对 LogicalPlan进行处理，得到对应的物理计划 。 实际上， 一个逻辑计划可能会对应多个物理计划， 因此， SparkPlanner得到的是一个物理计划的列表 (Iterator[SparkPlan])。[spark物理执行计划生成框架](https://www.modb.pro/db/498605)
 
 - 一个逻辑计划（Logical Plan）经过一系列的策略处理之后，得到多个物理计划（Physical Plans），物理计划在 Spark 是由 SparkPlan 实现的。多个物理计划再经过代价模型（Cost Model）得到选择后的物理计划（Selected Physical Plan），整个过程如下所示：
   ![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/20201022150611475.png)
@@ -452,9 +456,138 @@ SparkPlan 的主要功能可以划分为 3 大块
 
 在 QueryExection 中，最后阶段由 prepareforExecution 方法对传入的 SparkPlan 进行处理而 生成 executedPlan，处理过程仍然基于若干规则(如表 6.3 所示)，主要包括对 Python 中 UDF 的 提取、子查询的计划生成等 。
 
+这部分源码文件org/apache/spark/sql/execution/QueryExecution.scala
+
+```scala
+lazy val sparkPlan: SparkPlan = {
+    // We need to materialize the optimizedPlan here because sparkPlan is also tracked under
+    // the planning phase
+    assertOptimized()
+    executePhase(QueryPlanningTracker.PLANNING) {
+      // Clone the logical plan here, in case the planner rules change the states of the logical
+      // plan.
+      QueryExecution.createSparkPlan(sparkSession, planner, optimizedPlan.clone())
+    }
+  }
+
+/**
+   * Transform a [[LogicalPlan]] into a [[SparkPlan]].
+   *
+   * Note that the returned physical plan still needs to be prepared for execution.
+   */
+  def createSparkPlan(
+      sparkSession: SparkSession,
+      planner: SparkPlanner,
+      plan: LogicalPlan): SparkPlan = {
+    // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
+    //       but we will implement to choose the best plan.
+    planner.plan(ReturnAnswer(plan)).next()
+  }
+```
+
+
+
+这里 SparkSQL 在真正执行时，会调用 prepareForExecution 将 sparkPlan 转换成 executedPlan，并在 sparkPlan 中执行过程中，如果出现 stage 分区规则不同时插入 Shuffle 操作以及进行一些数据格式转换操作等等。
+
+```scala
+  private[execution] def prepareForExecution(
+      preparations: Seq[Rule[SparkPlan]],
+      plan: SparkPlan): SparkPlan = {
+    val planChangeLogger = new PlanChangeLogger[SparkPlan]()
+    val preparedPlan = preparations.foldLeft(plan) { case (sp, rule) =>
+      val result = rule.apply(sp)
+      planChangeLogger.logRule(rule.ruleName, sp, result)
+      result
+    }
+    planChangeLogger.logBatch("Preparations", plan, preparedPlan)
+    preparedPlan
+  }
+
+```
+
+这里preparations是一个Seq[Rule[SparkPlan]] 规则序列：
+
+这些规则用于：
+
+1. 确保子查询是计划好的
+2. 数据分区和排序是正确的
+3. 插入全阶段代码生成
+4. 重用exchanges和子查询
+
+```scala
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
+      subquery: Boolean): Seq[Rule[SparkPlan]] = {
+    // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
+    // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
+    adaptiveExecutionRule.toSeq ++
+    Seq(
+      CoalesceBucketsInJoin,
+      PlanDynamicPruningFilters(sparkSession),
+      PlanSubqueries(sparkSession),
+      RemoveRedundantProjects,
+      EnsureRequirements(),
+      // `ReplaceHashWithSortAgg` needs to be added after `EnsureRequirements` to guarantee the
+      // sort order of each node is checked to be valid.
+      ReplaceHashWithSortAgg,
+      // `RemoveRedundantSorts` needs to be added after `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      ApplyColumnarRulesAndInsertTransitions(
+        sparkSession.sessionState.columnarRules, outputsColumnar = false),
+      CollapseCodegenStages()) ++
+      (if (subquery) {
+        Nil
+      } else {
+        Seq(ReuseExchangeAndSubquery)
+      })
+  }
+```
+
 
 
 ## 代码生成阶段
+
+[sparkSQL全代码生成](https://www.modb.pro/db/498601)
+
+### 为什么需要全阶段代码生成？
+
+- 火山模型
+
+火山模型，是Goete Graefe于1994年在《Volcano，An Extensible and Parallel Query Evaluation System》论文中提出的独立于数据模型，可扩展和并发的灵活模型。其核心是解决数据库查询处理中的的可扩展性和并行问题。
+
+在数据库查询中，一般是将SQL进行解析生成抽象语法树（AST），然后遍历AST，生成执行语法树。火山模型的设计思路是将执行语法树的每个节点都视作一个独立的操作（**Operator**），这里的操作也可以理解是一个算子。作为树的节点，往往会有父节点和子节点，当作为父节点的时候，会调用其所有子节点的操作来获取当前节点的输入数据；优点：
+
+1. 节点不关心父节点、子节点是什么类型以及怎么实现的， 只需要调用接口提供的方法，获取输入数据，然后执行当前计算逻辑，最后输出
+
+2. 兄弟节点之间的操作可并行
+
+   ![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/modb_20220922_5b61ac98-3a66-11ed-9a6a-fa163eb4f6be.png)
+
+
+
+由案例可以简单的了解火山模型的调用和实现思路，核心在于`next()`
+方法，通过自上而下调用子节点next方法，数据自下而上传递，执行完整棵树。每次调用只处理一行数据（这个在当时是为了对内存使用的优化)。
+
+火山模型的缺点：
+
+a.每次处理一行数据，CPU新特性（多核、向量化计算）等得不到利用，计算效率低；
+
+b.一行数据处理就得调用多次next，就造成大量的虚函数的调用，CPU的利用率不高。
+
+优化方向：
+
+1. 减少虚函数的调用，自动代码生成替换虚函数 通过自动生成Operator中的计算逻辑代码，编译执行，执行完成后向上传递，将之前的自上而下的拉模式改成了自下而上的推模式。
+
+2. 一次取一条数据优化成一次取一组（多条）数据 这样做可以将每次next带来的CPU开销被一组数据给分摊。同时在列存场景，输入的是同列的一组数据，面对的是相同的操作，可以利用CPU的向量化计算以及CPU cache，进一步提高执行效率。
+
+
+
+
+
+
 
 - 从以上多个过程执行完成之后,最终我们得到的**物理执行计划**，这个物理执行计划标明了整个的代码执行过程当中
   - 执行过程

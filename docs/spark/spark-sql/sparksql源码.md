@@ -12,6 +12,12 @@
 
 [你真的懂Spark SQL原理吗？——SparkSQL源码解析系列](https://zhuanlan.zhihu.com/p/367590611)
 
+[SparkSQL YYDS](https://cloud.tencent.com/developer/article/1922956?from=article.detail.2176233&areaSource=106000.2&traceId=cMcXnRvRpDNrcIPuB8htW)
+
+[一文了解函数式查询优化器Spark SQL Catalyst](https://cloud.tencent.com/developer/article/1638045#:~:text=Catalyst%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B%201%20Parser%EF%BC%8C%E5%88%A9%E7%94%A8ANTLR%E5%B0%86sparkSql%E5%AD%97%E7%AC%A6%E4%B8%B2%E8%A7%A3%E6%9E%90%E4%B8%BA%E6%8A%BD%E8%B1%A1%E8%AF%AD%E6%B3%95%E6%A0%91AST%EF%BC%8C%E7%A7%B0%E4%B8%BAunresolved%20logical%20plan%2FULP%202,Analyzer%EF%BC%8C%E5%80%9F%E5%8A%A9%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%85%83%E6%95%B0%E6%8D%AEcatalog%E5%B0%86ULP%E8%A7%A3%E6%9E%90%E4%B8%BAlogical%20plan%2FLP%203%20Optimizer%EF%BC%8C%E6%A0%B9%E6%8D%AE%E5%90%84%E7%A7%8DRBO%EF%BC%8CCBO%E4%BC%98%E5%8C%96%E7%AD%96%E7%95%A5%E5%BE%97%E5%88%B0optimized%20logical%20plan%2FOLP%EF%BC%8C%E4%B8%BB%E8%A6%81%E6%98%AF%E5%AF%B9Logical%20Plan%E8%BF%9B%E8%A1%8C%E5%89%AA%E6%9E%9D%EF%BC%8C%E5%90%88%E5%B9%B6%E7%AD%89%E6%93%8D%E4%BD%9C%EF%BC%8C%E8%BF%9B%E8%80%8C%E5%88%A0%E9%99%A4%E6%8E%89%E4%B8%80%E4%BA%9B%E6%97%A0%E7%94%A8%E8%AE%A1%E7%AE%97%EF%BC%8C%E6%88%96%E5%AF%B9%E4%B8%80%E4%BA%9B%E8%AE%A1%E7%AE%97%E7%9A%84%E5%A4%9A%E4%B8%AA%E6%AD%A5%E9%AA%A4%E8%BF%9B%E8%A1%8C%E5%90%88%E5%B9%B6)
+
+[一条 SQL 在 Apache Spark 之旅（下） 全阶段代码生成](https://blog.51cto.com/u_15127589/2678553#:~:text=%E5%85%A8%E9%98%B6%E6%AE%B5%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90%E9%83%BD%E6%98%AF%E7%BB%A7%E6%89%BF%E8%87%AA%20org.apache.spark.sql.execution.BufferedRowIterator%20%E7%9A%84%EF%BC%8C%E7%94%9F%E6%88%90%E7%9A%84%E4%BB%A3%E7%A0%81%E9%9C%80%E8%A6%81%E5%AE%9E%E7%8E%B0%20processNext%20%28%29,%E6%96%B9%E6%B3%95%EF%BC%8C%E8%BF%99%E4%B8%AA%E6%96%B9%E6%B3%95%E4%BC%9A%E5%9C%A8%20org.apache.spark.sql.execution.WholeStageCodegenExec%20%E9%87%8C%E9%9D%A2%E7%9A%84%20doExecute%20%E6%96%B9%E6%B3%95%E9%87%8C%E9%9D%A2%E8%A2%AB%E8%B0%83%E7%94%A8%E3%80%82)
+
 # 通过案例研究源码
 
 ```scala
@@ -175,6 +181,65 @@ lazy val sparkPlan: SparkPlan = {
 
 
 这里 SparkSQL 在真正执行时，会调用 prepareForExecution 将 sparkPlan 转换成 executedPlan，并在 sparkPlan 中执行过程中，如果出现 stage 分区规则不同时插入 Shuffle 操作以及进行一些数据格式转换操作等等。
+
+```scala
+  private[execution] def prepareForExecution(
+      preparations: Seq[Rule[SparkPlan]],
+      plan: SparkPlan): SparkPlan = {
+    val planChangeLogger = new PlanChangeLogger[SparkPlan]()
+    val preparedPlan = preparations.foldLeft(plan) { case (sp, rule) =>
+      val result = rule.apply(sp)
+      planChangeLogger.logRule(rule.ruleName, sp, result)
+      result
+    }
+    planChangeLogger.logBatch("Preparations", plan, preparedPlan)
+    preparedPlan
+  }
+
+```
+
+这里preparations是一个Seq[Rule[SparkPlan]] 规则序列：
+
+这些规则用于：
+
+1. 确保子查询是计划好的
+2. 数据分区和排序是正确的
+3. 插入全阶段代码生成
+4. 重用exchanges和子查询
+
+```scala
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
+      subquery: Boolean): Seq[Rule[SparkPlan]] = {
+    // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
+    // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
+    adaptiveExecutionRule.toSeq ++
+    Seq(
+      CoalesceBucketsInJoin,
+      PlanDynamicPruningFilters(sparkSession),
+      PlanSubqueries(sparkSession),
+      RemoveRedundantProjects,
+      EnsureRequirements(),
+      // `ReplaceHashWithSortAgg` needs to be added after `EnsureRequirements` to guarantee the
+      // sort order of each node is checked to be valid.
+      ReplaceHashWithSortAgg,
+      // `RemoveRedundantSorts` needs to be added after `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      ApplyColumnarRulesAndInsertTransitions(
+        sparkSession.sessionState.columnarRules, outputsColumnar = false),
+      CollapseCodegenStages()) ++
+      (if (subquery) {
+        Nil
+      } else {
+        Seq(ReuseExchangeAndSubquery)
+      })
+  }
+```
+
+
 
 spark sql 把逻辑节点转换为了相应的物理节点， 比如 Join 算子，Spark 根据不同场景为该算子制定了不同的算法策略，有BroadcastHashJoin、ShuffleHashJoin 以及 SortMergeJoin 等.
 

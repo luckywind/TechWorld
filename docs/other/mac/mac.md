@@ -127,3 +127,9 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 每天60分钟
 
 ## [clashX](https://clashx.org/clashx-node/)
+
+# 效率
+
+## 多屏切换
+
+[切换窗口](https://blog.csdn.net/guolindonggld/article/details/122262113)
