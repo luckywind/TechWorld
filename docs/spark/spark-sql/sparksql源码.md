@@ -18,6 +18,8 @@
 
 [一条 SQL 在 Apache Spark 之旅（下） 全阶段代码生成](https://blog.51cto.com/u_15127589/2678553#:~:text=%E5%85%A8%E9%98%B6%E6%AE%B5%E4%BB%A3%E7%A0%81%E7%94%9F%E6%88%90%E9%83%BD%E6%98%AF%E7%BB%A7%E6%89%BF%E8%87%AA%20org.apache.spark.sql.execution.BufferedRowIterator%20%E7%9A%84%EF%BC%8C%E7%94%9F%E6%88%90%E7%9A%84%E4%BB%A3%E7%A0%81%E9%9C%80%E8%A6%81%E5%AE%9E%E7%8E%B0%20processNext%20%28%29,%E6%96%B9%E6%B3%95%EF%BC%8C%E8%BF%99%E4%B8%AA%E6%96%B9%E6%B3%95%E4%BC%9A%E5%9C%A8%20org.apache.spark.sql.execution.WholeStageCodegenExec%20%E9%87%8C%E9%9D%A2%E7%9A%84%20doExecute%20%E6%96%B9%E6%B3%95%E9%87%8C%E9%9D%A2%E8%A2%AB%E8%B0%83%E7%94%A8%E3%80%82)
 
+[深入分析Spark SQL Catalyst Analyzer](https://zhuanlan.zhihu.com/p/558758701)
+
 # 通过案例研究源码
 
 ```scala

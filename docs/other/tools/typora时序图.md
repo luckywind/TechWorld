@@ -54,7 +54,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   participant 老板A
-    participant 员工A
+  participant 员工A
     老板A->>员工A:"在这里我们都是兄弟!"
     老板A-x 员工A:画个饼
     员工A -->> 老板A: 鼓掌  

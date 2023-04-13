@@ -38,6 +38,9 @@ git rebase -i 28d145
 ```shell
 git reset HEAD xx  撤销add操作
 git checkout -- xx 撤销还未add的修改
+git revert commit_id 用一次新的commit来撤销之前的某个commit
+如果想撤销的不是一次commit，而是连着的几次，那么
+git revert --no-commit commit1..commit2
 ```
 
 ## 远程仓库
