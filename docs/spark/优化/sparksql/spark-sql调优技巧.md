@@ -2,8 +2,10 @@
 
 # Spark on hive 与 Hive on Spark 的区别
 
-Spark on hive
-Spark通过Spark-SQL使用hive 语句,操作hive,底层运行的还是 spark rdd。
+- Spark on hive
+  Spark通过Spark-SQL使用hive 语句,操作hive,底层运行的还是 spark rdd。
+
+spark本身只负责数据计算处理，并不负责数据存储。其计算处理的数据源，可以以插件的形式支持很多种数据源，这其中自然也包括hive。**当我们使用spark来处理分析存储在hive中的数据时，这种模式就称为为 spark on hive。这种模式下，用户可以使用spark的 java/scala/pyhon/r 等api，也可以使用spark语法规范的sql ，甚至也可以使用hive 语法规范的hql**
 
 （1）就是通过sparksql，加载hive的配置文件，获取到hive的元数据信息
 
@@ -11,8 +13,8 @@ Spark通过Spark-SQL使用hive 语句,操作hive,底层运行的还是 spark rdd
 
 （3）接下来就可以通过spark sql来操作hive表中的数据
 
-Hive on Spark
-      是把hive查询从mapreduce 的mr (Hadoop计算引擎)操作替换为spark rdd（spark 执行引擎） 操作. 相对于spark on hive,这个要实现起来则麻烦很多, 必须重新编译你的spark和导入jar包，不过目前大部分使用的是spark on hive。
+- Hive on Spark
+        **只能使用sql，而不能使用java/scala/python/r这样的api**,  是把hive查询从mapreduce 的mr (Hadoop计算引擎)操作替换为spark rdd（spark 执行引擎） 操作. 相对于spark on hive,这个要实现起来则麻烦很多, 必须重新编译你的spark和导入jar包，不过目前大部分使用的是spark on hive。
 
 # sparkSQL参数调优
 

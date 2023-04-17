@@ -326,6 +326,7 @@ childrenResolved && checkInputDataTypes().isSuccess && (!needsTimeZone || timeZo
 
 Cast.scala
   override def checkInputDataTypes(): TypeCheckResult = {
+    // canCast这里定义了所有spark支持的类型转换
     if (canCast(child.dataType, dataType)) {
       TypeCheckResult.TypeCheckSuccess
     } else {
