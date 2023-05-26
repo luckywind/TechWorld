@@ -266,3 +266,6 @@ mvn archetype:generate
 ```
 
 ## Scala-maven-plugin
+
+## maven-compiler-plugin
+

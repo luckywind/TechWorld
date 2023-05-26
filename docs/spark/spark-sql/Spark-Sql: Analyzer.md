@@ -337,6 +337,94 @@ Cast.scala
 
 
 
+## ApplyCharTypePadding
+
+这个规则用于charl类型比较时的padding，把短的padding为长的。 string和char类型比较时，会被当成char
+
+```scala
+  override def apply(plan: LogicalPlan): LogicalPlan = {
+    if (SQLConf.get.charVarcharAsString) {
+      return plan
+    }
+    // 对包含二元比较或者IN的节点应用规则
+    plan.resolveOperatorsUpWithPruning(_.containsAnyPattern(BINARY_COMPARISON, IN)) {
+      case operator => operator.transformExpressionsUpWithPruning(
+        _.containsAnyPattern(BINARY_COMPARISON, IN)) {
+        case e if !e.childrenResolved => e
+
+        // String literal is treated as char type when it's compared to a char type column.
+        // We should pad the shorter one to the longer length.
+        case b @ BinaryComparison(e @ AttrOrOuterRef(attr), lit) if lit.foldable =>
+          padAttrLitCmp(e, attr.metadata, lit).map { newChildren =>
+            b.withNewChildren(newChildren)
+          }.getOrElse(b)
+
+        case b @ BinaryComparison(lit, e @ AttrOrOuterRef(attr)) if lit.foldable =>
+          padAttrLitCmp(e, attr.metadata, lit).map { newChildren =>
+            b.withNewChildren(newChildren.reverse)
+          }.getOrElse(b)
+/**in表达式的处理
+  
+*/
+        case i @ In(e @ AttrOrOuterRef(attr), list)
+          if attr.dataType == StringType && list.forall(_.foldable) =>
+          CharVarcharUtils.getRawType(attr.metadata).flatMap {
+            case CharType(length) =>
+              val (nulls, literalChars) =  // 过滤掉null
+                list.map(_.eval().asInstanceOf[UTF8String]).partition(_ == null)
+              val literalCharLengths = literalChars.map(_.numChars())//计算每个长度
+              val targetLen = (length +: literalCharLengths).max //最终长度： 输入列和参数所有长度取最大
+              Some(i.copy(
+                //输入列padding
+                value = addPadding(e, length, targetLen),
+                //参数列表padding
+                list = list.zip(literalCharLengths).map {
+                  case (lit, charLength) => addPadding(lit, charLength, targetLen)
+                } ++ nulls.map(Literal.create(_, StringType))))
+            case _ => None
+          }.getOrElse(i)
+
+        // For char type column or inner field comparison, pad the shorter one to the longer length.
+        case b @ BinaryComparison(e1 @ AttrOrOuterRef(left), e2 @ AttrOrOuterRef(right))
+            // For the same attribute, they must be the same length and no padding is needed.
+            if !left.semanticEquals(right) =>
+          val outerRefs = (e1, e2) match {
+            case (_: OuterReference, _: OuterReference) => Seq(left, right)
+            case (_: OuterReference, _) => Seq(left)
+            case (_, _: OuterReference) => Seq(right)
+            case _ => Nil
+          }
+          val newChildren = CharVarcharUtils.addPaddingInStringComparison(Seq(left, right))
+          if (outerRefs.nonEmpty) {
+            b.withNewChildren(newChildren.map(_.transform {
+              case a: Attribute if outerRefs.exists(_.semanticEquals(a)) => OuterReference(a)
+            }))
+          } else {
+            b.withNewChildren(newChildren)
+          }
+
+        case i @ In(e @ AttrOrOuterRef(attr), list) if list.forall(_.isInstanceOf[Attribute]) =>
+          val newChildren = CharVarcharUtils.addPaddingInStringComparison(
+            attr +: list.map(_.asInstanceOf[Attribute]))
+          if (e.isInstanceOf[OuterReference]) {
+            i.copy(
+              value = newChildren.head.transform {
+                case a: Attribute if a.semanticEquals(attr) => OuterReference(a)
+              },
+              list = newChildren.tail)
+          } else {
+            i.copy(value = newChildren.head, list = newChildren.tail)
+          }
+      }
+    }
+  }
+
+```
+
+
+
+
+
 
 
 # Optimizer:常量折叠

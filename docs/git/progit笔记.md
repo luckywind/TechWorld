@@ -105,11 +105,13 @@ git checkout 2.0.0
 
 ## 分支操作
 
-1. 最基本的合并操作
+### merge
 
-   merge命令，是把两个分支最新的快照以及最新的共同祖先进行三方合并，并产生一个新的提交对象
+merge命令，是把两个分支最新的快照以及最新的共同祖先进行**三方合并**，并产生一个新的提交对象
 
-   ![image-20220825095102419](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220825095102419.png)
+![image-20220825095102419](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/imageimage-20220825095102419.png)
+
+### rebase
 
 还有另一个选择，可以把子分支里产生的变化在主分支的基础上重新打一遍，这叫做衍合(rebase)
 
@@ -124,7 +126,7 @@ git rebase master
 
 
 
-2. 撤销merge
+### 撤销merge
 
 ```shell
 如果是冲突了，想撤销本次merge
@@ -182,4 +184,28 @@ git stash branch 新分支   用stash中的修改创建一个新的分支，创�
 ```shell
 git clean -d -fx
 ```
+
+# 参考
+
+[图解GIT](https://marklodato.github.io/visual-git-guide/index-zh-cn.html#detached)
+
+[GIT User Guide](https://mirrors.edge.kernel.org/pub/software/scm/git/docs/user-manual.html#using-git-rebase)
+
+# rebase命令
+
+[翻译自](https://mirrors.edge.kernel.org/pub/software/scm/git/docs/git-rebase.html)
+
+用途：在另一个分支上回放提交
+
+语法
+
+```shell
+git rebase [-i | --interactive] [<options>] [--exec <cmd>]
+        [--onto <newbase> | --keep-base] [<upstream> [<branch>]]
+git rebase [-i | --interactive] [<options>] [--exec <cmd>] [--onto <newbase>]
+        --root [<branch>]
+git rebase (--continue | --skip | --abort | --quit | --edit-todo | --show-current-patch)
+```
+
+## 描述
 

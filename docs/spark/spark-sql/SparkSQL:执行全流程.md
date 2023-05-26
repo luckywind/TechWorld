@@ -24,10 +24,10 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
 ```scala
   abstract class Strategy {
 
-    /** The maximum number of executions. */
+    /** 执行最大次数 */
     def maxIterations: Int
 
-    /** Whether to throw exception when exceeding the maximum number. */
+    /** 超过最大次数是否抛异常 */
     def errorOnExceed: Boolean = false
 
     /** The key of SQLConf setting to tune maxIterations */
@@ -37,6 +37,21 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
 
 
 
+```scala
+  case class FixedPoint(
+    override val maxIterations: Int,
+    override val errorOnExceed: Boolean = false,
+    override val maxIterationsSetting: String = null) extends Strategy
+```
+
+
+
+只执行一次
+
+```scala
+case object Once extends Strategy { val maxIterations = 1 }
+```
+
 
 
 ## Analyzer
@@ -44,6 +59,8 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
 利用SessionCatalog中的信息把未解析的属性、关系转为一个有类型的对象
 
 ### batches
+
+fixedPoint是默认执行100次的策略
 
 ```scala
     Batch("Substitution", fixedPoint,
@@ -76,7 +93,7 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
       ResolveExpressionsWithNamePlaceholders ::
       ResolveDeserializer ::
       ResolveNewInstance ::
-      ResolveUpCast ::   把UpCast替换为Cast
+      ResolveUpCast ::   //把UpCast替换为Cast
       ResolveGroupingAnalytics ::
       ResolvePivot ::
       ResolveOrdinalInOrderByAndGroupBy ::

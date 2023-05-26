@@ -145,11 +145,17 @@ CollapseCodegenStages就是全阶段代码生成的入口
 
 算子前面带*，意味着该算子支持代码生成
 
-对于物理算子树， CollapseCodegenStages 规则会根据节点是否支持代码生成采 用不同的处理方式 。在遍历物理算子树时，当碰到不支持代码生成的节点时， 会在其上插入一个名为 I叩utAdapter 的物理节点对其进行封装 。
+对于物理算子树， CollapseCodegenStages 规则会根据节点是否支持代码生成采 用不同的处理方式 。在遍历物理算子树时，当碰到不支持代码生成的节点时， 会在其上插入一个名为 InputAdapter 的物理节点对其进行封装 。
 
 ### codeGenSupport
 
-在CodegenSupport中比较重要的是consume/doConsume和produce/doProduce这两对方法。 根据方法名很容易理解， consume 和doConsume 用来“消 费”，返回的是该 CodegenSupport 节 点处理数据核心逻辑所对应生成的代码;而 produce/doProduce 则用来“生产”，返回的是该 节点及其子节点所生成的代码 。 在具体实现上， consume 和 produce 都是 final 类型，区别在于 produce方法会调用 doProduce方法，而 consume方法则会调用其父节点的 doConsume方法。
+在CodegenSupport中比较重要的是consume/doConsume和produce/doProduce这两对方法。 根据方法名很容易理解，
+
+ consume 和doConsume 用来“消 费”，返回的是该 CodegenSupport 节点处理数据核心逻辑所对应生成的代码;
+
+而 produce/doProduce 则用来“生产”，返回的是该节点及其子节点所生成的代码 。 doProduce是产出输入数据的函数，因此，只有叶子节点才需要覆盖自己的doProduce，其他节点实际只调用子节点的doProduce。
+
+在具体实现上， consume 和 produce 都是 final 类型，区别在于 produce方法会调用 doProduce方法，而 consume方法则会调用其父节点的 doConsume方法。
 
 consume方法所起到的作用就是整合当前节点的处理逻辑，构造(ctx,inputVars,rowVar)三元组并提交到父节点的doConsume方法。
 
@@ -172,7 +178,13 @@ consume方法所起到的作用就是整合当前节点的处理逻辑，构造(
  }
 ```
 
+在没有全代码生成之前， 每个算子的doExecute()都会被调用来产生一个迭代器，当全代码生成启用后，对于支持代码生成的算子，将调用它们的doProduce/doConsume函数生成代码片段。
 
+![Spark-Plan-Class-Graph](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/spark-plan-graph.jpg)
+
+
+
+![WholeStageCodeGen-workflow](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/wholeStageCodeGen-workflow.jpg)
 
 
 
