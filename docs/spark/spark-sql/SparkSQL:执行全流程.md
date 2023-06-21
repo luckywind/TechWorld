@@ -17,9 +17,9 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
 
 
 
-## 规则执行策略
+## RuleExecutor与规则执行策略
 
-表示执行最大次数，如果达到fix point，则停止执行。
+表示执行最大次数，如果达到fix point(收敛)，则停止执行。
 
 ```scala
   abstract class Strategy {
@@ -35,7 +35,7 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
   }
 ```
 
-
+### FixedPoint
 
 ```scala
   case class FixedPoint(
@@ -44,17 +44,106 @@ protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*Tre
     override val maxIterationsSetting: String = null) extends Strategy
 ```
 
+执行到固定点或者到达最大迭代次数
 
-
-只执行一次
+### Once
 
 ```scala
 case object Once extends Strategy { val maxIterations = 1 }
 ```
 
+### execute()
+
+执行子类定义的batch，batch是顺序执行的，batch里的rule也是顺序执行的。
+
+```scala
+  def execute(plan: TreeType): TreeType = {
+    var curPlan = plan
+    val queryExecutionMetrics = RuleExecutor.queryExecutionMeter
+    val planChangeLogger = new PlanChangeLogger[TreeType]()
+    val tracker: Option[QueryPlanningTracker] = QueryPlanningTracker.get
+    val beforeMetrics = RuleExecutor.getCurrentMetrics()
+
+    // 结构检查，确保plan正确，目前啥也没做
+    if (!isPlanIntegral(plan, plan)) {
+      throw QueryExecutionErrors.structuralIntegrityOfInputPlanIsBrokenInClassError(
+        this.getClass.getName.stripSuffix("$"))
+    }
+
+    batches.foreach { batch =>
+      val batchStartPlan = curPlan
+      var iteration = 1
+      var lastPlan = curPlan
+      var continue = true
+
+      // Run until fix point (or the max number of iterations as specified in the strategy.
+      while (continue) {
+        curPlan = batch.rules.foldLeft(curPlan) {
+          case (plan, rule) =>
+            val startTime = System.nanoTime()
+            // 应用规则
+            val result = rule(plan)
+            val runTime = System.nanoTime() - startTime
+            val effective = !result.fastEquals(plan)
+
+            if (effective) { //查询计划被替换
+              queryExecutionMetrics.incNumEffectiveExecution(rule.ruleName)
+              queryExecutionMetrics.incTimeEffectiveExecutionBy(rule.ruleName, runTime)
+              planChangeLogger.logRule(rule.ruleName, plan, result)
+            }
+            queryExecutionMetrics.incExecutionTimeBy(rule.ruleName, runTime)
+            queryExecutionMetrics.incNumExecution(rule.ruleName)
+
+            // Record timing information using QueryPlanningTracker
+            tracker.foreach(_.recordRuleInvocation(rule.ruleName, runTime, effective))
+            result
+        }
+        iteration += 1
+        if (iteration > batch.strategy.maxIterations) {
+          // Only log if this is a rule that is supposed to run more than once.
+          if (iteration != 2) {
+            val endingMsg = if (batch.strategy.maxIterationsSetting == null) {
+              "."
+            } else {
+              s", please set '${batch.strategy.maxIterationsSetting}' to a larger value."
+            }
+            val message = s"Max iterations (${iteration - 1}) reached for batch ${batch.name}" +
+              s"$endingMsg"
+            if (Utils.isTesting || batch.strategy.errorOnExceed) {
+              throw new RuntimeException(message)
+            } else {
+              logWarning(message)
+            }
+          }
+          // Check idempotence for Once batches.
+          if (batch.strategy == Once &&
+            Utils.isTesting && !excludedOnceBatches.contains(batch.name)) {
+            checkBatchIdempotence(batch, curPlan)
+          }
+          continue = false
+        }
+
+        if (curPlan.fastEquals(lastPlan)) {
+          logTrace(
+            s"Fixed point reached for batch ${batch.name} after ${iteration - 1} iterations.")
+          continue = false
+        }
+        lastPlan = curPlan
+      }
+
+      planChangeLogger.logBatch(batch.name, batchStartPlan, curPlan)
+    }
+    planChangeLogger.logMetrics(RuleExecutor.getCurrentMetrics() - beforeMetrics)
+
+    curPlan
+  }
+```
 
 
-## Analyzer
+
+
+
+## Analyzer extends RuleExecutor
 
 利用SessionCatalog中的信息把未解析的属性、关系转为一个有类型的对象
 
@@ -282,10 +371,11 @@ Project [cast(w_warehouse_sk#0 as bigint) AS w_warehouse_sk#28L]
 
 
 
-## Optimizer
+## Optimizer extends RuleExecutor
+
+使用已有的规则对逻辑执行计划进行优化，该过程是基于经验/启发式的优化方法，得到优化过的逻辑执行计划。
 
 ![image-20230413160357356](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230413160357356.png)
-
 
 ### defaultBatches:
 
@@ -454,9 +544,36 @@ val batches = (
 
 把逻辑计划转为物理计划，其父类QueryPlanner的plan方法会把各种策略应用到逻辑计划上
 
+参考: https://issues.apache.org/jira/browse/SPARK-1251
+SparkPlanner将逻辑执行计划转换成物理执行计划，即将逻辑执行计划树中的逻辑节点转换成物理节点，如Join转换成HashJoinExec/SortMergeJoinExec...，Filter转成FilterExec等
 
+![666](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/9a5924e9df08733fdc1ec8896eb2736df65f3e16.jpeg)
 
+Spark的`Stragety`有8个:
 
+- DataSourceV2Strategy
+- FileSourceStrategy
+- DataSourceStrategy
+- SpecialLimits
+- Aggregation
+- JoinSelection
+- InMemoryScans
+- BasicOperators
+
+上述很多Stragety都是基于规则的策略。
+JoinSelection用到了相关的统计信息来选择将Join转换为BroadcastHashJoinExec还是ShuffledHashJoinExec还是SortMergeJoinExec，属于CBO基于代价的策略。
+
+## QueryExecution.PrepareForExecution
+
+在执行之前，对物理执行计划做一些处理，这些处理都是基于规则的，包括
+
+- PlanSubqueries
+- EnsureRequirements
+- CollapseCodegenStages
+- ReuseExchange
+- ReuseSubquery
+
+经过上述步骤之后生成的最终物理执行计划提交到Spark执行。
 
 ## collect()
 
