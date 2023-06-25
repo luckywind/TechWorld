@@ -20,7 +20,7 @@ DriverPluginContainer和ExecutorPluginContainer又分别以SparkPlugin作为私�
 
 ### SparkPlugin
 
-所谓的插件是什么呢？ 从这个接口看，就是获取DriverPlan和ExecutorPlan
+所谓的插件是什么呢？ 从这个接口看，就是获取DriverPlugin和ExecutorPlugin
 
 ```scala
 public interface SparkPlugin {
@@ -48,9 +48,7 @@ public interface SparkPlugin {
 
 PluginContainer本身提供了metrics和task相关的接口
 
-其次，伴生对象的
-
-apply方法是SparkContext初始化时调用的，用来加载SparkPlugin，提取其中的driverPlugin和executorPlugin
+其次，伴生对象的apply方法是SparkContext初始化时调用的，用来加载SparkPlugin，提取其中的driverPlugin和executorPlugin
 
 ```scala
 // 接口类
@@ -250,7 +248,7 @@ private class ExecutorPluginContainer(
 
 ### 插件加载
 
---conf spark.plugins=com.yusur.spark.SQLPlugin
+<font color=red>--conf spark.plugins=com.yusur.spark.SQLPlugin</font>
 
 加载的插件时com.yusur.spark.SQLPlugin,它继承了SparkPlugin
 

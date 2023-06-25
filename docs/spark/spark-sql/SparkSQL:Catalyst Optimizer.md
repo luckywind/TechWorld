@@ -31,7 +31,7 @@ Add(Attribute(x), Add(Literal(1), Literal(2)))
 
 树可以使用规则来操作，规则就是把一个树转成另一个树的函数，规则可以对输入树执行任意代码，通常是应用一系列模式匹配函数来查找/替换特定结构的子树。
 
-模式匹配是很多函数式编程语言的一个特性，允许从代数数据结构中国呢抽取值。 Catalyst中，树提供一个可以递归地在所有节点上应用模式匹配的函数transform。例如，我们可以实现一个规则来折叠两个常量的加操作：
+模式匹配是很多函数式编程语言的一个特性，允许从代数数据结构中国抽取值。 Catalyst中，树提供一个可以递归地在所有节点上应用模式匹配的函数transform。例如，我们可以实现一个规则来折叠两个常量的加操作：
 
 ```
 tree.transform {
@@ -90,7 +90,7 @@ def transformDownWithPruning(cond: TreePatternBits => Boolean,
 
     // Check if unchanged and then possibly return old copy to avoid gc churn.
     if (this fastEquals afterRule) {
-      //（三）如果plan没有替换为一个新的plan(内存地址会变化)，则递归对子节点应用规则
+      //（三）如果plan没有替换为一个新的plan(内存地址未发生变化)，则递归对子节点应用规则
       val rewritten_plan = mapChildren(_.transformDownWithPruning(cond, ruleId)(rule))
       //  3.1 如果没有变化，则标记当前rule无效，并返回原计划
       if (this eq rewritten_plan) {

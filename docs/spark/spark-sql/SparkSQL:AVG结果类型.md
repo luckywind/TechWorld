@@ -345,14 +345,3 @@ Exception in thread "main" org.apache.spark.SparkUnsupportedOperationException: 
 不支持的算子
 
 
-
-
-
-# 方案
-
-1. 所有double类型都替换成Decimal(18,1)
-2. Average的resultType替换成Decimal  选这个
-
-当前遇到一个问题，avg的类型修改后，万一我们无法卸载，spark则无法执行。所以第三个方案：
-
-3. DpuAverage修改数据类型， 但问题是
