@@ -1,4 +1,4 @@
-
+[参考](https://zhuanlan.zhihu.com/p/608830887)
 
 [可参考百度的优化总结](https://blog.csdn.net/fl63zv9zou86950w/article/details/79049280?utm_source=copy), [英文版](https://www.intel.com/content/www/us/en/developer/articles/technical/spark-sql-adaptive-execution-at-100-tb.html)
 
@@ -12,9 +12,7 @@ SparkSQL Adaptive Execution 是 Spark SQL 针对 SQL 查询计划的一种自适
 
 首先以Exchange节点作为分界将执行计划这棵树划分成多个QueryStage（Exchange节点在Spark SQL中代表shuffle）。每一个QueryStage都是一棵独立的子树，也是一个独立的执行单元。在加入QueryStage的同时，我们也加入一个QueryStageInput的叶子节点，作为父亲QueryStage的输入。例如对于图中两表join的执行计划来说我们会创建3个QueryStage。最后一个QueryStage中的执行计划是join本身，它有2个QueryStageInput代表它的输入，分别指向2个孩子的QueryStage。在执行QueryStage时，我们首先提交它的孩子stage，并且收集这些stage运行时的信息。当这些孩子stage运行完毕后，我们可以知道它们的大小等信息，以此来判断QueryStage中的计划是否可以优化更新。例如当我们获知某一张表的大小是5M，它小于broadcast的阈值时，我们可以将SortMergeJoin转化成BroadcastHashJoin来优化当前的执行计划。我们也可以根据孩子stage产生的shuffle数据量，来动态地调整该stage的reducer个数。在完成一系列的优化处理后，最终我们为该QueryStage生成RDD的DAG图，并且提交给DAG Scheduler来执行。
 
-总之，在非AQE的情况下，SparkSQL会转换为DAG图，然后DAGScheduler基于shuffle将其划分为多个stage, 然后再执行stage。
-
-在AQE的情况下，首先会将plan树拆分为多个QueryStages, 在执行时先将它的子 QueryStages 被提交。在所有子节点完成后，收集 shuffle 数据大小。根据收集到的 shuffle 数据统计信息，将当前 QueryStage 的执行计划优化为更好的执行计划。然后转换为DAG图再执行Stage。
+<font color=red>总之，在非AQE的情况下，SparkSQL会转换为DAG图，然后DAGScheduler基于shuffle将其划分为多个stage, 然后再执行stage。在AQE的情况下，首先会将plan树拆分为多个QueryStages, 在执行时先将它的子 QueryStages 被提交。在所有子节点完成后，收集 shuffle 数据大小。根据收集到的 shuffle 数据统计信息，将当前 QueryStage 的执行计划优化为更好的执行计划。然后转换为DAG图再执行Stage。</font>
 
 目前AQE主要有三大特性：
 
@@ -75,7 +73,52 @@ case class AdaptiveExecutionContext(session: SparkSession, qe: QueryExecution) {
 }
 ```
 
-### AE插入规则：InsertAdaptiveSparkPlan extends Rule[SparkPlan] 
+### AQE规则插入
+
+QueryExecution在prepareForexecution时构建了一批规则,让物理计划可以执行。
+
+1. 保证子查询planed
+2. 数据分区和排序正确
+3. 插入全阶段代码生成
+4. 重用exchange和子查询
+
+```scala
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
+      subquery: Boolean): Seq[Rule[SparkPlan]] = {
+    // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
+    // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
+    adaptiveExecutionRule.toSeq ++
+    Seq(
+      CoalesceBucketsInJoin,
+      PlanDynamicPruningFilters(sparkSession),
+      PlanSubqueries(sparkSession),
+      RemoveRedundantProjects,
+      EnsureRequirements(),
+      // `ReplaceHashWithSortAgg` needs to be added after `EnsureRequirements` to guarantee the
+      // sort order of each node is checked to be valid.
+      ReplaceHashWithSortAgg,
+      // `RemoveRedundantSorts` needs to be added after `EnsureRequirements` to guarantee the same
+      // number of partitions when instantiating PartitioningCollection.
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      ApplyColumnarRulesAndInsertTransitions(
+        sparkSession.sessionState.columnarRules, outputsColumnar = false),
+      CollapseCodegenStages()) ++
+      (if (subquery) {
+        Nil
+      } else {
+        Seq(ReuseExchangeAndSubquery)
+      })
+  }
+```
+
+
+
+### AQE规则：InsertAdaptiveSparkPlan
+
+ extends Rule[SparkPlan] 
 
 ```scala
 {
@@ -95,11 +138,12 @@ case class AdaptiveExecutionContext(session: SparkSession, qe: QueryExecution) {
           // Plan sub-queries recursively and pass in the shared stage cache for exchange reuse.
           // 1. 递归构建所有子查询的 表达式id->执行计划的map
           val subqueryMap = buildSubqueryMap(plan)
-          // 2. 构建规则
+          // 2. 对子查询应用自适应规则
           val planSubqueriesRule = PlanAdaptiveSubqueries(subqueryMap)
+             //预处理规则
           val preprocessingRules = Seq(
             planSubqueriesRule)
-          // 3. 执行规则
+          // 3. 执行预处理规则
           val newPlan = AdaptiveSparkPlanExec.applyPhysicalRules(plan, preprocessingRules)
           logDebug(s"Adaptive execution enabled for plan: $plan")
           // 4. 插入AdaptiveSparkPlanExec算子
@@ -190,12 +234,13 @@ case class AdaptiveExecutionContext(session: SparkSession, qe: QueryExecution) {
     if (!plan.containsAnyPattern(SCALAR_SUBQUERY, IN_SUBQUERY, DYNAMIC_PRUNING_SUBQUERY)) {
       return subqueryMap.toMap
     }
+    // 所有plan型表达式
     plan.foreach(_.expressions.filter(_.containsPattern(PLAN_EXPRESSION)).foreach(_.foreach {
       case expressions.ScalarSubquery(p, _, exprId, _)
-          if !subqueryMap.contains(exprId.id) =>
-        val executedPlan = compileSubquery(p)
-        verifyAdaptivePlan(executedPlan, p)
-        val subquery = SubqueryExec.createForScalarSubquery(
+          if !subqueryMap.contains(exprId.id) => //如果不存在
+        val executedPlan = compileSubquery(p)//子查询转为物理计划
+        verifyAdaptivePlan(executedPlan, p)//确保是AdaptiveSparkPlanExec的子类
+        val subquery = SubqueryExec.createForScalarSubquery( //子查询的可执行物理计划SubqueryExec
           s"subquery#${exprId.id}", executedPlan)
         subqueryMap.put(exprId.id, subquery)
       case expressions.InSubquery(_, ListQuery(query, _, exprId, _, _))
@@ -226,7 +271,7 @@ case class AdaptiveExecutionContext(session: SparkSession, qe: QueryExecution) {
     // Apply the same instance of this rule to sub-queries so that sub-queries all share the
     // same `stageCache` for Exchange reuse.
     
-    // 对sub-query再次使用这个规则
+    // 把sub-query的逻辑计划转为物理计划后，  再次应用这个规则的同一个实例，使得所有子查询共享stageCache用于Exchange重用
     this.applyInternal(
       QueryExecution.createSparkPlan(adaptiveExecutionContext.session,
         adaptiveExecutionContext.session.sessionState.planner, plan.clone()), true)
@@ -246,23 +291,25 @@ case class PlanAdaptiveSubqueries(
   def apply(plan: SparkPlan): SparkPlan = {
     plan.transformAllExpressionsWithPruning(
       _.containsAnyPattern(SCALAR_SUBQUERY, IN_SUBQUERY, DYNAMIC_PRUNING_SUBQUERY)) {
-      //如果是只返回一行一列的subquery，将会转为物理scalar subquery
       case expressions.ScalarSubquery(_, _, exprId, _) =>
- 				//ScalarSubquery转为对应的物理计划
+ 				      //重用已有的？
         execution.ScalarSubquery(subqueryMap(exprId.id), exprId)
       //如果是InSubquery，则转为物理计划InSubqueryExec
       case expressions.InSubquery(values, ListQuery(_, _, exprId, _, _)) =>
         val expr = if (values.length == 1) {
+          //in字句只有一个，则替换为值
           values.head
         } else {
+          //否则，表达式替换为一个namedStruct
           CreateNamedStruct(
             values.zipWithIndex.flatMap { case (v, index) =>
               Seq(Literal(s"col_$index"), v)
             }
           )
         }
+       //用替换后的表达式构造一个物理算子
         InSubqueryExec(expr, subqueryMap(exprId.id), exprId, shouldBroadcast = true)
-      //如果是DynamicPruningSubquery表达式，转为表达式DynamicPruningSubquery
+      //如果是DynamicPruningSubquery表达式，改为in并重用子查询
       case expressions.DynamicPruningSubquery(value, _, _, _, _, exprId) =>
         DynamicPruningExpression(InSubqueryExec(value, subqueryMap(exprId.id), exprId))
     }
@@ -294,15 +341,132 @@ case class PlanAdaptiveSubqueries(
   }
 ```
 
+#### 插入AdaptiveSparkPlanExec算子
 
+AdaptiveSparkPlanExec(newPlan, adaptiveExecutionContext, preprocessingRules, isSubquery)
+
+
+
+## QueryStageExec
+
+在介绍AQE之前，先了解QueryStageExec
+
+是query plan的独立子图，query stage在继续处理query plan的其他算子之前物化输出。输出的数据统计可用于优化后续query stage。
+
+有两种query stage:
+
+1. Shuffle query stage
+   对应ShuffleQueryStageExec算子，这个stage物化输出到shuffle 文件，spark发起其他job执行其他算子
+2. Broadcast query stage
+   对应BroadcastQueryStageExec算子，物化输出到driver端的array中，spark在执行其他算子前广播array
 
 ## AdaptiveSparkPlanExec
+
+```scala
+case class AdaptiveSparkPlanExec(
+    inputPlan: SparkPlan,
+    @transient context: AdaptiveExecutionContext,
+    @transient preprocessingRules: Seq[Rule[SparkPlan]],
+    @transient isSubquery: Boolean,
+    @transient override val supportsColumnar: Boolean = false)
+  extends LeafExecNode
+```
 
 一个用于自适应执行查询计划的根节点。它将查询计划分割成独立的阶段，并根据它们的依赖顺序执行。查询阶段在末尾实现其输出结果。当一个阶段完成时，实例化输出结果的数据统计信息将用于优化剩余的查询。
 
 为了创建查询阶段，我们从底向上遍历查询树。当我们遇到一个 Exchange 节点时，如果这个 Exchange 节点的所有子查询阶段都被实例化，我们就为这个 Exchange 节点创建一个新的查询阶段。一旦创建，新阶段就会异步地进行实例化。
 
 当一个查询阶段完成实例化时，剩余的查询将基于所有实例化阶段提供的最新统计信息进行重新优化和计划。然后我们再遍历查询计划并在可能的情况下创建更多的阶段。当所有阶段都被实例化后，我们执行计划的其余部分。
+
+### 主要成员
+
+主要成员
+
+**optimizer**：对运行时物理计划进行重新优化的优化器，比如DynamicJoinSelection规则进行动态join调整，EliminateLimits规则剔除掉不必要的GlobalLimit计划
+
+**costEvaluator**：物理计划开销计算器，如果经过重新优化的物理计划比原计划开销小，那么将会替换掉原物理计划，默认是SimpleCostEvaluator
+
+**queryStagePreparationRules**：对AdaptiveSparkPlanExec持有的原物理计划做初始化的应用规则，这里面核心的便是EnsureRequirements，它的作用就是在原物理计划链上插入shuffle物理计划
+
+**initialPlan**：初始化后的物理计划，也就是应用完queryStagePreparationRules规则后的物理计划，这时计划链中已经添加到shuffle物理计划
+
+**queryStageOptimizerRules**：在创建QueryStage前应用的一些规则，比如应用CoalesceShufflePartitions规则进行shuffle后的分区缩减，QueryStage的概念类似于rdd中的stage，以shuffle进行划分
+
+**postStageCreationRules**：在创建完QueryStage后应用的一些规则，比如应用CollapseCodegenStages规则进行全阶段代码生成，插入一个WholeStageCodegenExec计划
+
+
+
+
+
+### optimizer(重新优化物理计划)
+
+逻辑计划优化器，可用于重新优化当前逻辑计划
+
+对运行时物理计划进行重新优化的优化器，比如DynamicJoinSelection规则进行动态join调整，EliminateLimits规则剔除掉不必要的GlobalLimit计划。 这里的规则仍然是可插拔的，用户可以通过配置spark.sql.adaptive.optimizer.excludedRules排除某个规则。
+
+```scala
+  @transient private val optimizer = new AQEOptimizer(conf,
+    session.sessionState.adaptiveRulesHolder.runtimeOptimizerRules)
+```
+
+
+
+```scala
+class AQEOptimizer(conf: SQLConf, extendedRuntimeOptimizerRules: Seq[Rule[LogicalPlan]])
+  extends RuleExecutor[LogicalPlan] {
+
+  private def fixedPoint =
+    FixedPoint(
+      conf.optimizerMaxIterations,
+      maxIterationsSetting = SQLConf.OPTIMIZER_MAX_ITERATIONS.key)
+
+  private val defaultBatches = Seq(
+    Batch("Propagate Empty Relations", fixedPoint,
+      AQEPropagateEmptyRelation,
+      ConvertToLocalRelation,
+      UpdateAttributeNullability),
+    Batch("Dynamic Join Selection", Once, DynamicJoinSelection),
+    Batch("Eliminate Limits", fixedPoint, EliminateLimits),
+    Batch("Optimize One Row Plan", fixedPoint, OptimizeOneRowPlan)) :+
+    Batch("User Provided Runtime Optimizers", fixedPoint, extendedRuntimeOptimizerRules: _*)
+
+  final override protected def batches: Seq[Batch] = {
+    val excludedRules = conf.getConf(SQLConf.ADAPTIVE_OPTIMIZER_EXCLUDED_RULES)
+      .toSeq.flatMap(Utils.stringToSeq)
+    defaultBatches.flatMap { batch =>
+      val filteredRules = batch.rules.filter { rule =>
+        val exclude = excludedRules.contains(rule.ruleName)
+        if (exclude) {
+          logInfo(s"Optimization rule '${rule.ruleName}' is excluded from the optimizer.")
+        }
+        !exclude
+      }
+      if (batch.rules == filteredRules) {
+        Some(batch)
+      } else if (filteredRules.nonEmpty) {
+        Some(Batch(batch.name, batch.strategy, filteredRules: _*))
+      } else {
+        logInfo(s"Optimization batch '${batch.name}' is excluded from the optimizer " +
+          s"as all enclosed rules have been excluded.")
+        None
+      }
+    }
+  }
+
+  override protected def isPlanIntegral(
+      previousPlan: LogicalPlan,
+      currentPlan: LogicalPlan): Boolean = {
+    !Utils.isTesting || (currentPlan.resolved &&
+      !currentPlan.exists(PlanHelper.specialExpressionsInUnsupportedOperator(_).nonEmpty) &&
+      LogicalPlanIntegrity.checkIfExprIdsAreGloballyUnique(currentPlan) &&
+      DataType.equalsIgnoreNullability(previousPlan.schema, currentPlan.schema))
+  }
+}
+```
+
+
+
+### doExecute 入口
 
 它是物理计划执行算子，那么它的核心就在于Executor，即方法——doExecute
 
@@ -312,7 +476,9 @@ override def doExecute(): RDD[InternalRow] = {
 }
 
   private def withFinalPlanUpdate[T](fun: SparkPlan => T): T = {
+    //核心代码，获取最终物理计划
     val plan = getFinalPhysicalPlan()
+    //执行最终计划，即调用plan.execute()
     val result = fun(plan)
     //触发lazy exe
     finalPlanUpdate
@@ -320,7 +486,7 @@ override def doExecute(): RDD[InternalRow] = {
   }
 ```
 
-### getFinalPhysicalPlan
+### getFinalPhysicalPlan源码
 
 ```scala
   private def getFinalPhysicalPlan(): SparkPlan = lock.synchronized {
@@ -486,13 +652,15 @@ override def doExecute(): RDD[InternalRow] = {
 
 ### *costEvaluator*
 
+cost计算器，这个是默认实现，用户可可以提供自定义实现，这里就是简单的统计shuffleExchange算子个数。
+
 ```scala
 case class SimpleCostEvaluator(forceOptimizeSkewedJoin: Boolean) extends CostEvaluator {
   override def evaluateCost(plan: SparkPlan): Cost = {
     val numShuffles = plan.collect {
       case s: ShuffleExchangeLike => s
     }.size
-
+  //默认不开启
     if (forceOptimizeSkewedJoin) {
       val numSkewJoins = plan.collect {
         case j: ShuffledJoin if j.isSkewJoin => j
@@ -507,7 +675,7 @@ case class SimpleCostEvaluator(forceOptimizeSkewedJoin: Boolean) extends CostEva
 }
 ```
 
-### *queryStagePreparationRules*
+### queryStagePreparationRules(创建初始计划)
 
 在创建query  stage之前执行的一些规则，这些规则执行完后，物理计划的Exchange节点数应该是确定的。
 
@@ -535,7 +703,7 @@ case class SimpleCostEvaluator(forceOptimizeSkewedJoin: Boolean) extends CostEva
 
 以下情况会删除Project： output和子节点完全一样包括顺序，或者不要求顺序时只要output一样
 
-#### ensureRequirements
+#### ensureRequirements(核心)
 
 通过插入*ShuffleExchangeExec*算子确保输入数据的*Partitioning*和每个算子需要的*Distribution*一致，同时确保输入分区排序需求一致。
 
@@ -618,6 +786,34 @@ reorderJoinPredicates:
 
       case other => other
     }
+  }
+```
+
+
+
+##### ensureDistributionAndOrdering
+
+```scala
+  private def ensureDistributionAndOrdering(
+      originalChildren: Seq[SparkPlan],
+      requiredChildDistributions: Seq[Distribution],
+      requiredChildOrderings: Seq[Seq[SortOrder]],
+      shuffleOrigin: ShuffleOrigin): Seq[SparkPlan] = {
+    assert(requiredChildDistributions.length == originalChildren.length)
+    assert(requiredChildOrderings.length == originalChildren.length)
+     //当子节点和数据分布和当前节点的数据分布类型不一致时，说明需要进行数据shuffle，就添加一个ShuffleExchangeExec
+    var children = originalChildren.zip(requiredChildDistributions).map {
+      case (child, distribution) if child.outputPartitioning.satisfies(distribution) =>
+        child
+      case (child, BroadcastDistribution(mode)) =>
+        BroadcastExchangeExec(mode, child)
+      case (child, distribution) =>
+        val numPartitions = distribution.requiredNumPartitions
+          .getOrElse(conf.numShufflePartitions)
+        ShuffleExchangeExec(distribution.createPartitioning(numPartitions), child, shuffleOrigin)
+    }
+    ...
+    children
   }
 ```
 
@@ -793,6 +989,334 @@ right: [R1, R2, R3, R4]
 ```
 
 
+
+### getFinalPhysicalPlan(创建最终计划)
+
+1、创建首个QueryStage，QueryStage的概念就是将整个物理计划链划分为若干个stage进行执行，这和rdd中的stage概念是类似的，基本都是基于shuffle进行划分
+
+2、物化stage，也就是进行stage提交，以job的方式进行执行，然后优化物理计划，创建下个stage，直到所有的子stage都被物化，以rdd的概念来说，就是直到所有的ShuffleMapStage都被执行后，将不会再有stage被创建，这时会得到一个接近最终状态物理计划
+
+3、对这个物理继续应用queryStageOptimizerRules和postStageCreationRules规则，这相当于对最终的ResultStage进行的优化，然后得到一个最终的物理计划
+
+
+
+1. 首先提交Broadcast对应的task，防止broadcast等待超时
+2. 等待stage完成，意味着有新的统计信息可用，从而可正确创建新的stage，如果此时有多个stage完成，则一起处理。
+3. 新plan和原plan取cost最小的
+
+```scala
+  private def getFinalPhysicalPlan(): SparkPlan = lock.synchronized {
+    if (isFinalPlan) return currentPhysicalPlan
+
+    // In case of this adaptive plan being executed out of `withActive` scoped functions, e.g.,
+    // `plan.queryExecution.rdd`, we need to set active session here as new plan nodes can be
+    // created in the middle of the execution.
+    context.session.withActive {
+      val executionId = getExecutionId
+      // Use inputPlan logicalLink here in case some top level physical nodes may be removed
+      // during `initialPlan`
+      var currentLogicalPlan = inputPlan.logicalLink.get
+      //首次创建queryStage，第一个需要shuffle的stage
+      var result = createQueryStages(currentPhysicalPlan)
+      val events = new LinkedBlockingQueue[StageMaterializationEvent]()
+      val errors = new mutable.ArrayBuffer[Throwable]()
+      var stagesToReplace = Seq.empty[QueryStageExec]
+      while (!result.allChildStagesMaterialized) {
+        //替换物理计划为创建stage之后的物理计划
+        currentPhysicalPlan = result.newPlan
+        if (result.newStages.nonEmpty) {
+          stagesToReplace = result.newStages ++ stagesToReplace
+          executionId.foreach(onUpdatePlan(_, result.newStages.map(_.plan)))
+
+          // SPARK-33933: we should submit tasks of broadcast stages first, to avoid waiting
+          // for tasks to be scheduled and leading to broadcast timeout.
+          // This partial fix only guarantees the start of materialization for BroadcastQueryStage
+          // is prior to others, but because the submission of collect job for broadcasting is
+          // running in another thread, the issue is not completely resolved.
+          val reorderedNewStages = result.newStages
+            .sortWith {
+              case (_: BroadcastQueryStageExec, _: BroadcastQueryStageExec) => false
+              case (_: BroadcastQueryStageExec, _) => true
+              case _ => false
+            }
+
+          //物化stage，即实际执行stage,以Job的方式提交执行
+          reorderedNewStages.foreach { stage =>
+            try {
+              //materialize()方法最终会调用ShuffleExchangeExec算子的submitShuffleJob方法
+              stage.materialize().onComplete { res =>
+                if (res.isSuccess) {
+                  events.offer(StageSuccess(stage, res.get))
+                } else {
+                  events.offer(StageFailure(stage, res.failed.get))
+                }
+              }(AdaptiveSparkPlanExec.executionContext)
+            } catch {
+              case e: Throwable =>
+                cleanUpAndThrowException(Seq(e), Some(stage.id))
+            }
+          }
+        }
+
+        // Wait on the next completed stage, which indicates new stats are available and probably
+        // new stages can be created. There might be other stages that finish at around the same
+        // time, so we process those stages too in order to reduce re-planning.
+        /**
+         一旦一个stage完成，意味着新的统计数据可用，从而可以新建stage
+        */
+        val nextMsg = events.take()
+        val rem = new util.ArrayList[StageMaterializationEvent]()
+        events.drainTo(rem)
+        (Seq(nextMsg) ++ rem.asScala).foreach {
+          case StageSuccess(stage, res) =>
+            stage.resultOption.set(Some(res))
+          case StageFailure(stage, ex) =>
+            errors.append(ex)
+        }
+
+        // In case of errors, we cancel all running stages and throw exception.
+        if (errors.nonEmpty) {
+          cleanUpAndThrowException(errors.toSeq, None)
+        }
+
+        // Try re-optimizing and re-planning. Adopt the new plan if its cost is equal to or less
+        // than that of the current plan; otherwise keep the current physical plan together with
+        // the current logical plan since the physical plan's logical links point to the logical
+        // plan it has originated from.
+        // Meanwhile, we keep a list of the query stages that have been created since last plan
+        // update, which stands for the "semantic gap" between the current logical and physical
+        // plans. And each time before re-planning, we replace the corresponding nodes in the
+        // current logical plan with logical query stages to make it semantically in sync with
+        // the current physical plan. Once a new plan is adopted and both logical and physical
+        // plans are updated, we can clear the query stage list because at this point the two plans
+        // are semantically and physically in sync again.
+        /**
+        重新优化，如果新计划更便宜，则采用新计划，否则， 让当前物理计划和当前逻辑计划在一起，因为物理计划的logic link指向了原始逻辑计划。
+        期间，我们保存自从上次plan更新以来，创建的一列query stage，它们代表了当前逻辑计划和物理计划之间的寓意差距。
+        在每次重新计划之前，用逻辑query stage替换当前逻辑计划中的相应节点，使其与当前物理计划语义上一致。
+        一旦心计划被采用并且更新了逻辑计划和物理计划，就可以清空query stage列表了，因为此时物理计划和逻辑计划在语义上和物理上再次同步。
+        */
+        val logicalPlan = replaceWithQueryStagesInLogicalPlan(currentLogicalPlan, stagesToReplace)
+        val (newPhysicalPlan, newLogicalPlan) = reOptimize(logicalPlan)
+        val origCost = costEvaluator.evaluateCost(currentPhysicalPlan)
+        val newCost = costEvaluator.evaluateCost(newPhysicalPlan)
+        if (newCost < origCost ||
+            (newCost == origCost && currentPhysicalPlan != newPhysicalPlan)) {
+          logOnLevel("Plan changed:\n" +
+            sideBySide(currentPhysicalPlan.treeString, newPhysicalPlan.treeString).mkString("\n"))
+          cleanUpTempTags(newPhysicalPlan)
+          currentPhysicalPlan = newPhysicalPlan
+          currentLogicalPlan = newLogicalPlan
+          stagesToReplace = Seq.empty[QueryStageExec]
+        }
+        // Now that some stages have finished, we can try creating new stages.
+        result = createQueryStages(currentPhysicalPlan)
+      }
+
+      // Run the final plan when there's no more unfinished stages.
+      //当所有stage都完成时，执行最终的物理计划
+      currentPhysicalPlan = applyPhysicalRules(
+        optimizeQueryStage(result.newPlan, isFinalStage = true),
+        postStageCreationRules(supportsColumnar),
+        Some((planChangeLogger, "AQE Post Stage Creation")))
+      isFinalPlan = true
+      executionId.foreach(onUpdatePlan(_, Seq(currentPhysicalPlan)))
+      currentPhysicalPlan
+    }
+  }
+```
+
+
+
+接下来分析每个具体的过程
+
+#### replaceWithQueryStagesInLogicalPlan
+
+
+
+#### createQueryStages
+
+自底向上递归遍历plan树并调用这个函数，创建query stage或者重用query stage(如果当前节点是Exchange节点且所有子stage完成物化)
+
+每次调用，返回CreateStageResult，表示：
+
+1.  新创建stage的节点用QueryStageExec代替
+2. 是否当前节点的所有子stage完成物化
+3. 新建的query stage列表
+
+对于不同类型的节点处理逻辑：
+
+1. 对于Exchange类型的节点，exchange会被QueryStageExec节点替代。如果开启了stageCache，同时exchange节点是存在的stage, 则直接重用stage作为QueryStage, 并封装返回CreateStageResult。否则，从下向上迭代，如果孩子节点都迭代完成，将基于broadcast转换为BroadcastQueryStageExec，shuffle作为huffleQueryStageExec，并将其依次封装为CreateStageResult。
+2. 对于***QueryStageExec\***节点类型，直接封装为CreateStageResult *返回。*
+3. 对于其余类型，createQueryStages 函数应用于节点的直接子节点，这当然会导致再次调用 createQueryStages 并创建其他 QueryStageExec。
+
+```scala
+  private def createQueryStages(plan: SparkPlan): CreateStageResult = plan match {
+    case e: Exchange =>
+      // 如果是Exchange节点，判断是否应该创建query stage, 首先快速check stageCache从而避免不必要遍历这个子树
+      context.stageCache.get(e.canonicalized) match {
+        case Some(existingStage) if conf.exchangeReuseEnabled =>
+          val stage = reuseQueryStage(existingStage, e)
+          val isMaterialized = stage.isMaterialized
+          CreateStageResult(
+            newPlan = stage,
+            allChildStagesMaterialized = isMaterialized,
+            newStages = if (isMaterialized) Seq.empty else Seq(stage))
+
+        case _ =>    //递归
+          val result = createQueryStages(e.child)
+          val newPlan = e.withNewChildren(Seq(result.newPlan)).asInstanceOf[Exchange]
+          // 如果所有子stage都已物化，则新建一个query stage
+          if (result.allChildStagesMaterialized) {
+            var newStage = newQueryStage(newPlan)
+            if (conf.exchangeReuseEnabled) {
+              // Check the `stageCache` again for reuse. If a match is found, ditch the new stage
+              // and reuse the existing stage found in the `stageCache`, otherwise update the
+              // `stageCache` with the new stage.
+              val queryStage = context.stageCache.getOrElseUpdate(
+                newStage.plan.canonicalized, newStage)
+              if (queryStage.ne(newStage)) {
+                newStage = reuseQueryStage(queryStage, e)
+              }
+            }
+            val isMaterialized = newStage.isMaterialized
+            CreateStageResult(
+              newPlan = newStage,
+              allChildStagesMaterialized = isMaterialized,
+              newStages = if (isMaterialized) Seq.empty else Seq(newStage))
+          } else {
+            CreateStageResult(newPlan = newPlan,
+              allChildStagesMaterialized = false, newStages = result.newStages)
+          }
+      }
+
+    case q: QueryStageExec =>
+      CreateStageResult(newPlan = q,
+        allChildStagesMaterialized = q.isMaterialized, newStages = Seq.empty)
+
+    //常规节点，递归向下遍历，直到叶子节点，返回CreateStageResult
+    case _ =>
+      if (plan.children.isEmpty) {
+        CreateStageResult(newPlan = plan, allChildStagesMaterialized = true, newStages = Seq.empty)
+      } else {
+        val results = plan.children.map(createQueryStages)
+        CreateStageResult(
+          newPlan = plan.withNewChildren(results.map(_.newPlan)),
+          allChildStagesMaterialized = results.forall(_.allChildStagesMaterialized),
+          newStages = results.flatMap(_.newStages))
+      }
+  }
+```
+
+
+
+##### newQueryStage
+
+有两种类型的QueryStageExec可以物化统计数据，用于AQE的后序优化。
+
+1. Shuffle 查询阶段：这个阶段将其输出具体化为 Shuffle 文件，Spark 启动另一个作业来执行进一步的算子。
+2. 广播查询阶段：这个阶段将其输出具体化为 Driver JVM 中的一个数组。Spark 在执行进一步的算子之前先广播数组。
+
+```scala
+  private def newQueryStage(e: Exchange): QueryStageExec = {
+    // 优化后的plan
+    val optimizedPlan = optimizeQueryStage(e.child, isFinalStage = false)
+    val queryStage = e match {
+      case s: ShuffleExchangeLike =>
+        val newShuffle = applyPhysicalRules(
+          s.withNewChildren(Seq(optimizedPlan)),
+          postStageCreationRules(outputsColumnar = s.supportsColumnar),
+          Some((planChangeLogger, "AQE Post Stage Creation")))
+        if (!newShuffle.isInstanceOf[ShuffleExchangeLike]) {
+          throw new IllegalStateException(
+            "Custom columnar rules cannot transform shuffle node to something else.")
+        }
+        //新建ShuffleQueryStageExec算子,意味着QueryStage物理计划完成创建
+        ShuffleQueryStageExec(currentStageId, newShuffle, s.canonicalized)
+      case b: BroadcastExchangeLike =>
+        val newBroadcast = applyPhysicalRules(
+          b.withNewChildren(Seq(optimizedPlan)),
+          postStageCreationRules(outputsColumnar = b.supportsColumnar),
+          Some((planChangeLogger, "AQE Post Stage Creation")))
+        if (!newBroadcast.isInstanceOf[BroadcastExchangeLike]) {
+          throw new IllegalStateException(
+            "Custom columnar rules cannot transform broadcast node to something else.")
+        }
+       //新建BroadcastQueryStageExec算子
+        BroadcastQueryStageExec(currentStageId, newBroadcast, b.canonicalized)
+    }
+    currentStageId += 1
+    setLogicalLinkForNewQueryStage(queryStage, e)
+    queryStage
+  }
+```
+
+###### postStageCreationRules
+
+在query stage完成创建后，会应用一系列物理优化规则，注意，每个输入plan的根节点都是exchange
+
+比如在创建stage前应用CoalesceShufflePartitions规则进行shuffle后的分区缩减，这会在上一个shuffle/ShuffleQueryStageExec计划之后、这个stage的起点处增加一个AQEShuffleReadExec计划；在创建stage后应用CollapseCodegenStages规则进行全阶段代码生成，插入一个WholeStageCodegenExec计划。QueryStageExec属于整个物理计划的一部分，那么整个物理计划也随之改变了
+
+```scala
+  private def postStageCreationRules(outputsColumnar: Boolean) = Seq(
+    ApplyColumnarRulesAndInsertTransitions(
+      context.session.sessionState.columnarRules, outputsColumnar),
+    collapseCodegenStagesRule
+  )
+```
+
+
+
+##### optimizeQueryStage
+
+这一步主要是调用创建QueryStage时用到的规则
+
+```scala
+  private def optimizeQueryStage(plan: SparkPlan, isFinalStage: Boolean): SparkPlan = {
+    val optimized = queryStageOptimizerRules.foldLeft(plan) { case (latestPlan, rule) =>
+      val applied = rule.apply(latestPlan)
+      val result = rule match {
+        case _: AQEShuffleReadRule if !applied.fastEquals(latestPlan) =>
+          val distribution = if (isFinalStage) {
+            // If `requiredDistribution` is None, it means `EnsureRequirements` will not optimize
+            // out the user-specified repartition, thus we don't have a distribution requirement
+            // for the final plan.
+            requiredDistribution.getOrElse(UnspecifiedDistribution)
+          } else {
+            UnspecifiedDistribution
+          }
+          if (ValidateRequirements.validate(applied, distribution)) {
+            applied
+          } else {
+            logDebug(s"Rule ${rule.ruleName} is not applied as it breaks the " +
+              "distribution requirement of the query plan.")
+            latestPlan
+          }
+        case _ => applied
+      }
+      planChangeLogger.logRule(rule.ruleName, latestPlan, result)
+      result
+    }
+    planChangeLogger.logBatch("AQE Query Stage Optimization", plan, optimized)
+    optimized
+  }
+```
+
+#### final PhysicalPlan
+
+等到前面的QueryStage（RDD层面来说就是ShuffleMapStage）都物化完了，这时才会确定下来最终的物理计划，这时也就剩下最后一个stage了，也就是ResultStage，ResultStage无需再进行专门创建，因为从最后一个物理计划到上一个ShuffleQueryStageExec这个过程便是ResultStage了，只需要去应用一些规则进行优化即可，同样也会应用之前创建stage时应用的规则，比如CoalesceShufflePartitions和CollapseCodegenStages
+
+```scala
+      //当所有stage都完成时，执行最终的物理计划
+      currentPhysicalPlan = applyPhysicalRules(
+        optimizeQueryStage(result.newPlan, isFinalStage = true),
+        postStageCreationRules(supportsColumnar),
+        Some((planChangeLogger, "AQE Post Stage Creation")))
+      isFinalPlan = true
+      executionId.foreach(onUpdatePlan(_, Seq(currentPhysicalPlan)))
+      currentPhysicalPlan
+    }
+```
 
 
 

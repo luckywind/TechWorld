@@ -324,7 +324,9 @@ java.lang.RuntimeException: Max iterations (100) reached for batch Resolution, p
 
 
 
+查看插入的规则
 
+ spark.sessionState.analyzer.batches(4).rules.foreach(println(_))
 
 
 

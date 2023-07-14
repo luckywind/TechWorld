@@ -181,6 +181,9 @@ command+alt+B
 # 破解&远程开发
 
 破解： https://www.exception.site/essay/how-to-free-use-intellij-idea-2019-3
+
+[破解到2099](http://www.itzoo.net/idea/intellij-idea-2023-2-latest-crack-tutorial-activation-2099.html)
+
 远程开发：https://cloud.tencent.com/developer/article/1979328
 
 ## 破解
@@ -346,6 +349,28 @@ Gateway link: 直接调起Gateway
 
 
 
+#### 下载Backend
+
+1. 自动下载，需要能访问jetbrain的官网
+
+   ```
+   https://code-with-me.jetbrains.com
+   https://download.jetbrains.com
+   https://download-cf.jetbrains.com
+   https://cache-redirector.jetbrains.com
+   ```
+
+   
+
+2. Use download link
+3. 本地上传，需要事先下载.tar.gz安装包
+
+
+
+#### 打开新项目失败
+
+This IDE build has expired. Provide another build or select 'JetBrains Installer' from the installation options to install the latest version.
+
 
 
 ## 问题
@@ -363,6 +388,10 @@ Gateway link: 直接调起Gateway
 ### 找不到sun.misc
 
 [程序包sun.misc找不到](https://github.com/airlift/slice/issues/106)，JDK11丢弃了sun.misc,修改为jdk8后解决了这个问题
+
+### illegal cyclic reference involving trait Iterable
+
+scala和spark的版本不兼容，scala-2.13换成scala-2.12.4就成了
 
 ### Failed to exec spawn helper
 

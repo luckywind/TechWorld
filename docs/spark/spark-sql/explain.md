@@ -13,7 +13,7 @@
 - explain(mode=”simple”)：只展示物理执行计划。
 - explain(mode=”extended”)：展示物理执行计划和逻辑执行计划。
 - explain(mode=”codegen”) ：展示要Codegen生成的可执行Java代码。
-- explain(mode=”cost”)：展示优化后的逻辑执行计划以及相关的统计。
+- <font color=red>explain(mode=”cost”)：展示优化后的逻辑执行计划以及相关的统计。</font>
 - explain(mode=”formatted”)：以分隔的方式输出，它会输出更易读的物理执行计划，并展示每个节点的详细信息。
 
 # 阅读

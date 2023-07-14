@@ -4,106 +4,57 @@ https://zhuanlan.zhihu.com/p/70261692
 
 https://blog.sidneyyi.com/view/uml%2FUML%E6%97%B6%E5%BA%8F%E5%9B%BE
 
-换行<br>
+[mermaid语法](http://blog.lisp4fun.com/2017/11/21/mermaiduse)
 
-注释%%
+## 基本语法
 
-## 参与者
+1. 换行<br>
 
-> ```text
-> sequenceDiagram
->     participant 客户端   可以省略
->     participant 服务器
-> ```
+2. 注释%%
 
+3. 激活/去激活， 有两种方式activate/deactivate xx  或者箭头后使用+/-
 
+4. 注释
 
-```mermaid
+   ```yaml
+   Note [ right of | left of | over ] [Actor]: Text in note content
+   注: Actor 可以是多个，通过逗号分割，例如：
+   Note over Alice,John: A typical interaction
+   ```
+
+```yaml
 sequenceDiagram
- participant 客户端   
- participant 服务器
-```
-
-
-
-## 消息
-
-```
-sequenceDiagram
-  participant 老板A
-    participant 员工A
-    老板A->>员工A:"在这里我们都是兄弟!"
-    老板A-x 员工A:画个饼
-    员工A -->> 老板A: 鼓掌
-```
-
-
-
-> > 消息语句格式为：`<参与者> <箭头> <参与者> : <描述文本>`。
-> > 其中 `<箭头>`的写法有：
-> > `->>` 显示为实线箭头（主动发出消息）
-> > `-->>`显示为虚线箭头（响应）
-> > `-x`显示为末尾带「X」的实线箭头（异步消息）
-> >
-> > -> 实线
->
-> 
->
-> > 注：`participant <参与者名称>` 这句可以省略，省略后参与者横向排列的次序，由消息语句中其出现的次序决定。如后续示例所示。
-
-```mermaid
-sequenceDiagram
-  participant 老板A
-  participant 员工A
-    老板A->>员工A:"在这里我们都是兄弟!"
-    老板A-x 员工A:画个饼
-    员工A -->> 老板A: 鼓掌  
-```
-
-## 激活框
-
-注意体会箭头符号后的 `+` 和 `-` 的使用方法和效果，它们相当于激活框的开关
-
-```
-sequenceDiagram
-    老板B ->> + 员工B : “你们要669！”
-    员工B -->> - 老板B : 鼓掌
-    
-    老板B ->> + 员工B : “悔创本司！”
-    员工B -->> - 老板B : 鼓掌
-```
-
-
-
-
-```mermaid
-sequenceDiagram
-    participant 老板B
-    participant 员工B
-    老板B ->> + 员工B : “你们要669！”
-    员工B -->> - 老板B : 鼓掌
-    
-    老板B ->> + 员工B : “悔创本司！”
-    员工B -->> - 老板B : 鼓掌
-```
-
-## 注解
-
-```
-sequenceDiagram
-    Note left of 老板A : 对脸不感兴趣
-    Note right of 老板B : 对钱不感兴趣
-    Note over 老板A,老板B : 对996感兴趣
+    participant Alice
+    participant John
+    Alice ->> John:  实线带箭头: ->>
+    John -->> Alice: 虚线带箭头: -->>
+    Alice -> John : 实线不带箭头: ->
+    activate John
+    Note over Alice,John: 这个注释在两个人的上方
+    John --> Alice : 虚线不带箭头: -->
+    deactivate John
+    Alice -x John : 实线结尾带X: -x
+    John --x Alice : 虚线结尾带X: --x
 ```
 
 
 
 ```mermaid
 sequenceDiagram
-    Note left of 老板A : 对脸不感兴趣
-    Note right of 老板B : 对钱不感兴趣
-    Note over 老板A,老板B : 对996感兴趣
+    participant Alice
+    participant John
+    Alice ->> John:  实线带箭头: ->>
+    John -->> Alice: 虚线带箭头: -->>
+    Alice ->+ John : 实线不带箭头: ->
+    %%    activate John
+    note over Alice,John: 这个注释在两个人的上方
+    John -->- Alice : 虚线不带箭头: -->
+    %%deactivate John
+    Alice -x John : 实线结尾带X: -x
+    John --x Alice : 虚线结尾带X: --x
 ```
+
+
 
 ## 组合片段
 

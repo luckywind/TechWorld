@@ -4,6 +4,13 @@
 
 <font color=red>对一个优化好的执行计划，插入shuffle算子和行列转换算子，准备执行</font>
 
+主要做了以下事情：
+
+1. 保证子查询planed
+2. 数据分区和排序正确
+3. 插入全阶段代码生成
+4. 重用exchange和子查询
+
 prepareForExecution(
     preparations: Seq[Rule[SparkPlan]],
     plan: SparkPlan): SparkPlan
@@ -50,3 +57,4 @@ prepareForExecution(
   }
 ```
 
+这些规则大多会在InsertAdaptiveSparkPlan规则里重复使用，详细可参考文章SparkSQL:AQE

@@ -15,7 +15,17 @@ select substring('name',0,2) from p
 
 protected case class Batch*(*name: String, strategy: Strategy, rules: Rule*[*TreeType*]***)*
 
+## catalyst物理计划生成过程
 
+一共四个阶段：
+
+- parsing:   解析获得语法树
+- analysis:   产生逻辑计划
+- optimization：优化逻辑计划
+- planning ：包含了两步
+
+1. QueryExection.createSparkPlan  产生物理计划
+2. QueryExection.prepareForExecution 对物理计划插入shuffle算子和行列转换算子、AQE算子、全代码生成算子
 
 ## RuleExecutor与规则执行策略
 
@@ -540,6 +550,52 @@ val batches = (
 
 
 
+### bathes
+
+```scala
+  final override def batches: Seq[Batch] = {
+    val excludedRulesConf =
+      SQLConf.get.optimizerExcludedRules.toSeq.flatMap(Utils.stringToSeq)
+    //计算要排除的规则
+    val excludedRules = excludedRulesConf.filter { ruleName =>
+      val nonExcludable = nonExcludableRules.contains(ruleName)
+      if (nonExcludable) {
+        logWarning(s"Optimization rule '${ruleName}' was not excluded from the optimizer " +
+          s"because this rule is a non-excludable rule.")
+      }
+      !nonExcludable
+    }
+    if (excludedRules.isEmpty) {
+      defaultBatches
+    } else {
+      defaultBatches.flatMap { batch =>
+        //当前batch排除后的规则
+        val filteredRules = batch.rules.filter { rule =>
+          val exclude = excludedRules.contains(rule.ruleName)
+          if (exclude) {
+            logInfo(s"Optimization rule '${rule.ruleName}' is excluded from the optimizer.")
+          }
+          !exclude
+        }
+        //如果当前batch没排除任何规则，那么直接返回当前batch
+        if (batch.rules == filteredRules) {
+          Some(batch)
+        } else if (filteredRules.nonEmpty) {
+          //否则，如果过滤后还存在规则，那么重新构造当前batch
+          Some(Batch(batch.name, batch.strategy, filteredRules: _*))
+        } else {
+          //过滤后，当前batch已经没有规则了
+          logInfo(s"Optimization batch '${batch.name}' is excluded from the optimizer " +
+            s"as all enclosed rules have been excluded.")
+          None
+        }
+      }
+    }
+  }
+```
+
+
+
 ## SparkPlanner
 
 把逻辑计划转为物理计划，其父类QueryPlanner的plan方法会把各种策略应用到逻辑计划上
@@ -621,4 +677,79 @@ JoinSelection用到了相关的统计信息来选择将Join转换为BroadcastHas
   }
   
 ```
+
+# 案例
+
+```sql
+select  d_date_sk, count(1) cnt  from  ds1g.store_sales join  ds1g.date_dim
+on ss_sold_date_sk=d_date_sk
+group by d_date_sk
+```
+
+计划演变过程
+
+```shell
+== Parsed Logical Plan ==
+'Aggregate ['d_date_sk], ['d_date_sk, 'count(1) AS cnt#0]
++- 'Join Inner, ('ss_sold_date_sk = 'd_date_sk)
+   :- 'UnresolvedRelation [ds1g, store_sales], [], false
+   +- 'UnresolvedRelation [ds1g, date_dim], [], false
+
+== Analyzed Logical Plan ==
+d_date_sk: int, cnt: bigint
+Aggregate [d_date_sk#25], [d_date_sk#25, count(1) AS cnt#0L]
++- Join Inner, (ss_sold_date_sk#2 = d_date_sk#25)
+   :- SubqueryAlias spark_catalog.ds1g.store_sales
+   :  +- Relation ds1g.store_sales[ss_sold_date_sk#2,ss_sold_time_sk#3,ss_item_sk#4,ss_customer_sk#5,ss_cdemo_sk#6,ss_hdemo_sk#7,ss_addr_sk#8,ss_store_sk#9,ss_promo_sk#10,ss_ticket_number#11,ss_quantity#12,ss_wholesale_cost#13,ss_list_price#14,ss_sales_price#15,ss_ext_discount_amt#16,ss_ext_sales_price#17,ss_ext_wholesale_cost#18,ss_ext_list_price#19,ss_ext_tax#20,ss_coupon_amt#21,ss_net_paid#22,ss_net_paid_inc_tax#23,ss_net_profit#24] parquet
+   +- SubqueryAlias spark_catalog.ds1g.date_dim
+      +- Relation ds1g.date_dim[d_date_sk#25,d_date_id#26,d_date#27,d_month_seq#28,d_week_seq#29,d_quarter_seq#30,d_year#31,d_dow#32,d_moy#33,d_dom#34,d_qoy#35,d_fy_year#36,d_fy_quarter_seq#37,d_fy_week_seq#38,d_day_name#39,d_quarter_name#40,d_holiday#41,d_weekend#42,d_following_holiday#43,d_first_dom#44,d_last_dom#45,d_same_day_ly#46,d_same_day_lq#47,d_current_day#48,... 4 more fields] parquet
+
+== Optimized Logical Plan ==
+Aggregate [d_date_sk#25], [d_date_sk#25, count(1) AS cnt#0L]
++- Project [d_date_sk#25]
+   +- Join Inner, (ss_sold_date_sk#2 = d_date_sk#25)
+      :- Project [ss_sold_date_sk#2]
+      :  +- Filter isnotnull(ss_sold_date_sk#2)
+      :     +- Relation ds1g.store_sales[ss_sold_date_sk#2,ss_sold_time_sk#3,ss_item_sk#4,ss_customer_sk#5,ss_cdemo_sk#6,ss_hdemo_sk#7,ss_addr_sk#8,ss_store_sk#9,ss_promo_sk#10,ss_ticket_number#11,ss_quantity#12,ss_wholesale_cost#13,ss_list_price#14,ss_sales_price#15,ss_ext_discount_amt#16,ss_ext_sales_price#17,ss_ext_wholesale_cost#18,ss_ext_list_price#19,ss_ext_tax#20,ss_coupon_amt#21,ss_net_paid#22,ss_net_paid_inc_tax#23,ss_net_profit#24] parquet
+      +- Project [d_date_sk#25]
+         +- Filter isnotnull(d_date_sk#25)
+            +- Relation ds1g.date_dim[d_date_sk#25,d_date_id#26,d_date#27,d_month_seq#28,d_week_seq#29,d_quarter_seq#30,d_year#31,d_dow#32,d_moy#33,d_dom#34,d_qoy#35,d_fy_year#36,d_fy_quarter_seq#37,d_fy_week_seq#38,d_day_name#39,d_quarter_name#40,d_holiday#41,d_weekend#42,d_following_holiday#43,d_first_dom#44,d_last_dom#45,d_same_day_ly#46,d_same_day_lq#47,d_current_day#48,... 4 more fields] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=true
++- == Final Plan ==
+   *(3) HashAggregate(keys=[d_date_sk#25], functions=[count(1)], output=[d_date_sk#25, cnt#0L])
+   +- AQEShuffleRead coalesced
+      +- ShuffleQueryStage 1
+         +- Exchange hashpartitioning(d_date_sk#25, 200), ENSURE_REQUIREMENTS, [id=#144]
+            +- *(2) HashAggregate(keys=[d_date_sk#25], functions=[partial_count(1)], output=[d_date_sk#25, count#107L])
+               +- *(2) Project [d_date_sk#25]
+                  +- *(2) BroadcastHashJoin [ss_sold_date_sk#2], [d_date_sk#25], Inner, BuildRight, false
+                     :- *(2) Filter isnotnull(ss_sold_date_sk#2)
+                     :  +- *(2) ColumnarToRow
+                     :     +- FileScan parquet ds1g.store_sales[ss_sold_date_sk#2] Batched: true, DataFilters: [isnotnull(ss_sold_date_sk#2)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/store_sales], PartitionFilters: [], PushedFilters: [IsNotNull(ss_sold_date_sk)], ReadSchema: struct<ss_sold_date_sk:int>
+                     +- BroadcastQueryStage 0
+                        +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [id=#86]
+                           +- *(1) Filter isnotnull(d_date_sk#25)
+                              +- *(1) ColumnarToRow
+                                 +- FileScan parquet ds1g.date_dim[d_date_sk#25] Batched: true, DataFilters: [isnotnull(d_date_sk#25)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/date_dim], PartitionFilters: [], PushedFilters: [IsNotNull(d_date_sk)], ReadSchema: struct<d_date_sk:int>
++- == Initial Plan ==
+   HashAggregate(keys=[d_date_sk#25], functions=[count(1)], output=[d_date_sk#25, cnt#0L])
+   +- Exchange hashpartitioning(d_date_sk#25, 200), ENSURE_REQUIREMENTS, [id=#62]
+      +- HashAggregate(keys=[d_date_sk#25], functions=[partial_count(1)], output=[d_date_sk#25, count#107L])
+         +- Project [d_date_sk#25]
+            +- BroadcastHashJoin [ss_sold_date_sk#2], [d_date_sk#25], Inner, BuildRight, false
+               :- Filter isnotnull(ss_sold_date_sk#2)
+               :  +- FileScan parquet ds1g.store_sales[ss_sold_date_sk#2] Batched: true, DataFilters: [isnotnull(ss_sold_date_sk#2)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/store_sales], PartitionFilters: [], PushedFilters: [IsNotNull(ss_sold_date_sk)], ReadSchema: struct<ss_sold_date_sk:int>
+               +- BroadcastExchange HashedRelationBroadcastMode(List(cast(input[0, int, false] as bigint)),false), [id=#57]
+                  +- Filter isnotnull(d_date_sk#25)
+                     +- FileScan parquet ds1g.date_dim[d_date_sk#25] Batched: true, DataFilters: [isnotnull(d_date_sk#25)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/date_dim], PartitionFilters: [], PushedFilters: [IsNotNull(d_date_sk)], ReadSchema: struct<d_date_sk:int>
+
+```
+
+
+
+
+
+
 
