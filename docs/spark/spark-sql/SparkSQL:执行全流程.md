@@ -596,7 +596,7 @@ val batches = (
 
 
 
-## SparkPlanner
+## SparkPlanner extends SparkStrategies extends QueryPlanner
 
 把逻辑计划转为物理计划，其父类QueryPlanner的plan方法会把各种策略应用到逻辑计划上
 
@@ -604,6 +604,8 @@ val batches = (
 SparkPlanner将逻辑执行计划转换成物理执行计划，即将逻辑执行计划树中的逻辑节点转换成物理节点，如Join转换成HashJoinExec/SortMergeJoinExec...，Filter转成FilterExec等
 
 ![666](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/9a5924e9df08733fdc1ec8896eb2736df65f3e16.jpeg)
+
+### 物理计划Strategy
 
 Spark的`Stragety`有8个:
 
@@ -618,6 +620,340 @@ Spark的`Stragety`有8个:
 
 上述很多Stragety都是基于规则的策略。
 JoinSelection用到了相关的统计信息来选择将Join转换为BroadcastHashJoinExec还是ShuffledHashJoinExec还是SortMergeJoinExec，属于CBO基于代价的策略。
+
+在实现上，各种 Strategy会匹配传入的 LogicalPlan节点，根据节点或节点组合的不同情形 实行一对一 的映射或多对一 的映射 。一对一 的映射方式比较直观，以 BasicOperators 为例，该 Strategy实现了各种基本操作的转换， 其中列出了大量的映射关系，包括 Sort对应 SortExec, Union 对应 UnionExec等 。 多对一 的情况涉及对多个 LogicalPlan 节点进行组合转换，这里称为<font color=red>**逻辑算子树的模式匹配** </font>。 目前在 SparkSQL 中，逻辑算子树的节点模式共有 4种
+
+- ExtractEquiJoinKeys:针对具有相等条件的 Join操作的算子集合，提取出其中的 Join条件、左子节点和右子节点等信息 。
+- ExtractFiltersAndinnerJoins: 收集 Inner类型 Join操作中的过滤条件，目前仅支持对左子树进行处理 。
+- PhysicalAggregation:针对聚合操作，提取出聚合算子中的各个部分，并对一些表达式进行初步的转换 。
+- PhysicalOperation:匹配逻辑算子树中 的 Project和 Filter等节点，返回投影列、过滤条件集合和子节点 。
+
+以上策略如何使用逻辑算子树的模式匹配呢？ 
+
+#### FileSourceStrategy
+
+该策略针对的典型模式是: 能够匹配 PhysicalOperation 的节点集合加上 LogicalRelation 节点 。 在这种情况下，该策略会根 据数据文件信息构建 FileSourceScanExec这样的物理执行计划，并在此物理执行计划后添加过 滤( FilterExec)与列剪裁( ProjectExec)物理计划 。
+
+*Note:* 需要注意的是，即使在逻辑算子树 上 LogicalRelation 节点往上 存在多 个过滤算子与投影 算子，经过 PhysicalOperation 模式匹配，也会整合成为一个。
+
+```scala
+  def apply(plan: LogicalPlan): Seq[SparkPlan] = plan match {
+    case ScanOperation(projects, filters,
+      l @ LogicalRelation(fsRelation: HadoopFsRelation, _, table, _)) =>
+      // Filters 分为四类
+      //  - partition keys only - 裁剪读取目录
+      //  - bucket keys only - optionally 裁剪文件
+      //  - keys stored in the data only - optionally used to skip groups of data in files
+      //  - filters that need to be evaluated again after the scan
+      val filterSet = ExpressionSet(filters)
+
+      val normalizedFilters = DataSourceStrategy.normalizeExprs(
+        filters.filter(_.deterministic), l.output)
+
+      val partitionColumns =
+        l.resolve(
+          fsRelation.partitionSchema, fsRelation.sparkSession.sessionState.analyzer.resolver)
+      val partitionSet = AttributeSet(partitionColumns)
+
+      // this partitionKeyFilters should be the same with the ones being executed in
+      // PruneFileSourcePartitions
+      val partitionKeyFilters = DataSourceStrategy.getPushedDownFilters(partitionColumns,
+        normalizedFilters)
+
+      // subquery expressions are filtered out because they can't be used to prune buckets or pushed
+      // down as data filters, yet they would be executed
+      val normalizedFiltersWithoutSubqueries =
+        normalizedFilters.filterNot(SubqueryExpression.hasSubquery)
+
+      val bucketSpec: Option[BucketSpec] = fsRelation.bucketSpec
+      val bucketSet = if (shouldPruneBuckets(bucketSpec)) {
+        genBucketSet(normalizedFiltersWithoutSubqueries, bucketSpec.get)
+      } else {
+        None
+      }
+
+      val dataColumns =
+        l.resolve(fsRelation.dataSchema, fsRelation.sparkSession.sessionState.analyzer.resolver)
+
+      // Partition keys are not available in the statistics of the files.
+      // `dataColumns` might have partition columns, we need to filter them out.
+      val dataColumnsWithoutPartitionCols = dataColumns.filterNot(partitionColumns.contains)
+      val dataFilters = normalizedFiltersWithoutSubqueries.flatMap { f =>
+        if (f.references.intersect(partitionSet).nonEmpty) {
+          extractPredicatesWithinOutputSet(f, AttributeSet(dataColumnsWithoutPartitionCols))
+        } else {
+          Some(f)
+        }
+      }
+      val supportNestedPredicatePushdown =
+        DataSourceUtils.supportNestedPredicatePushdown(fsRelation)
+      val pushedFilters = dataFilters
+        .flatMap(DataSourceStrategy.translateFilter(_, supportNestedPredicatePushdown))
+      logInfo(s"Pushed Filters: ${pushedFilters.mkString(",")}")
+
+      // Predicates with both partition keys and attributes need to be evaluated after the scan.
+      val afterScanFilters = filterSet -- partitionKeyFilters.filter(_.references.nonEmpty)
+      logInfo(s"Post-Scan Filters: ${afterScanFilters.mkString(",")}")
+
+      val filterAttributes = AttributeSet(afterScanFilters)
+      val requiredExpressions: Seq[NamedExpression] = filterAttributes.toSeq ++ projects
+      val requiredAttributes = AttributeSet(requiredExpressions)
+
+      val readDataColumns =
+        dataColumns
+          .filter(requiredAttributes.contains)
+          .filterNot(partitionColumns.contains)
+      val outputSchema = readDataColumns.toStructType
+      logInfo(s"Output Data Schema: ${outputSchema.simpleString(5)}")
+
+      val metadataStructOpt = l.output.collectFirst {
+        case FileSourceMetadataAttribute(attr) => attr
+      }
+
+      val metadataColumns = metadataStructOpt.map { metadataStruct =>
+        metadataStruct.dataType.asInstanceOf[StructType].fields.map { field =>
+          FileSourceMetadataAttribute(field.name, field.dataType)
+        }.toSeq
+      }.getOrElse(Seq.empty)
+
+      // outputAttributes should also include the metadata columns at the very end
+      val outputAttributes = readDataColumns ++ partitionColumns ++ metadataColumns
+
+   //    构造FileSourceScanExec算子
+      val scan =
+        FileSourceScanExec(
+          fsRelation,
+          outputAttributes,
+          outputSchema,
+          partitionKeyFilters.toSeq,
+          bucketSet,
+          None,
+          dataFilters,
+          table.map(_.identifier))
+
+      // extra Project node: wrap flat metadata columns to a metadata struct
+      val withMetadataProjections = metadataStructOpt.map { metadataStruct =>
+        val metadataAlias =
+          Alias(CreateStruct(metadataColumns), METADATA_NAME)(exprId = metadataStruct.exprId)
+        execution.ProjectExec(
+          scan.output.dropRight(metadataColumns.length) :+ metadataAlias, scan)
+      }.getOrElse(scan)
+
+      val afterScanFilter = afterScanFilters.toSeq.reduceOption(expressions.And)
+      val withFilter = afterScanFilter
+        .map(execution.FilterExec(_, withMetadataProjections))
+        .getOrElse(withMetadataProjections)
+    //最终的Project如果和Filter的输出一样，则省略Project
+      val withProjections = if (projects == withFilter.output) {
+        withFilter
+      } else {
+        execution.ProjectExec(projects, withFilter)
+      }
+
+      withProjections :: Nil
+
+    case _ => Nil
+  }
+```
+
+#### JoinSelection
+
+##### 各种类型Join的特点和限制
+
+- Broadcast hash join (BHJ):
+    Only supported for equi-joins, while the join keys do not need to be sortable.
+    Supported for all join types except full outer joins.
+    BHJ usually performs faster than the other join algorithms when the broadcast side is
+    small. However, broadcasting tables is a network-intensive operation and it could cause
+    OOM or perform badly in some cases, especially when the build/broadcast side is big.
+- Shuffle hash join:
+    Only supported for equi-joins, while the join keys do not need to be sortable.
+    Supported for all join types.
+    Building hash map from table is a memory-intensive operation and it could cause OOM
+    when the build side is big.
+- Shuffle sort merge join (SMJ):
+    Only supported for equi-joins and the join keys have to be sortable.
+    Supported for all join types.
+- Broadcast nested loop join (BNLJ):
+    Supports both equi-joins and non-equi-joins.
+    Supports all the join types, but the implementation is optimized for:
+      1) broadcasting the left side in a right outer join;
+      2) broadcasting the right side in a left outer, left semi, left anti or existence join;
+      3) broadcasting either side in an inner-like join.
+    For other cases, we need to scan the data multiple times, which can be rather slow.
+- Shuffle-and-replicate nested loop join (a.k.a. cartesian product join):
+    Supports both equi-joins and non-equi-joins.
+    Supports only inner like joins.
+
+
+
+If it is an equi-join, we first look at the join hints w.r.t. the following order:
+  1. broadcast hint: pick broadcast hash join if the join type is supported. If both sides
+     have the broadcast hints, choose the smaller side (based on stats) to broadcast.
+  2. sort merge hint: pick sort merge join if join keys are sortable.
+  3. shuffle hash hint: We pick shuffle hash join if the join type is supported. If both
+     sides have the shuffle hash hints, choose the smaller side (based on stats) as the
+     build side.
+  4. shuffle replicate NL hint: pick cartesian product if join type is inner like.
+
+If there is no hint or the hints are not applicable, we follow these rules one by one:
+  1. Pick broadcast hash join if one side is small enough to broadcast, and the join type
+     is supported. If both sides are small, choose the smaller side (based on stats)
+     to broadcast.
+  2. Pick shuffle hash join if one side is small enough to build local hash map, and is
+     much smaller than the other side, and `spark.sql.join.preferSortMergeJoin` is false.
+  3. Pick sort merge join if the join keys are sortable.
+  4. Pick cartesian product if join type is inner like.
+  5. Pick broadcast nested loop join as the final solution. It may OOM but we don't have
+     other choice.
+
+
+
+```scala
+        if (hint.isEmpty) {
+          createJoinWithoutHint()
+        } else {
+          createBroadcastHashJoin(true)
+            .orElse { if (hintToSortMergeJoin(hint)) createSortMergeJoin() else None }
+            .orElse(createShuffleHashJoin(true))
+            .orElse { if (hintToShuffleReplicateNL(hint)) createCartesianProduct() else None }
+            .getOrElse(createJoinWithoutHint())
+        }
+
+
+        def createJoinWithoutHint() = {
+          createBroadcastHashJoin(false)
+            .orElse(createShuffleHashJoin(false))
+            .orElse(createSortMergeJoin())
+            .orElse(createCartesianProduct())
+            .getOrElse {
+              // This join could be very slow or OOM
+              val buildSide = getSmallerSide(left, right)
+              Seq(joins.BroadcastNestedLoopJoinExec(
+                planLater(left), planLater(right), buildSide, joinType, j.condition))
+            }
+        }
+
+        def createJoinWithoutHint() = {
+          createBroadcastHashJoin(false)
+            .orElse(createShuffleHashJoin(false))
+            .orElse(createSortMergeJoin())
+            .orElse(createCartesianProduct())
+            .getOrElse {
+              // This join could be very slow or OOM
+              val buildSide = getSmallerSide(left, right)
+              Seq(joins.BroadcastNestedLoopJoinExec(
+                planLater(left), planLater(right), buildSide, joinType, j.condition))
+            }
+        }
+```
+
+这些createJoinXXX方法都是返回一个Option，创建广播表时构建buildSide时，如果两个表都不能广播则返回一个None。
+
+
+
+##### canBroadcastBySize
+
+根据表的sizeInBytes决定是否广播表
+
+```scala
+  def canBroadcastBySize(plan: LogicalPlan, conf: SQLConf): Boolean = {
+    val autoBroadcastJoinThreshold = if (plan.stats.isRuntime) {
+      conf.getConf(SQLConf.ADAPTIVE_AUTO_BROADCASTJOIN_THRESHOLD)
+        .getOrElse(conf.autoBroadcastJoinThreshold)
+    } else {
+      conf.autoBroadcastJoinThreshold
+    }
+    plan.stats.sizeInBytes >= 0 && plan.stats.sizeInBytes <= autoBroadcastJoinThreshold
+  }
+
+```
+
+
+
+### createSparkPlan
+
+这里会把逻辑计划转为物理计划，需要用到strategies
+
+```scala
+  def createSparkPlan(
+      sparkSession: SparkSession,
+      planner: SparkPlanner,
+      plan: LogicalPlan): SparkPlan = {
+    // 先插入一个ReturnAnswer节点，用于识别树根
+    // 这个next() 就是取第一个plan， 将来会选择最优的
+    planner.plan(ReturnAnswer(plan)).next()
+  }
+
+
+  override def plan(plan: LogicalPlan): Iterator[SparkPlan] = {
+    super.plan(plan).map { p =>
+      val logicalPlan = plan match {
+        //如果是ReturnAnswer节点，说明找到了根节点，则丢掉ReturnAnswer并返回树根，作为logicalPlan
+        case ReturnAnswer(rootPlan) => rootPlan
+        //非ReturnAnswer则不处理
+        case _ => plan
+      }
+      //所有的节点都要链接到同一个logicalPlan
+      p.setLogicalLink(logicalPlan)
+      p
+    }
+  }
+```
+
+
+
+### plan
+
+QueryPlanner.plan
+
+生成物理 计 划的实现代码如下， plan()方法传入 LogicalPlan 作为参数 ， 将 strategies 应用 到 LogicalPlan，生成物理计划候选集合( Candidates) 。 如果该集合中存在 PlanLater 类型的 SparkPlan， 则 通过 placeholder 中间变 量取 出对应的 LogicalPlan 后，递归调用 plan()方法，将 PlanLater 替换为子节点的物理计划 。 最后，对物理计划列表进行过滤，去掉一些不够高效的物 理计划 。
+
+![image-20230714114512998](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230714114512998.png)
+
+```scala
+  def plan(plan: LogicalPlan): Iterator[PhysicalPlan] = {
+    // Obviously a lot to do here still...
+
+    // Collect physical plan candidates.
+    val candidates = strategies.iterator.flatMap(_(plan))
+
+    // The candidates may contain placeholders marked as [[planLater]],
+    // so try to replace them by their child plans.
+    val plans = candidates.flatMap { candidate =>
+      val placeholders = collectPlaceholders(candidate)
+
+      if (placeholders.isEmpty) {
+        //不包含placeholders，则可以直接返回
+        Iterator(candidate)
+      } else {
+        // Plan the logical plan marked as [[planLater]] and replace the placeholders.
+        placeholders.iterator.foldLeft(Iterator(candidate)) {
+          case (candidatesWithPlaceholders, (placeholder, logicalPlan)) =>
+            // Plan the logical plan for the placeholder.
+            // placeholders对应的逻辑计划转为物理计划，这里递归调用
+            val childPlans = this.plan(logicalPlan)
+
+            candidatesWithPlaceholders.flatMap { candidateWithPlaceholders =>
+              childPlans.map { childPlan =>
+                // Replace the placeholder by the child plan
+                candidateWithPlaceholders.transformUp {
+                  case p if p.eq(placeholder) => childPlan
+                }
+              }
+            }
+        }
+      }
+    }
+
+    val pruned = prunePlans(plans)
+    assert(pruned.hasNext, s"No plan for $plan")
+    pruned
+  }
+
+```
+
+
 
 ## QueryExecution.PrepareForExecution
 

@@ -4,9 +4,31 @@
 
 [还可参考](https://zhuanlan.zhihu.com/p/535174818)
 
+[深入研究Apache Spark 3.0的新功能](https://blog.csdn.net/lucklilili/article/details/125135291)直播回放：https://developer.aliyun.com/live/2894，http://www.dawuzhe.cn/112197.html
+
+[inter自适应查询执行AQE简介](https://www.pianshen.com/article/39801815777/)
+
+[CBO](https://blog.csdn.net/zyzzxycj/article/details/106469572)，[CBO](https://blog.csdn.net/zyzzxycj/article/details/85839606?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522159098356319725247658642%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fblog.%2522%257D&request_id=159098356319725247658642&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~blog~first_rank_v2~rank_blog_default-1-85839606.pc_v2_rank_blog_default&utm_term=CBO)
+
 # SparkSQL Adaptive Execution简介
 
-SparkSQL Adaptive Execution 是 Spark SQL 针对 SQL 查询计划的一种自适应执行优化技术。该技术的主要目标是在执行过程中自适应地调整执行计划，以提高查询效率。了解源码实现可以更好地理解 Adaptive Execution 的工作原理和优化策略。
+在Spark1.0中所有的Catalyst Optimizer都是基于规则 (rule) 优化的。为了产生比较好的查询规则，优化器需要理解数据的特性，于是在Spark2.0中引入了基于代价的优化器 （cost-based optimizer），也就是所谓的CBO。然而，CBO也无法解决很多问题，比如：
+
+- 数据统计信息普遍缺失，统计信息的收集代价较高；
+- 储存计算分离的架构使得收query集到的统计信息可能不再准确；
+- Spark部署在某一单一的硬件架构上，cost很难被估计；
+- Spark的UDF（User-defined Function）简单易用，种类繁多，但是对于CBO来说是个黑盒子，无法估计其cost。
+- 手动指定执行hint跟不上数据变化。
+
+> CBO默认是开启的，spark.conf.set("spark.sql.cbo.enabled", false)
+
+而在Spark 3.0时代，AQE完全基于精确的运行时统计信息进行优化，引入了一个基本的概念Query Stages，并且以Query Stage为粒度，进行运行时的优化, 原理如下图
+
+![image-20230718153928377](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230718153928377.png)
+
+![image-20230718152515266](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230718152515266.png)
+
+SparkSQL Adaptive Execution 是 Spark SQL 针对 SQL 查询计划的一种自适应执行优化技术。该技术的主要目标是在执行过程中自适应地调整执行计划，以提高查询效率。
 
 ![image-20230616165125482](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230616165125482.png)
 
@@ -360,6 +382,385 @@ AdaptiveSparkPlanExec(newPlan, adaptiveExecutionContext, preprocessingRules, isS
 2. Broadcast query stage
    对应BroadcastQueryStageExec算子，物化输出到driver端的array中，spark在执行其他算子前广播array
 
+### 核心接口
+
+QueryStageExec本身也是一个plan叶子节点
+
+```scala
+abstract class QueryStageExec extends LeafExecNode { 
+  //子类需要实现的接口  
+   def getRuntimeStatistics: Statistics
+
+  //计算统计信息
+  def computeStats(): Option[Statistics] = if (isMaterialized) {
+    val runtimeStats = getRuntimeStatistics
+    val dataSize = runtimeStats.sizeInBytes.max(0)
+    val numOutputRows = runtimeStats.rowCount.map(_.max(0))
+    Some(Statistics(dataSize, numOutputRows, isRuntime = true))
+  } else {
+    None
+  }
+  
+
+
+  /**
+   * Cancel the stage materialization if in progress; otherwise do nothing.
+   */
+  def cancel(): Unit
+
+  /**
+    物化当前stage
+   * Materialize this query stage, to prepare for the execution, like submitting map stages,
+   * broadcasting data, etc. The caller side can use the returned [[Future]] to wait until this
+   * stage is ready.
+   */
+  final def materialize(): Future[Any] = {
+    logDebug(s"Materialize query stage ${this.getClass.getSimpleName}: $id")
+    doMaterialize()
+  }
+ def doMaterialize(): Future[Any]
+  
+}  
+```
+
+下面看两个子类如何实现getRuntimeStatistics
+
+### ShuffleQueryStageExec
+
+#### 统计信息获取
+
+我们看它如何实现getRuntimeStatistics，它交给ShuffleExchangeLike来实现了，而ShuffleExchangeLike的实现类是ShuffleExchangeExec算子
+
+```scala
+  override def getRuntimeStatistics: Statistics = shuffle.runtimeStatistics  
+@transient val shuffle = plan match {
+    case s: ShuffleExchangeLike => s
+    case ReusedExchangeExec(_, s: ShuffleExchangeLike) => s
+    case _ =>
+      throw new IllegalStateException(s"wrong plan for shuffle stage:\n ${plan.treeString}")
+  }
+```
+
+ShuffleExchangeExec通过metrics获取统计信息, 注意，它的rowCount的计算是shuffle写的数据量
+
+```scala
+// ShuffleExchangeExec.scala 
+override def runtimeStatistics: Statistics = {
+    val dataSize = metrics("dataSize").value
+    val rowCount = metrics(SQLShuffleWriteMetricsReporter.SHUFFLE_RECORDS_WRITTEN).value
+    Statistics(dataSize, Some(rowCount))
+  }
+```
+
+那么ShuffleExchangeExec算子如何计算metrics呢？ 
+
+会用到ShuffleWriteMetricsReporter和ShuffleWriterProcessor，driver端会创建ShuffleWriterProcessor并放入ShuffleDependency，executor在每个ShuffleMapTask中会使用它：
+
+```scala
+  private lazy val serializer: Serializer =
+    new UnsafeRowSerializer(child.output.size, longMetric("dataSize"))
+
+
+lazy val shuffleDependency : ShuffleDependency[Int, InternalRow, InternalRow] = {
+  // 创建一个ShuffleDependency
+    val dep = ShuffleExchangeExec.prepareShuffleDependency(
+      inputRDD,
+      child.output,
+      outputPartitioning,
+      serializer,
+      writeMetrics)
+    metrics("numPartitions").set(dep.partitioner.numPartitions)
+    val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
+    SQLMetrics.postDriverMetricUpdates(
+      sparkContext, executionId, metrics("numPartitions") :: Nil)
+    dep
+  }
+
+  def prepareShuffleDependency(
+      rdd: RDD[InternalRow],
+      outputAttributes: Seq[Attribute],
+      newPartitioning: Partitioning,
+      serializer: Serializer,
+      writeMetrics: Map[String, SQLMetric]){
+  //    ... ...
+    //创建ShuffleDependency时，会创建一个SQL专用的ShuffleWriterProcessor，它使用SQLShuffleWriteMetricsReporter包装了默认的metrics reporter
+        val dependency =
+      new ShuffleDependency[Int, InternalRow, InternalRow](
+        rddWithPartitionIds,
+        new PartitionIdPassthrough(part.numPartitions),
+        serializer,
+        shuffleWriterProcessor = createShuffleWriteProcessor(writeMetrics))//创建ShuffleWriteProcessor
+
+    dependency
+  }
+
+
+  def createShuffleWriteProcessor(metrics: Map[String, SQLMetric]): ShuffleWriteProcessor = {
+    new ShuffleWriteProcessor {
+      override protected def createMetricsReporter(
+          context: TaskContext): ShuffleWriteMetricsReporter = {
+        //这个createShuffleWriteProcessor使用SQLShuffleWriteMetricsReporter
+        new SQLShuffleWriteMetricsReporter(context.taskMetrics().shuffleWriteMetrics, metrics)
+      }
+    }
+  }
+```
+
+创建ShuffleDependency时，会创建一个SQL专用的ShuffleWriterProcessor，它使用SQLShuffleWriteMetricsReporter包装了默认的metrics reporter。 
+
+##### ShuffleWriteMetricsReporter
+
+ShuffleWriteMetricsReporter特质是shuffle write metrics报告器接口， 有两个实现
+
+1. ShuffleWriteMetrics：用累加器实现的metrics
+2. SQLShuffleWriteMetricsReporter：SQL exchange 操作的shuffle write metrics。 它的构造包含了一个它需要更新的其他的ShuffleWriteMetricsReporter，它更新自身metrics的同时还会更新一个附属的metricsReporter
+
+ShuffleWriterProcessor从shuffleManager获取一个writer时会用到reporter，会传给UnsafeShuffleWriter和BypassMergeSortShuffleWriter
+
+##### ShuffleWriterProcessor(获取MapStatus)
+
+driver端创建ShuffleWriterProcessor并放入了*ShuffleDependency*，executor在每个ShuffleMapTask中会使用它。
+
+它的核心就是writer接口, 对应某个特定分区的write进程，控制从shuffleManager获取的shuffleWriter的生命周期、以及触发rdd compute、最终返回一个MapStatus（调用writer的stop方法）
+
+```scala
+  def write(
+      rdd: RDD[_],
+      dep: ShuffleDependency[_, _, _],
+      mapId: Long,
+      context: TaskContext,
+      partition: Partition): MapStatus = {
+    var writer: ShuffleWriter[Any, Any] = null
+    try {
+      val manager = SparkEnv.get.shuffleManager
+      //从shuffleManager获取一个writer， 注意，这里会使用reporter
+      /***
+       只有UnsafeShuffleWriter和BypassMergeSortShuffleWriter才会使用这个reporter
+      */
+      writer = manager.getWriter[Any, Any](
+        dep.shuffleHandle,
+        mapId,
+        context,
+        createMetricsReporter(context))//这个参数就是上面提到的SQLShuffleWriteMetricsReporter
+      //执行写操作
+      writer.write(
+        rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
+      //获取mapStatus对象，调用writer的stop方法，success表示map是否完成
+      val mapStatus = writer.stop(success = true)
+      if (mapStatus.isDefined) {
+        // Check if sufficient shuffle mergers are available now for the ShuffleMapTask to push
+        if (dep.shuffleMergeAllowed && dep.getMergerLocs.isEmpty) {
+          val mapOutputTracker = SparkEnv.get.mapOutputTracker
+          val mergerLocs =
+            mapOutputTracker.getShufflePushMergerLocations(dep.shuffleId)
+          if (mergerLocs.nonEmpty) {
+            dep.setMergerLocs(mergerLocs)
+          }
+        }
+        // Initiate shuffle push process if push based shuffle is enabled
+        // The map task only takes care of converting the shuffle data file into multiple
+        // block push requests. It delegates pushing the blocks to a different thread-pool -
+        // ShuffleBlockPusher.BLOCK_PUSHER_POOL.
+        if (!dep.shuffleMergeFinalized) {
+          manager.shuffleBlockResolver match {
+            case resolver: IndexShuffleBlockResolver =>
+              logInfo(s"Shuffle merge enabled with ${dep.getMergerLocs.size} merger locations " +
+                s" for stage ${context.stageId()} with shuffle ID ${dep.shuffleId}")
+              logDebug(s"Starting pushing blocks for the task ${context.taskAttemptId()}")
+              val dataFile = resolver.getDataFile(dep.shuffleId, mapId)
+              new ShuffleBlockPusher(SparkEnv.get.conf)
+                .initiateBlockPush(dataFile, writer.getPartitionLengths(), dep, partition.index)
+            case _ =>
+          }
+        }
+      }
+      mapStatus.get
+    } catch {
+      case e: Exception =>
+        try {
+          if (writer != null) {
+            writer.stop(success = false)
+          }
+        } catch {
+          case e: Exception =>
+            log.debug("Could not stop writer", e)
+        }
+        throw e
+    }
+  }
+```
+
+##### writer如何创建MapStatus?
+
+###### UnsafeShuffleWriter
+
+UnsafeShuffleWriter的构造就需要传入上面介绍的SQLShuffleWriteMetricsReporter
+
+例如，它在merge两个spill文件时更新bytes
+
+```scala
+      for (int partition = 0; partition < numPartitions; partition++) {
+        boolean copyThrewException = true;
+        ShufflePartitionWriter writer = mapWriter.getPartitionWriter(partition);
+        WritableByteChannelWrapper resolvedChannel = writer.openChannelWrapper()
+            .orElseGet(() -> new StreamFallbackChannelWrapper(openStreamUnchecked(writer)));
+        try {
+          for (int i = 0; i < spills.length; i++) {
+            long partitionLengthInSpill = spills[i].partitionLengths[partition];
+            final FileChannel spillInputChannel = spillInputChannels[i];
+            final long writeStartTime = System.nanoTime();
+            Utils.copyFileStreamNIO(
+                spillInputChannel,
+                resolvedChannel.channel(),
+                spillInputChannelPositions[i],
+                partitionLengthInSpill);
+            copyThrewException = false;
+            spillInputChannelPositions[i] += partitionLengthInSpill;
+            writeMetrics.incWriteTime(System.nanoTime() - writeStartTime);
+          }
+        } finally {
+          Closeables.close(resolvedChannel, copyThrewException);
+        }
+        //获取并累加写的bytes数
+        long numBytes = writer.getNumBytesWritten();
+        writeMetrics.incBytesWritten(numBytes);
+      }
+```
+
+
+
+###### SortShuffleWriter
+
+```scala
+private[spark] class SortShuffleWriter[K, V, C](
+    handle: BaseShuffleHandle[K, V, C],
+    mapId: Long,
+    context: TaskContext,
+    shuffleExecutorComponents: ShuffleExecutorComponents) 
+  extends ShuffleWriter[K, V] with Logging {
+ //    ... ...
+  override def write(records: Iterator[Product2[K, V]]): Unit = {
+    sorter = if (dep.mapSideCombine) {
+      new ExternalSorter[K, V, C](
+        context, dep.aggregator, Some(dep.partitioner), dep.keyOrdering, dep.serializer)
+    } else {
+      new ExternalSorter[K, V, V](
+        context, aggregator = None, Some(dep.partitioner), ordering = None, dep.serializer)
+    }
+    //分区数据插入ExternalSorter
+    sorter.insertAll(records)
+
+    //创建一个writer，当前只有LocalDiskShuffleMapOutputWriter
+    val mapOutputWriter = shuffleExecutorComponents.createMapOutputWriter(
+      dep.shuffleId, mapId, dep.partitioner.numPartitions)
+    //分区数据写入存储，这里会更新metrics
+    sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
+    //获取分区大小
+    partitionLengths = mapOutputWriter.commitAllPartitions(sorter.getChecksums).getPartitionLengths
+    mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
+  }
+
+//ExternalSorter.scala
+  def writePartitionedMapOutput(
+      shuffleId: Int,
+      mapId: Long,
+      mapOutputWriter: ShuffleMapOutputWriter): Unit = {
+    ... ...
+
+    context.taskMetrics().incMemoryBytesSpilled(memoryBytesSpilled)
+    context.taskMetrics().incDiskBytesSpilled(diskBytesSpilled)
+    context.taskMetrics().incPeakExecutionMemory(peakMemoryUsedBytes)
+  }
+```
+
+
+
+
+
+
+
+
+
+#### 物化
+
+会提交一个ShuffleJob
+
+```scala
+  @transient val shuffle = plan match {
+    case s: ShuffleExchangeLike => s
+    case ReusedExchangeExec(_, s: ShuffleExchangeLike) => s
+    case _ =>
+      throw new IllegalStateException(s"wrong plan for shuffle stage:\n ${plan.treeString}")
+  }
+ //提交一个shuffleJob
+  @transient private lazy val shuffleFuture = shuffle.submitShuffleJob
+
+  override def doMaterialize(): Future[Any] = shuffleFuture
+```
+
+
+
+### BroadcastQueryStageExec
+
+#### 统计信息获取
+
+```scala
+ override def getRuntimeStatistics: Statistics = broadcast.runtimeStatistics
+  @transient val broadcast = plan match {
+    case b: BroadcastExchangeLike => b
+    case ReusedExchangeExec(_, b: BroadcastExchangeLike) => b
+    case _ =>
+      throw new IllegalStateException(s"wrong plan for broadcast stage:\n ${plan.treeString}")
+  }
+```
+
+它把统计任务交给了BroadcastExchangeLike特质，实现类是BroadcastExchangeExec算子，它仍然是使用metrics实现
+
+```scala 
+  override def runtimeStatistics: Statistics = {
+    val dataSize = metrics("dataSize").value
+    val rowCount = metrics("numOutputRows").value
+    Statistics(dataSize, Some(rowCount))
+  }
+```
+
+它的metrics计算是在relationFuture里实现的
+
+```scala
+  override lazy val relationFuture: Future[broadcast.Broadcast[Any]] = {
+            // Setup a job group here so later it may get cancelled by groupId if necessary.
+            sparkContext.setJobGroup(runId.toString, s"broadcast exchange (runId $runId)",
+              interruptOnCancel = true)
+            val beforeCollect = System.nanoTime()
+            // Use executeCollect/executeCollectIterator to avoid conversion to Scala types
+            //累加行数
+            val (numRows, input) = child.executeCollectIterator()
+            longMetric("numOutputRows") += numRows
+//构建表               
+            val relation = mode.transform(input, Some(numRows))
+            val dataSize = relation match {
+              case map: HashedRelation =>
+                map.estimatedSize
+              case arr: Array[InternalRow] =>
+                arr.map(_.asInstanceOf[UnsafeRow].getSizeInBytes.toLong).sum
+              case _ =>
+                throw new SparkException("[BUG] BroadcastMode.transform returned unexpected " +
+                  s"type: ${relation.getClass.getName}")
+            }
+            //累加dataSize
+            longMetric("dataSize") += dataSize
+```
+
+
+
+
+
+
+
+#### 物化
+
+同ShuffleQueryStageExec
+
 ## AdaptiveSparkPlanExec
 
 ```scala
@@ -382,15 +783,23 @@ case class AdaptiveSparkPlanExec(
 
 主要成员
 
-**optimizer**：对运行时物理计划进行重新优化的优化器，比如DynamicJoinSelection规则进行动态join调整，EliminateLimits规则剔除掉不必要的GlobalLimit计划
+**optimizer**：对运行时逻辑计划进行重新优化的优化器，比如DynamicJoinSelection规则进行动态join调整，EliminateLimits规则剔除掉不必要的GlobalLimit计划。 它继承了RuleExecutor，所以其逻辑和catalyst中的常规优化器是一样的
 
 **costEvaluator**：物理计划开销计算器，如果经过重新优化的物理计划比原计划开销小，那么将会替换掉原物理计划，默认是SimpleCostEvaluator
+
+以下三个规则序列是针对物理执行计划的，它们的执行逻辑都是applyPhysicalRules方法
 
 **queryStagePreparationRules**：对AdaptiveSparkPlanExec持有的原物理计划做初始化的应用规则，这里面核心的便是EnsureRequirements，它的作用就是在原物理计划链上插入shuffle物理计划
 
 **initialPlan**：初始化后的物理计划，也就是应用完queryStagePreparationRules规则后的物理计划，这时计划链中已经添加到shuffle物理计划
 
 **queryStageOptimizerRules**：在创建QueryStage前应用的一些规则，比如应用CoalesceShufflePartitions规则进行shuffle后的分区缩减，QueryStage的概念类似于rdd中的stage，以shuffle进行划分
+
+> PlanAdaptiveDynamicPruningFilters(this), 插入动态裁剪重用broadcast结果
+> ReuseAdaptiveSubquery(context.*subqueryCache*),重用子查询
+> OptimizeSkewInRebalancePartitions, 优化倾斜分区
+> CoalesceShufflePartitions(context.session),基于map输出统计缩减shuffle分区避免大量小reduce任务
+> OptimizeShuffleWithLocalRead：优化shuffle读为本地读
 
 **postStageCreationRules**：在创建完QueryStage后应用的一些规则，比如应用CollapseCodegenStages规则进行全阶段代码生成，插入一个WholeStageCodegenExec计划
 
@@ -409,7 +818,7 @@ case class AdaptiveSparkPlanExec(
     session.sessionState.adaptiveRulesHolder.runtimeOptimizerRules)
 ```
 
-
+从继承关系看，AQEOptimizer仍然继承了RuleExecutor，所以AQEOptimizer的执行和catalyst的优化器执行过程是一样的。
 
 ```scala
 class AQEOptimizer(conf: SQLConf, extendedRuntimeOptimizerRules: Seq[Rule[LogicalPlan]])
@@ -464,7 +873,70 @@ class AQEOptimizer(conf: SQLConf, extendedRuntimeOptimizerRules: Seq[Rule[Logica
 }
 ```
 
+#### Propagate Empty Relations
 
+该批规则包含了三个规则
+
+1. AQEPropagateEmptyRelation
+   继承了PropagateEmptyRelationBase规则，比PropagateEmptyRelationBase多优化一种case即单列NAAJ,识别空join
+2. ConvertToLocalRelation
+   把LocalRelation上的本地操作转为另一个LocalRelation。 
+   例如，对于Project操作，如果表达式列表都是AttributeReference则可以直接在逻辑计划阶段就完成计算而用一个结果LocalRelation代替。
+   limit操作也可对LocalRelation做一个take(limit)后封装为一个新的LocalRelation。
+   filter操作，如果都可计算，则直接计算完
+3. UpdateAttributeNullability
+
+#### DynamicJoinSelection
+
+> 这块代码需要了解Hint的实现
+
+这算一个重磅优化了，包含了三个join选择策略(等值join)：
+
+1. 识别一边有大量空分区的join,增加*NO_BROADCAST_HASH hint*避免广播，因为这种情况下shuffle join反而更快一些(join的一边为空)
+
+   > 默认非空分区比例spark.sql.adaptive.nonEmptyPartitionRatioForBroadcastJoin=0.2
+   >
+   > 这部分代码参考hasManyEmptyPartitions从MapOutputStatistics获取
+
+2. 识别所有分区都可构建本地map的join，增加*PREFER_SHUFFLE_HASH hint*以鼓励使用shuffle hash join 代替sort merge join
+
+3. 如果一个join满足NO_BROADCAST_HASH 和 PREFER_SHUFFLE_HASH那么增加SHUFFLE_HASH hint
+
+#### OptimizeOneRowPlan
+
+这个优化规则在catlyst里也有，使用最大行来优化plan
+
+1. 如果sort的输入不多于一行，则省略sort
+2. 如果分区local sort的输入不多于一行，省略本地sort
+3. 聚合的输入少于一行则转为project
+4. 聚合的输入行不多于一行，则所有的聚合表达式的distinct都设置为false
+
+```scala
+object OptimizeOneRowPlan extends Rule[LogicalPlan] {
+  override def apply(plan: LogicalPlan): LogicalPlan = {
+    plan.transformUpWithPruning(_.containsAnyPattern(SORT, AGGREGATE), ruleId) {
+      case Sort(_, _, child) if child.maxRows.exists(_ <= 1L) => child
+      case Sort(_, false, child) if child.maxRowsPerPartition.exists(_ <= 1L) => child
+      case agg @ Aggregate(_, _, child) if agg.groupOnly && child.maxRows.exists(_ <= 1L) =>
+        Project(agg.aggregateExpressions, child)
+      case agg: Aggregate if agg.child.maxRows.exists(_ <= 1L) =>
+        agg.transformExpressions {
+          case aggExpr: AggregateExpression if aggExpr.isDistinct =>
+            aggExpr.copy(isDistinct = false)
+        }
+    }
+  }
+}
+```
+
+
+
+#### EliminateLimits
+
+1. 如果输入数据行数小于limit数，则省略limit
+2. 合并相邻的limit
+
+extendedRuntimeOptimizerRules是用户指定的扩展的优化器
 
 ### doExecute 入口
 
@@ -972,7 +1444,7 @@ right: [R1, R2, R3, R4]
 
 
 
-### *queryStageOptimizerRules*
+### queryStageOptimizerRules
 
 在一个新query stage执行前应用的一些优化规则，
 
@@ -987,6 +1459,49 @@ right: [R1, R2, R3, R4]
     OptimizeShuffleWithLocalRead
   )
 ```
+
+#### PlanAdaptiveDynamicPruningFilters(this)
+
+ 插入动态裁剪重用broadcast结果
+
+#### ReuseAdaptiveSubquery(context.*subqueryCache*)
+
+重用子查询
+
+#### OptimizeSkewInRebalancePartitions
+
+ 优化倾斜分区
+
+```scala
+  private def tryOptimizeSkewedPartitions(shuffle: ShuffleQueryStageExec): SparkPlan = {
+    val advisorySize = conf.getConf(SQLConf.ADVISORY_PARTITION_SIZE_IN_BYTES)
+    //从ShuffleQueryStageExec算子获取map输出统计，mapStats.get.bytesByPartitionId返回每个分区的大小
+    val mapStats = shuffle.mapStats
+    if (mapStats.isEmpty ||
+      mapStats.get.bytesByPartitionId.forall(_ <= advisorySize)) {
+      return shuffle
+    }
+    
+    val newPartitionsSpec = optimizeSkewedPartitions(
+      mapStats.get.shuffleId, mapStats.get.bytesByPartitionId, advisorySize)
+    // return origin plan if we can not optimize partitions
+    if (newPartitionsSpec.length == mapStats.get.bytesByPartitionId.length) {
+      shuffle
+    } else {
+      AQEShuffleReadExec(shuffle, newPartitionsSpec)
+    }
+  }
+```
+
+
+
+#### CoalesceShufflePartitions(context.session)
+
+基于map输出统计缩减shuffle分区避免大量小reduce任务
+
+#### OptimizeShuffleWithLocalRead
+
+优化shuffle读为本地读
 
 
 
@@ -1015,12 +1530,18 @@ right: [R1, R2, R3, R4]
       val executionId = getExecutionId
       // Use inputPlan logicalLink here in case some top level physical nodes may be removed
       // during `initialPlan`
+      // logicLink是用来获取对应的逻辑计划的
       var currentLogicalPlan = inputPlan.logicalLink.get
       //首次创建queryStage，第一个需要shuffle的stage
       var result = createQueryStages(currentPhysicalPlan)
+      
+      //stage运行结果队列，是一个阻塞队列，实现等待上一个stage的完成,队列里放的是stage运行结果状态:是否成功，MapOutStat
       val events = new LinkedBlockingQueue[StageMaterializationEvent]()
       val errors = new mutable.ArrayBuffer[Throwable]()
+      //一个stage容器，新建的stage不断的添加进来，然后完成物化，填充MapOut信息。
       var stagesToReplace = Seq.empty[QueryStageExec]
+      
+      // 只要创建结果存在未物化的子stage, 就进入循环
       while (!result.allChildStagesMaterialized) {
         //替换物理计划为创建stage之后的物理计划
         currentPhysicalPlan = result.newPlan
@@ -1033,7 +1554,8 @@ right: [R1, R2, R3, R4]
           // This partial fix only guarantees the start of materialization for BroadcastQueryStage
           // is prior to others, but because the submission of collect job for broadcasting is
           // running in another thread, the issue is not completely resolved.
-          val reorderedNewStages = result.newStages
+          // 对新建的Query Stage进行排序：首先提交broadcast stage避免等待调度导致广播超时。
+          val reorderedNewStages = result.newStages //获取未物化的QueryStage
             .sortWith {
               case (_: BroadcastQueryStageExec, _: BroadcastQueryStageExec) => false
               case (_: BroadcastQueryStageExec, _) => true
@@ -1046,6 +1568,7 @@ right: [R1, R2, R3, R4]
               //materialize()方法最终会调用ShuffleExchangeExec算子的submitShuffleJob方法
               stage.materialize().onComplete { res =>
                 if (res.isSuccess) {
+                  //res是新提交的stage的物化结果，这里封装为StageSuccess放入阻塞队列events中
                   events.offer(StageSuccess(stage, res.get))
                 } else {
                   events.offer(StageFailure(stage, res.failed.get))
@@ -1062,6 +1585,7 @@ right: [R1, R2, R3, R4]
         // new stages can be created. There might be other stages that finish at around the same
         // time, so we process those stages too in order to reduce re-planning.
         /**
+        从阻塞队列获取消息
          一旦一个stage完成，意味着新的统计数据可用，从而可以新建stage
         */
         val nextMsg = events.take()
@@ -1069,6 +1593,7 @@ right: [R1, R2, R3, R4]
         events.drainTo(rem)
         (Seq(nextMsg) ++ rem.asScala).foreach {
           case StageSuccess(stage, res) =>
+          // 阻塞队列中拉取到的stage已经完成物化，填充输出统计信息，后续reOptimize会用到
             stage.resultOption.set(Some(res))
           case StageFailure(stage, ex) =>
             errors.append(ex)
@@ -1092,11 +1617,13 @@ right: [R1, R2, R3, R4]
         // are semantically and physically in sync again.
         /**
         重新优化，如果新计划更便宜，则采用新计划，否则， 让当前物理计划和当前逻辑计划在一起，因为物理计划的logic link指向了原始逻辑计划。
-        期间，我们保存自从上次plan更新以来，创建的一列query stage，它们代表了当前逻辑计划和物理计划之间的寓意差距。
+        期间，我们保存自从上次plan更新以来，创建的一列query stage，它们代表了当前逻辑计划和物理计划之间的语义差距。
         在每次重新计划之前，用逻辑query stage替换当前逻辑计划中的相应节点，使其与当前物理计划语义上一致。
         一旦心计划被采用并且更新了逻辑计划和物理计划，就可以清空query stage列表了，因为此时物理计划和逻辑计划在语义上和物理上再次同步。
         */
+        // 逻辑计划中的某些节点被替换成了带有MapOutStat的LogicalQueryPlan，从而可用于reOptimize
         val logicalPlan = replaceWithQueryStagesInLogicalPlan(currentLogicalPlan, stagesToReplace)
+        //重新优化，会先清空当前逻辑计划的stat缓存
         val (newPhysicalPlan, newLogicalPlan) = reOptimize(logicalPlan)
         val origCost = costEvaluator.evaluateCost(currentPhysicalPlan)
         val newCost = costEvaluator.evaluateCost(newPhysicalPlan)
@@ -1109,7 +1636,7 @@ right: [R1, R2, R3, R4]
           currentLogicalPlan = newLogicalPlan
           stagesToReplace = Seq.empty[QueryStageExec]
         }
-        // Now that some stages have finished, we can try creating new stages.
+        // 对更新后的物理计划创建queryStages, 更新创建结果
         result = createQueryStages(currentPhysicalPlan)
       }
 
@@ -1130,19 +1657,21 @@ right: [R1, R2, R3, R4]
 
 接下来分析每个具体的过程
 
-#### replaceWithQueryStagesInLogicalPlan
+
 
 
 
 #### createQueryStages
 
+**QueryStage的创建依赖于shuffle，也就是Exchange，在遇到Exchange计划节点时才会决定创建QueryStage，插入一个QueryStageExec计划，一般为ShuffleQueryStageExec。这个过程是递归自下而上的，也就是后续遍历的过程。创建QueryStage时需要保证这个stage的子stage，也就是上一个stage已经被物化**，若未被物化，则该Exchange节点不会创建新的QueryStage，直接返回上一个stage，这就保证每次创建的stage都是最底层的那个未被物化的新stage。  这个过程有点像spark rdd stage的创建过程，从根节点向下递归，这个过程不创建stage,只有递归到所有子节点都完成物化时才开始创建stage，然后再从下到上递归创建stage。
+
 自底向上递归遍历plan树并调用这个函数，创建query stage或者重用query stage(如果当前节点是Exchange节点且所有子stage完成物化)
 
 每次调用，返回CreateStageResult，表示：
 
-1.  新创建stage的节点用QueryStageExec代替
+1.  带有新建QueryStageExec节点的plan
 2. 是否当前节点的所有子stage完成物化
-3. 新建的query stage列表
+3. 新建的query stage列表,未物化
 
 对于不同类型的节点处理逻辑：
 
@@ -1154,28 +1683,34 @@ right: [R1, R2, R3, R4]
   private def createQueryStages(plan: SparkPlan): CreateStageResult = plan match {
     case e: Exchange =>
       // 如果是Exchange节点，判断是否应该创建query stage, 首先快速check stageCache从而避免不必要遍历这个子树
+      //  e.canonicalized:查找前先对e进行规范化
       context.stageCache.get(e.canonicalized) match {
-        case Some(existingStage) if conf.exchangeReuseEnabled =>
+        case Some(existingStage) if conf.exchangeReuseEnabled =>//1. 说明已经存在，可重用
           val stage = reuseQueryStage(existingStage, e)
+          //stage是否物化
           val isMaterialized = stage.isMaterialized
           CreateStageResult(
             newPlan = stage,
             allChildStagesMaterialized = isMaterialized,
+            //如果未物化则不创建新的stage,否则返回重用的stage, 从这里猜想newStages是未物化的queryStage
             newStages = if (isMaterialized) Seq.empty else Seq(stage))
 
-        case _ =>    //递归
+        case _ =>    //2. 说明不存在，  向下递归查找Exchange
           val result = createQueryStages(e.child)
           val newPlan = e.withNewChildren(Seq(result.newPlan)).asInstanceOf[Exchange]
           // 如果所有子stage都已物化，则新建一个query stage
           if (result.allChildStagesMaterialized) {
+            
+            //真正新建queryStage
             var newStage = newQueryStage(newPlan)
             if (conf.exchangeReuseEnabled) {
               // Check the `stageCache` again for reuse. If a match is found, ditch the new stage
               // and reuse the existing stage found in the `stageCache`, otherwise update the
               // `stageCache` with the new stage.
+              //再次检查stageCache，
               val queryStage = context.stageCache.getOrElseUpdate(
-                newStage.plan.canonicalized, newStage)
-              if (queryStage.ne(newStage)) {
+                newStage.plan.canonicalized, newStage) //查找，不存在则更新
+              if (queryStage.ne(newStage)) {//未返回刚创建的，说明在缓存中找到已存在的了，从而重用即可
                 newStage = reuseQueryStage(queryStage, e)
               }
             }
@@ -1196,11 +1731,16 @@ right: [R1, R2, R3, R4]
 
     //常规节点，递归向下遍历，直到叶子节点，返回CreateStageResult
     case _ =>
+      //叶子节点直接创建CreateStageResult
       if (plan.children.isEmpty) {
+              //newPlan仍然是原来的plan,没有创建queryStage, newStages为空
         CreateStageResult(newPlan = plan, allChildStagesMaterialized = true, newStages = Seq.empty)
       } else {
+        //否则递归对子节点创建queryStage
         val results = plan.children.map(createQueryStages)
+        
         CreateStageResult(
+          //注意withNewChildren, newPlan为原plan，只不过所有子节点完成了替换，替换为创建完queryStage后的newPlan
           newPlan = plan.withNewChildren(results.map(_.newPlan)),
           allChildStagesMaterialized = results.forall(_.allChildStagesMaterialized),
           newStages = results.flatMap(_.newStages))
@@ -1219,10 +1759,11 @@ right: [R1, R2, R3, R4]
 
 ```scala
   private def newQueryStage(e: Exchange): QueryStageExec = {
-    // 优化后的plan
+    // 优化后的plan，应用queryStageOptimizerRules进行物理计划优化，比如缩减shuffle分区
     val optimizedPlan = optimizeQueryStage(e.child, isFinalStage = false)
     val queryStage = e match {
       case s: ShuffleExchangeLike =>
+        //应用postStageCreationRules进行优化，比如全阶段代码生成
         val newShuffle = applyPhysicalRules(
           s.withNewChildren(Seq(optimizedPlan)),
           postStageCreationRules(outputsColumnar = s.supportsColumnar),
@@ -1253,7 +1794,7 @@ right: [R1, R2, R3, R4]
 
 ###### postStageCreationRules
 
-在query stage完成创建后，会应用一系列物理优化规则，注意，每个输入plan的根节点都是exchange
+在query stage完成创建后，会应用一系列物理优化规则，注意，**每个输入plan的根节点都是exchange**
 
 比如在创建stage前应用CoalesceShufflePartitions规则进行shuffle后的分区缩减，这会在上一个shuffle/ShuffleQueryStageExec计划之后、这个stage的起点处增加一个AQEShuffleReadExec计划；在创建stage后应用CollapseCodegenStages规则进行全阶段代码生成，插入一个WholeStageCodegenExec计划。QueryStageExec属于整个物理计划的一部分，那么整个物理计划也随之改变了
 
@@ -1301,7 +1842,79 @@ right: [R1, R2, R3, R4]
     optimized
   }
 ```
+#### replaceWithQueryStagesInLogicalPlan
 
+对stagesToReplace中的每个QueryStageExec物理算子，找到它们在LogicalPlan中对应的节点并将它们替换为*LogicalQueryStage*节点。
+
+> LogicalQueryStage所包含的queryStage算子物化后会包含输出统计信息，在reOptimize阶段会用到
+
+1. 如果query stage可以映射为内部逻辑子树，替换对应的逻辑子树为引用该query stage的叶子节点*LogicalQueryStage*
+   例如(Xchg1，Xchg2代表Exchange节点)
+
+   ```java
+       Join                   SMJ                      SMJ
+     /     \                /    \                   /    \
+   r1      r2    =>    Xchg1     Xchg2    =>    Stage1     Stage2
+                         |        |
+                         r1       r2
+   更新后的节点:
+                              Join
+                            /     \
+   LogicalQueryStage1(Stage1)     LogicalQueryStage2(Stage2)
+                     
+   ```
+
+2. 否则(意味着query stage只能映射到逻辑子树的一部分)，替换对应的逻辑子树为叶子节点LogicalQueryStage，它引用该节点产生的物理计划的顶层节点，例如agg节点产生物理计划时会产生partial_agg->exchange->full_agg三个物理节点，而query stage只能映射为它的一部分，那么再替换这个子树时需要把顶层节点full_agg也包进来
+
+   ```shell
+    Agg           HashAgg          HashAgg
+     |               |                |
+   child    =>     Xchg      =>     Stage1
+                     |
+                  HashAgg
+                     |
+                   child
+   更新后的节点：
+   LogicalQueryStage(HashAgg - Stage1)
+   ```
+
+   
+
+```scala
+  private def replaceWithQueryStagesInLogicalPlan(
+      plan: LogicalPlan,
+      stagesToReplace: Seq[QueryStageExec]): LogicalPlan = {
+    var logicalPlan = plan
+    stagesToReplace.foreach {
+      case stage if currentPhysicalPlan.exists(_.eq(stage)) =>
+      // 找到stage对应的逻辑节点
+        val logicalNodeOpt = stage.getTagValue(TEMP_LOGICAL_PLAN_TAG).orElse(stage.logicalLink)
+        assert(logicalNodeOpt.isDefined)
+        val logicalNode = logicalNodeOpt.get
+      // 找到这个逻辑计划在当前物理计划中对应的子树的根节点
+        val physicalNode = currentPhysicalPlan.collectFirst {
+          case p if p.eq(stage) ||
+            p.getTagValue(TEMP_LOGICAL_PLAN_TAG).exists(logicalNode.eq) ||
+            p.logicalLink.exists(logicalNode.eq) => p
+        }
+        assert(physicalNode.isDefined)
+        // Set the temp link for those nodes that are wrapped inside a `LogicalQueryStage` node for
+        // they will be shared and reused by different physical plans and their usual logical links
+        // can be overwritten through re-planning processes.
+        setTempTagRecursive(physicalNode.get, logicalNode)
+        // 替换对应的logical node 为LogicalQueryStage
+        val newLogicalNode = LogicalQueryStage(logicalNode, physicalNode.get)
+        val newLogicalPlan = logicalPlan.transformDown {
+          case p if p.eq(logicalNode) => newLogicalNode
+        }
+        logicalPlan = newLogicalPlan
+
+      case _ => // Ignore those earlier stages that have been wrapped in later stages.
+    }
+    logicalPlan
+  }
+
+```
 #### final PhysicalPlan
 
 等到前面的QueryStage（RDD层面来说就是ShuffleMapStage）都物化完了，这时才会确定下来最终的物理计划，这时也就剩下最后一个stage了，也就是ResultStage，ResultStage无需再进行专门创建，因为从最后一个物理计划到上一个ShuffleQueryStageExec这个过程便是ResultStage了，只需要去应用一些规则进行优化即可，同样也会应用之前创建stage时应用的规则，比如CoalesceShufflePartitions和CollapseCodegenStages
@@ -1368,6 +1981,55 @@ HashAggregate(keys=[], functions=[avg(w_warehouse_sq_ft#3)], output=[avg(w_wareh
 ```
 
 应用完InsertAdaptiveSparkPlan规则，具体是执行AdaptiveSparkPlanExec(newPlan, adaptiveExecutionContext, preprocessingRules, isSubquery)得到的物理计划中，插入了Exchange算子和AdaptiveSparkPlan算子            
+
+
+
+## sql
+
+select ss_sold_date_sk, avg(ss_sales_price) from  ds1g.store_sales group by ss_sold_date_sk order by avg(ss_sales_price)
+
+```shell
+== Parsed Logical Plan ==
+'Sort ['avg('ss_sales_price) ASC NULLS FIRST], true
++- 'Aggregate ['ss_sold_date_sk], ['ss_sold_date_sk, unresolvedalias('avg('ss_sales_price), None)]
+   +- 'UnresolvedRelation [ds1g, store_sales], [], false
+
+== Analyzed Logical Plan ==
+ss_sold_date_sk: int, avg(ss_sales_price): decimal(11,6)
+Sort [avg(ss_sales_price)#24 ASC NULLS FIRST], true
++- Aggregate [ss_sold_date_sk#0], [ss_sold_date_sk#0, avg(ss_sales_price#13) AS avg(ss_sales_price)#24]
+   +- SubqueryAlias spark_catalog.ds1g.store_sales
+      +- Relation ds1g.store_sales[ss_sold_date_sk#0,ss_sold_time_sk#1,ss_item_sk#2,ss_customer_sk#3,ss_cdemo_sk#4,ss_hdemo_sk#5,ss_addr_sk#6,ss_store_sk#7,ss_promo_sk#8,ss_ticket_number#9,ss_quantity#10,ss_wholesale_cost#11,ss_list_price#12,ss_sales_price#13,ss_ext_discount_amt#14,ss_ext_sales_price#15,ss_ext_wholesale_cost#16,ss_ext_list_price#17,ss_ext_tax#18,ss_coupon_amt#19,ss_net_paid#20,ss_net_paid_inc_tax#21,ss_net_profit#22] parquet
+
+== Optimized Logical Plan ==
+Sort [avg(ss_sales_price)#24 ASC NULLS FIRST], true
++- Aggregate [ss_sold_date_sk#0], [ss_sold_date_sk#0, cast((avg(UnscaledValue(ss_sales_price#13)) / 100.0) as decimal(11,6)) AS avg(ss_sales_price)#24]
+   +- Project [ss_sold_date_sk#0, ss_sales_price#13]
+      +- Relation ds1g.store_sales[ss_sold_date_sk#0,ss_sold_time_sk#1,ss_item_sk#2,ss_customer_sk#3,ss_cdemo_sk#4,ss_hdemo_sk#5,ss_addr_sk#6,ss_store_sk#7,ss_promo_sk#8,ss_ticket_number#9,ss_quantity#10,ss_wholesale_cost#11,ss_list_price#12,ss_sales_price#13,ss_ext_discount_amt#14,ss_ext_sales_price#15,ss_ext_wholesale_cost#16,ss_ext_list_price#17,ss_ext_tax#18,ss_coupon_amt#19,ss_net_paid#20,ss_net_paid_inc_tax#21,ss_net_profit#22] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=true
++- == Final Plan ==
+   *(3) Sort [avg(ss_sales_price)#24 ASC NULLS FIRST], true, 0
+   +- AQEShuffleRead coalesced
+      +- ShuffleQueryStage 1
+         +- Exchange rangepartitioning(avg(ss_sales_price)#24 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [id=#64]
+            +- *(2) HashAggregate(keys=[ss_sold_date_sk#0], functions=[avg(UnscaledValue(ss_sales_price#13))], output=[ss_sold_date_sk#0, avg(ss_sales_price)#24])
+               +- AQEShuffleRead coalesced
+                  +- ShuffleQueryStage 0
+                     +- Exchange hashpartitioning(ss_sold_date_sk#0, 200), ENSURE_REQUIREMENTS, [id=#36]
+                        +- *(1) HashAggregate(keys=[ss_sold_date_sk#0], functions=[partial_avg(UnscaledValue(ss_sales_price#13))], output=[ss_sold_date_sk#0, sum#53, count#54L])
+                           +- *(1) ColumnarToRow
+                              +- FileScan parquet ds1g.store_sales[ss_sold_date_sk#0,ss_sales_price#13] Batched: true, DataFilters: [], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/store_sales], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<ss_sold_date_sk:int,ss_sales_price:decimal(7,2)>
++- == Initial Plan ==
+   Sort [avg(ss_sales_price)#24 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(avg(ss_sales_price)#24 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [id=#18]
+      +- HashAggregate(keys=[ss_sold_date_sk#0], functions=[avg(UnscaledValue(ss_sales_price#13))], output=[ss_sold_date_sk#0, avg(ss_sales_price)#24])
+         +- Exchange hashpartitioning(ss_sold_date_sk#0, 200), ENSURE_REQUIREMENTS, [id=#15]
+            +- HashAggregate(keys=[ss_sold_date_sk#0], functions=[partial_avg(UnscaledValue(ss_sales_price#13))], output=[ss_sold_date_sk#0, sum#53, count#54L])
+               +- FileScan parquet ds1g.store_sales[ss_sold_date_sk#0,ss_sales_price#13] Batched: true, DataFilters: [], Format: Parquet, Location: InMemoryFileIndex(1 paths)[hdfs://master:9000/user/hive/warehouse/ds1g.db/store_sales], PartitionFilters: [], PushedFilters: [], ReadSchema: struct<ss_sold_date_sk:int,ss_sales_price:decimal(7,2)>
+
+```
 
 
 

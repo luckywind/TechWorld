@@ -1,5 +1,22 @@
 # Statistics
 
+## 简介
+
+统计估计，默认是子节点的乘积。
+
+```scala
+case class Statistics(
+    sizeInBytes: BigInt, // 叶子节点默认为1 否则是子节点的乘积
+    rowCount: Option[BigInt] = None,
+    attributeStats: AttributeMap[ColumnStat] = AttributeMap(Nil),
+    isRuntime: Boolean = false//是否是从aqe期间的query stage运行时统计数据
+)
+```
+
+
+
+
+
 ## Statistics的用途
 
 首先在SparkSQL逻辑阶段中，统计信息一般被记录在Statistics类中，最初它只计算了逻辑计划的物理大小。现在它还可以估计的行数、列统计信息等。
@@ -321,6 +338,109 @@ def computeStats(): Option[Statistics] = resultOption.map { _ =>
 6. 使用CBO可以根据先前运行Analysis Table语句收集统计信息（各类信息的收集会消耗大量时间）获取更加精准的sizeInBytes。
 
 7. 使用AQE主要是基于QueryStage阶段落盘的数据信息，在运行时重新计算统计信息，动态的更新逻辑计划和物理计划。
+
+# MapOutput获取
+
+参考MapOutputTracker的getStatistics方法
+
+```mermaid
+classDiagram
+class MapOutputTracker
+class MapOutputTrackerMaster{
+  +BroadcastManager: broadcastManager
+}
+class MapOutputTrackerWorker
+MapOutputTrackerMaster..|>MapOutputTracker:继承
+MapOutputTrackerWorker..|>MapOutputTracker:继承
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # 流程
 
