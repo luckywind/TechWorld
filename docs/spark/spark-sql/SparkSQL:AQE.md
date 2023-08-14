@@ -10,6 +10,8 @@
 
 [CBO](https://blog.csdn.net/zyzzxycj/article/details/106469572)，[CBO](https://blog.csdn.net/zyzzxycj/article/details/85839606?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522159098356319725247658642%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fblog.%2522%257D&request_id=159098356319725247658642&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~blog~first_rank_v2~rank_blog_default-1-85839606.pc_v2_rank_blog_default&utm_term=CBO)
 
+[使用](https://blog.csdn.net/qq_32907491/article/details/124547060)
+
 # SparkSQL Adaptive Execution简介
 
 在Spark1.0中所有的Catalyst Optimizer都是基于规则 (rule) 优化的。为了产生比较好的查询规则，优化器需要理解数据的特性，于是在Spark2.0中引入了基于代价的优化器 （cost-based optimizer），也就是所谓的CBO。然而，CBO也无法解决很多问题，比如：
@@ -70,9 +72,9 @@ ShuffleManager是 Spark Shuffle的核心组件。Adaptive Execution 可以通过
 
 # 实现
 
+
+
 ## AdaptiveSparkPlanExec的插入
-
-
 
 ### AdaptiveExecutionContext
 
@@ -100,20 +102,58 @@ case class AdaptiveExecutionContext(session: SparkSession, qe: QueryExecution) {
 QueryExecution在prepareForexecution时构建了一批规则,让物理计划可以执行。
 
 1. 保证子查询planed
-2. 数据分区和排序正确
+2. ER规则：数据分区和排序正确
 3. 插入全阶段代码生成
 4. 重用exchange和子查询
+
+
+
+#### preparations
+
+QueryExecution首次获取可执行物理计划，会先构造一个规则序列，构造时传入InsertAdaptiveSparkPlan
+
+```scala
+  lazy val executedPlan: SparkPlan = {
+    assertOptimized()
+    executePhase(QueryPlanningTracker.PLANNING) {
+      QueryExecution.prepareForExecution(preparations, sparkPlan.clone())
+    }
+  }
+
+//这里在获取规则序列时传入了InsertAdaptiveSparkPlan
+protected def preparations: Seq[Rule[SparkPlan]] = {
+    QueryExecution.preparations(sparkSession,
+      Option(InsertAdaptiveSparkPlan(AdaptiveExecutionContext(sparkSession, this))), false)
+  }
+```
+
+后续QueryStage的优化也会用这个方法构造规则序列，只是不会再传入InsertAdaptiveSparkPlan了。
+
+方法内规则序列的运行细节：如果传入了adaptiveExecutionRule，则会插入AdaptiveSparkPlanExec并把原始plan（原始plan也就是所谓的Initial Plan）隐藏，而其余规则不认识AdaptiveSparkPlanExec，从而其余规则无效。但是ApplyColumnarRulesAndInsertTransitions这个规则被插件覆盖了，我们可以去识别AdaptiveSparkPlanExec来识别一条query。
+
+
+
+后续每个queryStage会再次调用这个接口进行优化，只是不会传入adaptiveExecutionRule，从而其余规则会有效：
+
+1. PlanDynamicPruningFilters规则会调preparations
+
+2. 每个querystage创建前会先对物理计划进行优化，在
+
+   queryStageOptimizerRules的PlanAdaptiveDynamicPruningFilters(this)规则里调用一次
 
 ```scala
   private[execution] def preparations(
       sparkSession: SparkSession,
+    //这个规则默认是None，只有首次获取可执行物理计划时才会传入InsertAdaptiveSparkPlan规则，其他的调用都没传
       adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
       subquery: Boolean): Seq[Rule[SparkPlan]] = {
     // `AdaptiveSparkPlanExec` is a leaf node. If inserted, all the following rules will be no-op
     // as the original plan is hidden behind `AdaptiveSparkPlanExec`.
+    // adaptiveExecutionRule规则一旦应用，后续规则就全部失效了，因为原始plan是AdaptiveSparkPlanExec的inputPlan而不是child
     adaptiveExecutionRule.toSeq ++
     Seq(
       CoalesceBucketsInJoin,
+      //这里匹配DynamicPruningSubquery，还会调一次preparations这个方法
       PlanDynamicPruningFilters(sparkSession),
       PlanSubqueries(sparkSession),
       RemoveRedundantProjects,
@@ -141,6 +181,13 @@ QueryExecution在prepareForexecution时构建了一批规则,让物理计划可�
 ### AQE规则：InsertAdaptiveSparkPlan
 
  extends Rule[SparkPlan] 
+
+  AQE只在有exchange或者子查询的qeury中有用，满足以下条件之一：
+  1. ADAPTIVE_EXECUTION_FORCE_APPLY=true
+  2. 输入是一个子查询，则说明已经开始AQE了，必须继续执行
+  3. query包含exchange
+  4. query需要添加exchange
+  5. query包含子查询
 
 ```scala
 {
@@ -190,7 +237,7 @@ QueryExecution在prepareForexecution时构建了一批规则,让物理计划可�
   1. ADAPTIVE_EXECUTION_FORCE_APPLY=true
   2. 输入是一个自查询，则说明已经开始AQE了，必须继续执行
   3. query包含exchange
-  4. query需要添加exchange
+  4. query需要添加exchange,即requiredChildDistribution
   5. query包含子查询
   private def shouldApplyAQE(plan: SparkPlan, isSubquery: Boolean): Boolean = {
     conf.getConf(SQLConf.ADAPTIVE_EXECUTION_FORCE_APPLY) || isSubquery || {
@@ -243,7 +290,7 @@ QueryExecution在prepareForexecution时构建了一批规则,让物理计划可�
 
 
 
-所谓的subquery都是表达式
+<font color=red>所谓的subquery都是SubqueryExpression表达式，SubqueryExpression表达式是一个PlanExpression，它包含一个QueryPlan，这个QueryPlan可以是逻辑计划也可以是物理计划。</font>
 
 1. ScalarSubquery:只返回一个行一列的子查询
 2. InSubquery(values: Seq[Expression], query: ListQuery)： 如果“查询”的结果集中返回“值”，则计算结果为“true”。
@@ -384,7 +431,7 @@ AdaptiveSparkPlanExec(newPlan, adaptiveExecutionContext, preprocessingRules, isS
 
 ### 核心接口
 
-QueryStageExec本身也是一个plan叶子节点
+QueryStageExec本身也是一个plan叶子节点,它的子节点已经完成物化，所以它不需要维护子节点
 
 ```scala
 abstract class QueryStageExec extends LeafExecNode { 
@@ -445,6 +492,16 @@ ShuffleExchangeExec通过metrics获取统计信息, 注意，它的rowCount的�
 
 ```scala
 // ShuffleExchangeExec.scala 
+ //writeMetrics包含了shuffle bytes writen 和 输出行数
+private lazy val writeMetrics =
+    SQLShuffleWriteMetricsReporter.createShuffleWriteMetrics(sparkContext)
+
+  private[sql] lazy val readMetrics =
+    SQLShuffleReadMetricsReporter.createShuffleReadMetrics(sparkContext)
+  override lazy val metrics = Map(
+    "dataSize" -> SQLMetrics.createSizeMetric(sparkContext, "data size"),
+    "numPartitions" -> SQLMetrics.createMetric(sparkContext, "number of partitions")
+  ) ++ readMetrics ++ writeMetrics
 override def runtimeStatistics: Statistics = {
     val dataSize = metrics("dataSize").value
     val rowCount = metrics(SQLShuffleWriteMetricsReporter.SHUFFLE_RECORDS_WRITTEN).value
@@ -467,10 +524,11 @@ lazy val shuffleDependency : ShuffleDependency[Int, InternalRow, InternalRow] = 
       inputRDD,
       child.output,
       outputPartitioning,
-      serializer,
+      serializer,//metrics传入
       writeMetrics)
     metrics("numPartitions").set(dep.partitioner.numPartitions)
     val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
+  // driver端更新了numPartitions,推送给executor
     SQLMetrics.postDriverMetricUpdates(
       sparkContext, executionId, metrics("numPartitions") :: Nil)
     dep
@@ -545,7 +603,7 @@ driver端创建ShuffleWriterProcessor并放入了*ShuffleDependency*，executor�
       //执行写操作
       writer.write(
         rdd.iterator(partition, context).asInstanceOf[Iterator[_ <: Product2[Any, Any]]])
-      //获取mapStatus对象，调用writer的stop方法，success表示map是否完成
+      //再执行stop获取mapStatus对象，调用writer的stop方法，success表示map是否完成
       val mapStatus = writer.stop(success = true)
       if (mapStatus.isDefined) {
         // Check if sufficient shuffle mergers are available now for the ShuffleMapTask to push
@@ -657,6 +715,7 @@ private[spark] class SortShuffleWriter[K, V, C](
     sorter.writePartitionedMapOutput(dep.shuffleId, mapId, mapOutputWriter)
     //获取分区大小
     partitionLengths = mapOutputWriter.commitAllPartitions(sorter.getChecksums).getPartitionLengths
+    //创建MapStatus
     mapStatus = MapStatus(blockManager.shuffleServerId, partitionLengths, mapId)
   }
 
@@ -696,6 +755,46 @@ private[spark] class SortShuffleWriter[K, V, C](
   @transient private lazy val shuffleFuture = shuffle.submitShuffleJob
 
   override def doMaterialize(): Future[Any] = shuffleFuture
+```
+
+
+
+```scala
+//ShuffleExchangeLike  
+final def submitShuffleJob: Future[MapOutputStatistics] = executeQuery {
+    mapOutputStatisticsFuture
+  }
+
+  override lazy val mapOutputStatisticsFuture: Future[MapOutputStatistics] = {
+    if (inputRDD.getNumPartitions == 0) {
+      Future.successful(null)
+    } else {
+      //提交一个MapStage
+      sparkContext.submitMapStage(shuffleDependency)
+    }
+  }
+
+
+  private[spark] def submitMapStage[K, V, C](dependency: ShuffleDependency[K, V, C])
+      : SimpleFutureAction[MapOutputStatistics] = {
+    assertNotStopped()
+    val callSite = getCallSite()
+    var result: MapOutputStatistics = null
+   //这个方法是用于adaptive query planning 执行map stage并收集输出统计数据
+    val waiter = dagScheduler.submitMapStage(
+      dependency,
+      (r: MapOutputStatistics) => { result = r },
+      callSite,
+      localProperties.get)
+    new SimpleFutureAction[MapOutputStatistics](waiter, result)
+  }
+```
+
+
+
+```scala
+ShuffleMapTask.runTask
+shuffleWriterProcessor.write
 ```
 
 
@@ -765,7 +864,7 @@ private[spark] class SortShuffleWriter[K, V, C](
 
 ```scala
 case class AdaptiveSparkPlanExec(
-    inputPlan: SparkPlan,
+    inputPlan: SparkPlan, // 输入plan,这个很重要
     @transient context: AdaptiveExecutionContext,
     @transient preprocessingRules: Seq[Rule[SparkPlan]],
     @transient isSubquery: Boolean,
@@ -807,9 +906,11 @@ case class AdaptiveSparkPlanExec(
 
 
 
-### optimizer(重新优化物理计划)
+### optimizer(重新优化逻辑计划)
 
-逻辑计划优化器，可用于重新优化当前逻辑计划
+<font color=red>逻辑计划</font>优化器，可用于重新优化当前逻辑计划。
+
+**AQEOptimizer的输入只能是逻辑计划，所以我们需要维护逻辑计划，AQEOptimizer拿到逻辑计划后先进行逻辑计划的优化，然后生成物理计划，最后优化物理计划；返回新的逻辑计划和物理计划。**
 
 对运行时物理计划进行重新优化的优化器，比如DynamicJoinSelection规则进行动态join调整，EliminateLimits规则剔除掉不必要的GlobalLimit计划。 这里的规则仍然是可插拔的，用户可以通过配置spark.sql.adaptive.optimizer.excludedRules排除某个规则。
 
@@ -1124,7 +1225,7 @@ override def doExecute(): RDD[InternalRow] = {
 
 ### *costEvaluator*
 
-cost计算器，这个是默认实现，用户可可以提供自定义实现，这里就是简单的统计shuffleExchange算子个数。
+cost计算器，这个是默认实现，用户可以提供自定义实现，这里就是简单的统计shuffleExchange算子个数。
 
 ```scala
 case class SimpleCostEvaluator(forceOptimizeSkewedJoin: Boolean) extends CostEvaluator {
@@ -1200,13 +1301,16 @@ def apply(plan: SparkPlan): SparkPlan = {
             case _ => false
           }
         }
-        if (hasSemanticEqualPartitioning(child.outputPartitioning)) {
+			//如果和child分区方式语义上是相同的，则丢掉这个shuffle
+      if (hasSemanticEqualPartitioning(child.outputPartitioning)) {
           child
         } else {
+        //否则，保留这个shuffle
           operator
         }
 
       case operator: SparkPlan =>
+    //对join算子的joinKey进行排序，使得match子节点的分区，避免引入额外的sort/shuffle
         val reordered = reorderJoinPredicates(operator)
         val newChildren = ensureDistributionAndOrdering(
           reordered.children,
@@ -1274,11 +1378,15 @@ reorderJoinPredicates:
     assert(requiredChildDistributions.length == originalChildren.length)
     assert(requiredChildOrderings.length == originalChildren.length)
      //当子节点和数据分布和当前节点的数据分布类型不一致时，说明需要进行数据shuffle，就添加一个ShuffleExchangeExec
+    //计算新的children
     var children = originalChildren.zip(requiredChildDistributions).map {
+      // case 1 子节点分区满足，无需处理
       case (child, distribution) if child.outputPartitioning.satisfies(distribution) =>
         child
+      // case 2 需要子节点进行广播，则插入BroadcastExchangeExec算子
       case (child, BroadcastDistribution(mode)) =>
         BroadcastExchangeExec(mode, child)
+      // case 3 需要子节点按指定分区数重分区，则插入ShuffleExchangeExec算子
       case (child, distribution) =>
         val numPartitions = distribution.requiredNumPartitions
           .getOrElse(conf.numShufflePartitions)
@@ -1400,7 +1508,7 @@ HashAggregate(t1.i, SUM, partial)         SortAggregate(t1.i, SUM, partial)
 
 #### OptimizeSkewedJoin(ensureRequirements)
 
-把倾斜的分区切分为小分区，join的另一边对应的分区膨胀多份，从而并行执行。 注意，如果join的另一边也倾斜了，将变成笛卡尔积膨胀。
+把倾斜的分区切分为小分区(需要spark.sql.adaptive.skewJoin.enabled=true(默认值))，join的另一边对应的分区膨胀多份，从而并行执行。 注意，如果join的另一边也倾斜了，将变成笛卡尔积膨胀。
 
 left:  [L1, L2, L3, L4]
 right: [R1, R2, R3, R4]
@@ -1621,9 +1729,11 @@ right: [R1, R2, R3, R4]
         在每次重新计划之前，用逻辑query stage替换当前逻辑计划中的相应节点，使其与当前物理计划语义上一致。
         一旦心计划被采用并且更新了逻辑计划和物理计划，就可以清空query stage列表了，因为此时物理计划和逻辑计划在语义上和物理上再次同步。
         */
-        // 逻辑计划中的某些节点被替换成了带有MapOutStat的LogicalQueryPlan，从而可用于reOptimize
+        //重新优化都是对逻辑计划进行重新优化，但此时逻辑计划已经和现在的物理计划不同步了 
+        //逻辑计划中的某些节点被替换成了带有MapOutStat的LogicalQueryPlan，从而可用于reOptimize
         val logicalPlan = replaceWithQueryStagesInLogicalPlan(currentLogicalPlan, stagesToReplace)
-        //重新优化，会先清空当前逻辑计划的stat缓存
+        //重新优化逻辑计划，会先清空当前逻辑计划的stat缓存。
+        //AQEOptimizer的输入只能是逻辑计划，所以我们需要维护逻辑计划，AQEOptimizer拿到逻辑计划后先进行逻辑计划的优化，然后生成物理计划，最后优化物理计划；返回新的逻辑计划和物理计划。
         val (newPhysicalPlan, newLogicalPlan) = reOptimize(logicalPlan)
         val origCost = costEvaluator.evaluateCost(currentPhysicalPlan)
         val newCost = costEvaluator.evaluateCost(newPhysicalPlan)
@@ -1886,6 +1996,7 @@ right: [R1, R2, R3, R4]
       stagesToReplace: Seq[QueryStageExec]): LogicalPlan = {
     var logicalPlan = plan
     stagesToReplace.foreach {
+      //注意这个exists:前序遍历树
       case stage if currentPhysicalPlan.exists(_.eq(stage)) =>
       // 找到stage对应的逻辑节点
         val logicalNodeOpt = stage.getTagValue(TEMP_LOGICAL_PLAN_TAG).orElse(stage.logicalLink)
@@ -1930,6 +2041,10 @@ right: [R1, R2, R3, R4]
       currentPhysicalPlan
     }
 ```
+
+
+
+# 规则应用顺序
 
 
 

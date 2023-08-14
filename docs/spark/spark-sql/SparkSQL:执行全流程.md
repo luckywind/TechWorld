@@ -871,6 +871,35 @@ If there is no hint or the hints are not applicable, we follow these rules one b
 
 
 
+## QueryExecution
+
+### PrepareForExecution
+
+在执行之前，对物理执行计划做一些处理，这些处理都是基于规则的，包括
+
+- PlanSubqueries
+- EnsureRequirements
+- CollapseCodegenStages
+- ReuseExchange
+- ReuseSubquery
+
+经过上述步骤之后生成的最终物理执行计划提交到Spark执行。
+
+```scala
+  lazy val executedPlan: SparkPlan = {
+    // We need to materialize the optimizedPlan here, before tracking the planning phase, to ensure
+    // that the optimization time is not counted as part of the planning phase.
+    assertOptimized()
+    executePhase(QueryPlanningTracker.PLANNING) {
+      // clone the plan to avoid sharing the plan instance between different stages like analyzing,
+      // optimizing and planning.
+      QueryExecution.prepareForExecution(preparations, sparkPlan.clone())
+    }
+  }
+```
+
+
+
 ### createSparkPlan
 
 这里会把逻辑计划转为物理计划，需要用到strategies
@@ -901,7 +930,7 @@ If there is no hint or the hints are not applicable, we follow these rules one b
   }
 ```
 
-
+## QueryPlanner
 
 ### plan
 
@@ -955,17 +984,7 @@ QueryPlanner.plan
 
 
 
-## QueryExecution.PrepareForExecution
 
-在执行之前，对物理执行计划做一些处理，这些处理都是基于规则的，包括
-
-- PlanSubqueries
-- EnsureRequirements
-- CollapseCodegenStages
-- ReuseExchange
-- ReuseSubquery
-
-经过上述步骤之后生成的最终物理执行计划提交到Spark执行。
 
 ## collect()
 

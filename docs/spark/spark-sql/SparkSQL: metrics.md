@@ -67,7 +67,7 @@ class SQLMetric(val metricType: String, initValue: Long = 0L) extends Accumulato
 
 ## executor端如何回传到driver端
 
-### 前置条件
+### 前置工作
 
 #### TaskMetrics
 

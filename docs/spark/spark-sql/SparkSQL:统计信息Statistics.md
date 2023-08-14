@@ -1,5 +1,7 @@
 # Statistics
 
+[参考](http://www.fanyilun.me/2022/08/02/%E5%85%B3%E4%BA%8ESpark%E5%92%8CHive%E7%9A%84statistics/)
+
 ## 简介
 
 统计估计，默认是子节点的乘积。
@@ -60,7 +62,7 @@ case class Statistics(
 
 叶子将会代表统计信息将会计算的实际方式
 
-我们以开头的例子为例：首先test.table01是一个Hive表，它是属于CatalogTable的（其中T表示true, F代表False）。另外我们没有开启CBO, 同时之前也没进行Analyze Table分析。此外test.table01是一个分区表，所以最终将使用*spark.sql.defaultSizeInBytes*配置作为的*sizeInBytes*指标的默认值。
+假如test.table01是一个Hive表，它是属于CatalogTable的（其中T表示true, F代表False）。另外我们没有开启CBO, 同时之前也没进行Analyze Table分析。此外test.table01是一个分区表，所以最终将使用*spark.sql.defaultSizeInBytes*配置作为的*sizeInBytes*指标的默认值(红色箭头所示选择过程)。
 
 ### DetermineTableStats
 

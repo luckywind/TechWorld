@@ -363,6 +363,38 @@ class SQLExecPlugin extends (SparkSessionExtensions => Unit) with Logging {
 }
 ```
 
+这个规则会作为SessionState的构造参数，QueryExecution在prepare物理计划时用到的规则会从SessionState里拿到：
+
+```scala
+  private[execution] def preparations(
+      sparkSession: SparkSession,
+      adaptiveExecutionRule: Option[InsertAdaptiveSparkPlan] = None,
+      subquery: Boolean): Seq[Rule[SparkPlan]] = {
+    adaptiveExecutionRule.toSeq ++
+    Seq(
+      CoalesceBucketsInJoin,
+      PlanDynamicPruningFilters(sparkSession),
+      PlanSubqueries(sparkSession),
+      RemoveRedundantProjects,
+      EnsureRequirements(),
+      ReplaceHashWithSortAgg,
+      RemoveRedundantSorts,
+      DisableUnnecessaryBucketedScan,
+      ApplyColumnarRulesAndInsertTransitions(
+        //从SessionState拿到用户插入的规则
+        sparkSession.sessionState.columnarRules, outputsColumnar = false),
+      CollapseCodegenStages()) ++
+      (if (subquery) {
+        Nil
+      } else {
+        Seq(ReuseExchangeAndSubquery)
+      })
+  }
+
+```
+
+
+
 #### ColumnarOverrideRules
 
 这个规则继承了ColumnarRule，持有用户自定义的规则，注入算子的列式实现。

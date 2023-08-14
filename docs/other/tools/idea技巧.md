@@ -381,6 +381,20 @@ This IDE build has expired. Provide another build or select 'JetBrains Installer
 
 我禁用了easy Code
 
+### JetBrains Client启动失败
+
+```shell
+~/Library/Logs/JetBrains/IntelliJIdea2023.1
+```
+
+/Users/chengxingfu/Library/Logs/JetBrains/IntelliJIdea2023.1/gateway/下查看最新日志
+
+CodeWithMeClientDownloader - GUEST OUTPUT: LSOpenURLsWithRole() failed for the application /Users/chengxingfu/Library/Caches/JetBrains/JetBrainsClientDist/JetBrainsClient-232.8660.142.sit-49b2997ced.ide.d/JetBrains Client.app with error -10825.
+
+搜索一番发现可能是因为操作系统不兼容，于是降低Client版本
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230724154349709.png" alt="image-20230724154349709" style="zoom:50%;" />
+
 ### host unreachable
 
 退出Gateaway后，出现Host unreachable, 服务器上没有idea进程了，且出现Input/output error

@@ -66,6 +66,8 @@ AdaptiveSparkPlan isFinalPlan=true
 1. QueryExection.createSparkPlan  产生物理计划
 2. QueryExection.prepareForExecution 对物理计划插入shuffle算子和行列转换算子、AQE算子、全代码生成算子
 
+   > 插件在这里第一次拿到完整的计划树，这个计划树已经插入了AdaptiveExecutionExec算子
+
 ```mermaid
 graph LR
 a(parsing)

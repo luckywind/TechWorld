@@ -45,6 +45,8 @@ git revert --no-commit commit1..commit2
 
 ## 远程仓库
 
+查看使用帮助： git remote --help
+
 ```shell
 git remote -v 列出远程仓库，  只有ssh链接才能推送数据上去
 

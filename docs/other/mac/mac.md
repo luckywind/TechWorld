@@ -133,3 +133,7 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 ## 多屏切换
 
 [切换窗口](https://blog.csdn.net/guolindonggld/article/details/122262113)
+
+[NTFS软件](https://www.macyy.cn/archives/78#J_DLIPPCont)
+
+激活码：3VV2VF-HQZ01U-MZ5ZU9-ZVEH45-H6CFE4

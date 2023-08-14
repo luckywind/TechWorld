@@ -4,14 +4,126 @@
 
 当一条 sql 语句被 SparkSqlParser 解析为一个 unresolved logicalPlan 后，接下来就会使用 Analyzer 进行 resolve。所谓的 resolve 也就是在未解析的 db、table、function、partition 等对应的 node 上应用一条条 Rule（规则）来替换为新的 node，应用 Rule 的过程中往往会访问 catalog 来获取相应的信息。
 
+
+
+```scala
+  def executeAndCheck(plan: LogicalPlan, tracker: QueryPlanningTracker): LogicalPlan = {
+    if (plan.analyzed) return plan
+    AnalysisHelper.markInAnalyzer {
+      val analyzed = executeAndTrack(plan, tracker)
+      try {
+        //注意这个步骤，在解析完成后，还做了一步checkAnalysis： 内联所有CTE
+        checkAnalysis(analyzed)
+        analyzed
+      } catch {
+        case e: AnalysisException =>
+          val ae = e.copy(plan = Option(analyzed))
+          ae.setStackTrace(e.getStackTrace)
+          throw ae
+      }
+    }
+  }
+```
+
+# batchs
+
+Batch("Substitution", fixedPoint,
+  // This rule optimizes `UpdateFields` expression chains so looks more like optimization rule.
+  // However, when manipulating deeply nested schema, `UpdateFields` expression tree could be
+  // very complex and make analysis impossible. Thus we need to optimize `UpdateFields` early
+  // at the beginning of analysis.
+  OptimizeUpdateFields,
+  CTESubstitution,
+  WindowsSubstitution,
+  EliminateUnions,
+  SubstituteUnresolvedOrdinals),
+Batch("Disable Hints", Once,
+  new ResolveHints.DisableHints),
+Batch("Hints", fixedPoint,
+  ResolveHints.ResolveJoinStrategyHints,
+  ResolveHints.ResolveCoalesceHints),
+Batch("Simple Sanity Check", Once,
+  LookupFunctions),
+Batch("Keep Legacy Outputs", Once,
+  KeepLegacyOutputs),
+Batch("Resolution", fixedPoint,
+  ResolveTableValuedFunctions(*v1SessionCatalog*) ::
+  ResolveNamespace(catalogManager) ::
+  new ResolveCatalogs(catalogManager) ::
+  ResolveUserSpecifiedColumns ::
+  ResolveInsertInto ::
+  ResolveRelations ::
+  ResolvePartitionSpec ::
+  ResolveFieldNameAndPosition ::
+  AddMetadataColumns ::
+  DeduplicateRelations ::
+  ResolveReferences ::
+  ResolveExpressionsWithNamePlaceholders ::
+  ResolveDeserializer ::
+  ResolveNewInstance ::
+  ResolveUpCast ::
+  ResolveGroupingAnalytics ::
+  ResolvePivot ::
+  ResolveOrdinalInOrderByAndGroupBy ::
+  ResolveAggAliasInGroupBy ::
+  ResolveMissingReferences ::
+  ExtractGenerator ::
+  ResolveGenerate ::
+  ResolveFunctions ::
+  ResolveAliases ::
+  ResolveSubquery ::
+  ResolveSubqueryColumnAliases ::
+  ResolveWindowOrder ::
+  ResolveWindowFrame ::
+  ResolveNaturalAndUsingJoin ::
+  ResolveOutputRelation ::
+  ExtractWindowExpressions ::
+  GlobalAggregates ::
+  ResolveAggregateFunctions ::
+  TimeWindowing ::
+  SessionWindowing ::
+  ResolveDefaultColumns(this, *v1SessionCatalog*) ::
+  ResolveInlineTables ::
+  ResolveLambdaVariables ::
+  ResolveTimeZone ::
+  ResolveRandomSeed ::
+  ResolveBinaryArithmetic ::
+  ResolveUnion ::
+  RewriteDeleteFromTable ::
+  typeCoercionRules ++
+  Seq(ResolveWithCTE) ++
+  *extendedResolutionRules* : _*),
+Batch("Remove TempResolvedColumn", Once, RemoveTempResolvedColumn),
+Batch("Apply Char Padding", Once,
+  ApplyCharTypePadding),
+Batch("Post-Hoc Resolution", Once,
+  Seq(ResolveCommandsWithIfExists) ++
+  *postHocResolutionRules*: _*),
+Batch("Remove Unresolved Hints", Once,
+  new ResolveHints.RemoveAllHints),
+Batch("Nondeterministic", Once,
+  PullOutNondeterministic),
+Batch("UDF", Once,
+  HandleNullInputsForUDF,
+  ResolveEncodersInUDF),
+Batch("UpdateNullability", Once,
+  UpdateAttributeNullability),
+Batch("Subquery", Once,
+  UpdateOuterReferences),
+Batch("Cleanup", fixedPoint,
+  CleanupAliases),
+Batch("HandleAnalysisOnlyCommand", Once,
+  HandleAnalysisOnlyCommand)
+
+
+
+## ResolveReferences
 org.apache.spark.sql.catalyst.analysis.Analyzer$ResolveReferences应用之前的plan
 
 ```
 'Project [unresolvedalias(cast((1 > 0) as bigint), None)]
 +- OneRowRelation
 ```
-
-## ResolveReferences
 
 ```scala
     def apply(plan: LogicalPlan): LogicalPlan = plan.resolveOperatorsUpWithPruning(
@@ -333,6 +445,174 @@ Cast.scala
       TypeCheckResult.TypeCheckFailure(typeCheckFailureMessage)
     }
   }
+```
+
+
+
+## DeduplicateRelations
+
+拿到的plan:
+
+```json
+'WithCTE
+:- CTERelationDef 0, false
+:  +- SubqueryAlias inv
+:     +- Aggregate [avg(inv_quantity_on_hand#6) AS mean#2]
+:        +- SubqueryAlias spark_catalog.ds1g.inventory
+:           +- HiveTableRelation [`ds1g`.`inventory`, org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe, Data Cols: [inv_date_sk#3, inv_item_sk#4, inv_warehouse_sk#5, inv_quantity_on_hand#6], Partition Cols: []]
++- 'Sort ['inv1_mean ASC NULLS FIRST, 'inv2_mean ASC NULLS FIRST], true
+   +- 'Project ['inv1.mean AS inv1_mean#0, 'inv2.mean AS inv2_mean#1]
+      +- 'Join Inner
+         :- SubqueryAlias inv1
+         :  +- SubqueryAlias inv
+         :     +- CTERelationRef 0, true, [mean#2]
+         +- SubqueryAlias inv2
+            +- SubqueryAlias inv
+               +- CTERelationRef 0, true, [mean#2]
+```
+
+
+
+
+
+def collectConflictPlans(plan: LogicalPlan): Seq[(LogicalPlan, LogicalPlan)]
+
+对于如MultiInstanceRelation, Project, Aggregate等，其输出不直接继承其子，我们可以停止对其进行收集。因为我们总是可以用新计划中的新属性替换所有较低的冲突属性。理论上，我们应该对Generate和Window进行递归收集，但我们将其留给下一批处理，以减少可能的开销，因为这应该是一个极端情况。
+
+需要说明一下MultiInstanceRelation这个trait, 它表示一个查询计划中重复出现的节点，spark不允许这样，因为它打破了表达式ID唯一的保证，表达式ID就是用来区分属性的。
+
+join的左右两边的输出属性集如果有交集，则认为未完成重复解析(duplicateResolved), 也就是join要求左右两边的属性不能冲突， 它们的交集称为冲突属性。
+
+ def dedupRight(left: LogicalPlan, right: LogicalPlan)
+
+对右边节点中冲突的属性采用不同的表达式ID生成一个新的逻辑计划，例如这里right是
+
+```json
+         +- SubqueryAlias inv2
+            +- SubqueryAlias inv
+               +- CTERelationRef 0, true, [mean#2]
+```
+
+对他进行递归，当检查CTERelationRef 0, true, [mean#2]时，发现它出现了两次，即是MultiInstanceRelation的一个实例，属性[mean#2]冲突了，那么会要求它重新生成一个实例；而CTERelationRef的重新生成一个新的实例也是非常简单的把属性重新生成ID
+
+```scala
+def newInstance(): LogicalPlan = copy(output = output.map(_.newInstance()))
+```
+
+产生的结果就是
+
+```json
+CTERelationRef 0, true, [mean#9]
+```
+
+整个计划树
+
+```json
+WithCTE
+:- CTERelationDef 0, false
+:  +- SubqueryAlias inv
+:     +- Aggregate [avg(inv_quantity_on_hand#6) AS mean#2]
+:        +- SubqueryAlias spark_catalog.ds1g.inventory
+:           +- HiveTableRelation [`ds1g`.`inventory`, org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe, Data Cols: [inv_date_sk#3, inv_item_sk#4, inv_warehouse_sk#5, inv_quantity_on_hand#6], Partition Cols: []]
++- Sort [inv1_mean#0 ASC NULLS FIRST, inv2_mean#1 ASC NULLS FIRST], true
+   +- Project [mean#2 AS inv1_mean#0, mean#9 AS inv2_mean#1]
+      +- Join Inner
+         :- SubqueryAlias inv1
+         :  +- SubqueryAlias inv
+         :     +- CTERelationRef 0, true, [mean#2]
+         +- SubqueryAlias inv2
+            +- SubqueryAlias inv
+               +- CTERelationRef 0, true, [mean#9]
+```
+
+
+
+
+
+
+
+### renewDuplicatedRelations
+
+对逻辑计划中的relations去重，这是一个自底向上递归的函数，参数
+
+1. 已知的去重后的relation
+2. 需要去重的plan
+
+返回
+
+(去重后的新plan ,    新plan的所有relations,  plan是否发生变更)
+
+```scala
+  private def renewDuplicatedRelations(
+      existingRelations: mutable.HashSet[ReferenceEqualPlanWrapper],
+      plan: LogicalPlan)
+    : (LogicalPlan, mutable.HashSet[ReferenceEqualPlanWrapper], Boolean) = plan match {
+    case p: LogicalPlan if p.isStreaming => (plan, mutable.HashSet.empty, false)
+
+    case m: MultiInstanceRelation =>
+      val planWrapper = ReferenceEqualPlanWrapper(m)
+      if (existingRelations.contains(planWrapper)) {
+        //要求重复的relation重新生成表达式ID
+        val newNode = m.newInstance()
+        newNode.copyTagsFrom(m)
+        (newNode, mutable.HashSet.empty, true)
+      } else {
+        val mWrapper = new mutable.HashSet[ReferenceEqualPlanWrapper]()
+        mWrapper.add(planWrapper)
+        (m, mWrapper, false)
+      }
+
+    case plan: LogicalPlan =>
+      val relations = new mutable.HashSet[ReferenceEqualPlanWrapper]()
+      var planChanged = false
+      val newPlan = if (plan.children.nonEmpty) {
+        val newChildren = mutable.ArrayBuffer.empty[LogicalPlan]
+        for (c <- plan.children) {
+          val (renewed, collected, changed) =
+            renewDuplicatedRelations(existingRelations ++ relations, c)
+          newChildren += renewed
+          relations ++= collected
+          if (changed) {
+            planChanged = true
+          }
+        }
+
+        if (planChanged) {
+          if (plan.childrenResolved) {
+            val planWithNewChildren = plan.withNewChildren(newChildren.toSeq)
+            val attrMap = AttributeMap(
+              plan
+                .children
+                .flatMap(_.output).zip(newChildren.flatMap(_.output))
+                .filter { case (a1, a2) => a1.exprId != a2.exprId }
+            )
+            if (attrMap.isEmpty) {
+              planWithNewChildren
+            } else {
+              //这一步对算子树、表达式进行了map
+              planWithNewChildren.rewriteAttrs(attrMap)
+            }
+          } else {
+            plan.withNewChildren(newChildren.toSeq)
+          }
+        } else {
+          plan
+        }
+      } else {
+        plan
+      }
+
+      val planWithNewSubquery = newPlan.transformExpressions {
+        case subquery: SubqueryExpression =>
+          val (renewed, collected, changed) = renewDuplicatedRelations(
+            existingRelations ++ relations, subquery.plan)
+          relations ++= collected
+          if (changed) planChanged = true
+          subquery.withNewPlan(renewed)
+      }
+      (planWithNewSubquery, relations, planChanged)
+  }
+
 ```
 
 
