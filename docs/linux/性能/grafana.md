@@ -1,0 +1,1 @@
+[Grafana 中文入门教程 | 构建你的第一个仪表盘](https://blog.csdn.net/easylife206/article/details/114312284?ydreferer=aHR0cHM6Ly93d3cuZ29vZ2xlLmNvbS5oay8%3D)

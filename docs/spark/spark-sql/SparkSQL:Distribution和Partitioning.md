@@ -214,6 +214,7 @@ trait Partitioning {
   def createShuffleSpec(distribution: ClusteredDistribution): ShuffleSpec =
     throw new IllegalStateException(s"Unexpected partitioning: ${getClass.getSimpleName}")
 
+  //默认是满足无要求 和 分区数为1时满足AllTuples
   //用户也可重写
   protected def satisfies0(required: Distribution): Boolean = required match {
     case UnspecifiedDistribution => true
@@ -269,7 +270,7 @@ case class HashPartitioning(expressions: Seq[Expression], numPartitions: Int)
   override def createShuffleSpec(distribution: ClusteredDistribution): ShuffleSpec =
     HashShuffleSpec(this, distribution)
 
- 
+ // 返回一个产出分区ID的表达式
   def partitionIdExpression: Expression = Pmod(new Murmur3Hash(expressions), Literal(numPartitions))
 
   override protected def withNewChildrenInternal(
@@ -315,3 +316,270 @@ case class KeyGroupedPartitioning(
 ## PartitioningCollection
 
 ## BroadcastPartitioning
+
+# SparkPlan
+
+## requiredChildDistribution
+
+```scala
+  def requiredChildDistribution: Seq[Distribution] =
+    Seq.fill(children.size)(UnspecifiedDistribution)
+```
+
+指定当前算子对所有子算子的数据分布要求，默认每个子算子都是*UnspecifiedDistribution*，即没有要求。如果一个算子重写了这个方法，并且对多个child指定了分布需求(不是*UnspecifiedDistribution*，和*BroadcastDistribution*), Spark会保证这些child输出相同的分区，因此算子可以把这些子节点的分区RDD进行zip。一些 算子会利用这个保证来满足一些有趣的需求，例如非广播join可以对左孩子指定*HashClusteredDistribution(a,b)*，对右孩子指定*HashClusteredDistribution(c,d)*，这将保证左右孩子是被a,b/c,d进行同分区的，意味着相同的tuple在相同索引分区里，例如*(a=1,b=2) 和 (c=1,d=2)*都是左右孩子的第二个分区中。
+
+
+
+# Partitioner
+
+```scala
+abstract class Partitioner extends Serializable {
+  def numPartitions: Int
+  def getPartition(key: Any): Int
+}
+```
+
+把key映射到分区ID，有以下几种分区器：
+
+![image-20230831161404203](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230831161404203.png)
+
+## HashPartitioner
+
+源码解读如下
+
+```scala
+class HashPartitioner(partitions: Int) extends Partitioner {
+  require(partitions >= 0, s"Number of partitions ($partitions) cannot be negative.")
+
+  def numPartitions: Int = partitions
+
+  def getPartition(key: Any): Int = key match {
+    // key为空，统一扔到0号分区
+    case null => 0
+    //否则，利用hashCode和分区数计算分区ID
+    case _ => Utils.nonNegativeMod(key.hashCode, numPartitions)
+  }
+
+  override def equals(other: Any): Boolean = other match {
+    case h: HashPartitioner =>
+      h.numPartitions == numPartitions
+    case _ =>
+      false
+  }
+
+  override def hashCode: Int = numPartitions
+}
+```
+
+### 几个常见的使用HashPartitioner的例子
+
+1. Reducebykey
+
+def reduceByKey(func: (V, V) => V): RDD[(K, V)] = self.withScope {	
+  reduceByKey(defaultPartitioner(self), func)	
+}
+
+2. aggregateByKey
+
+def aggregateByKey[U: ClassTag](zeroValue: U, numPartitions: Int)(seqOp: (U, V) => U,	
+    combOp: (U, U) => U): RDD[(K, U)] = self.withScope {	
+  aggregateByKey(zeroValue, new HashPartitioner(numPartitions))(seqOp, combOp)	
+}
+
+3. join
+
+def join[W](other: RDD[(K, W)]): RDD[(K, (V, W))] = self.withScope {	
+  join(other, defaultPartitioner(self, other))	
+}
+
+如果两个RDD都有分区器，defaultPartitioner取分区数最大的，如果都没有，则会根据并行度取HashPartitioner。
+
+# ShuffleExchangeExec
+
+从宏观上来看，shuffleexchangeExec运算符主要负责两件事：
+
+首先，根据父节点所需的分区方案，准备对子节点的输出行进行分区的宽依赖（ShuffleDependency）。
+
+其次，添加一个ShuffleRowRDD并指定准备好的ShuffleDependency作为该RDD的依赖。
+
+DAGScheduler检测ShuffleRowRDD的ShuffleDependency，并创建一个ShuffleMapStage，包裹上游的RDDs，为shuffle操作产生数据。ShuffleMapStage由executor端ShuffleMapTasks针对输入RDD的每个分区执行。每个ShuffleMapTask反序列化广播给executor端的ShuffleDependency，并调用ShuffleDependency中定义的shuffleWriterProcessor的写入方法，该方法从shuffle管理器中获取shuffle writer，进行shuffle写入，并返回包含信息的MapStauts，以便以后进行shuffle读取。
+
+
+
+ShuffleExchangeExec操作符提供的prepareShuffleDependency方法封装了根据预期输出分区定义ShuffleDependency的逻辑。简而言之，<font color=red>prepareShuffleDependency方法所做的是决定输入RDD中的每一行应该被放入哪个分区。换句话说，prepareShuffleDependency方法旨在为输入RDD中的每一条记录创建一个键值对记录，其中键是目标分区的id，值是原始行记录。</font>
+
+执行一个shuffle产生期望的Partitioning的数据,期望的分区由参数outputPartitioning指定
+
+```scala
+case class ShuffleExchangeExec(
+    override val outputPartitioning: Partitioning,
+    child: SparkPlan,
+    shuffleOrigin: ShuffleOrigin = ENSURE_REQUIREMENTS)
+```
+
+它的doExecute()方法会用shuffleDependency来创建一个ShuffledRowRDD，那么shuffleDependency就是关键：
+
+它将根据' newPartitioning '中定义的分区方案对其子节点的行进行分区。返回的ShuffleDependency的那些分区将是shuffle的输入。
+
+```scala
+ 
+lazy val shuffleDependency : ShuffleDependency[Int, InternalRow, InternalRow] = {
+    val dep = ShuffleExchangeExec.prepareShuffleDependency(
+      inputRDD,
+      child.output,
+      outputPartitioning,
+      serializer,
+      writeMetrics)
+    metrics("numPartitions").set(dep.partitioner.numPartitions)
+    val executionId = sparkContext.getLocalProperty(SQLExecution.EXECUTION_ID_KEY)
+    SQLMetrics.postDriverMetricUpdates(
+      sparkContext, executionId, metrics("numPartitions") :: Nil)
+    dep
+  }
+
+
+  protected override def doExecute(): RDD[InternalRow] = {
+    // Returns the same ShuffleRowRDD if this plan is used by multiple plans.
+    if (cachedShuffleRDD == null) {
+      //把shuffleDependency作为ShuffledRowRDD的依赖
+      cachedShuffleRDD = new ShuffledRowRDD(shuffleDependency, readMetrics)
+    }
+    cachedShuffleRDD
+  }
+```
+
+关键就是prepareShuffleDependency这个方法，它返回了一个ShuffleDependency[Int, InternalRow, InternalRow],
+
+基于newPartitioning中定义的分区scheme把子节点的数据进行分区，这些分区将作为shuffle的输入。
+
+## prepareShuffleDependency
+
+prepareShuffleDependency源码大体逻辑分为三步：
+
+1. **根据目标分区描述创建一个对应的分区器，对输入的分区key输出分区ID**
+2. **根据目标分区描述创建一个分区key提取函数，这个函数对每一行输出一个分区key;    然后把key传给第一步创建的分区器得到分区ID；最后得到一个带有分区ID的RDD**
+3. **对带有分区ID的RDD创建一个ShuffleDependency**
+
+
+
+```scala
+  def prepareShuffleDependency(
+      rdd: RDD[InternalRow],
+      outputAttributes: Seq[Attribute],
+      newPartitioning: Partitioning,
+      serializer: Serializer,
+      writeMetrics: Map[String, SQLMetric])
+    : ShuffleDependency[Int, InternalRow, InternalRow] = {
+    //1. 根据newPartitioning计算分区器
+    val part: Partitioner = newPartitioning match {
+      case RoundRobinPartitioning(numPartitions) => 
+        //计算分区键mod分区id的numPartitions，使行均匀地分布在所有输出分区上。
+        new HashPartitioner(numPartitions)
+      case HashPartitioning(_, n) =>
+      //由于先前用partitionIdExpression生成的分区密钥已经是一个有效的分区ID，因此该分区密钥被返回作为分区ID。
+        new Partitioner {
+          override def numPartitions: Int = n
+          override def getPartition(key: Any): Int = key.asInstanceOf[Int]
+        }
+      case RangePartitioning(sortingExpressions, numPartitions) =>
+      //RangePartitioner对排序键进行采样，以计算定义输出分区的分区边界。
+        val rddForSampling = rdd.mapPartitionsInternal { iter =>
+          val projection =
+            UnsafeProjection.create(sortingExpressions.map(_.child), outputAttributes)
+          val mutablePair = new MutablePair[InternalRow, Null]()
+          iter.map(row => mutablePair.update(projection(row).copy(), null))
+        }
+        val orderingAttributes = sortingExpressions.zipWithIndex.map { case (ord, i) =>
+          ord.copy(child = BoundReference(i, ord.dataType, ord.nullable))
+        }
+        implicit val ordering = new LazilyGeneratedOrdering(orderingAttributes)
+        new RangePartitioner(
+          numPartitions,
+          rddForSampling,
+          ascending = true,
+          samplePointsPerPartitionHint = SQLConf.get.rangeExchangeSampleSizePerPartition)
+      case SinglePartition =>
+      //返回0作为所有行的分区ID
+        new Partitioner {
+          override def numPartitions: Int = 1
+          override def getPartition(key: Any): Int = 0
+        }
+      case _ => sys.error(s"Exchange not implemented for $newPartitioning")
+      // TODO: Handle BroadcastPartitioning.
+    }
+    //2. 计算rddWithPartitionIds，即给每行分配一个分区ID
+  val rddWithPartitionIds: RDD[Product2[Int, InternalRow]]   
+              newRdd.mapPartitionsWithIndexInternal((_, iter) => {
+          //根据newPartitioning提取key
+          val getPartitionKey = getPartitionKeyExtractor()
+          //利用第一步获取的分区器计算分区ID
+          iter.map { row => (part.getPartition(getPartitionKey(row)), row.copy()) }
+        }, isOrderSensitive = isOrderSensitive)
+      
+    //3. 创建一个ShuffleDependency, 此时所有行都有分区ID了，所以ShuffleDependency的分区器是虚拟分区器PartitionIdPassthrough
+      val dependency =
+      new ShuffleDependency[Int, InternalRow, InternalRow](
+        rddWithPartitionIds,
+        new PartitionIdPassthrough(part.numPartitions),
+        serializer,
+        shuffleWriterProcessor = createShuffleWriteProcessor(writeMetrics))
+```
+
+这里计算rddWithPartitionIds稍复杂，根据目标分区描述，创建一个分区键提取函数，这个key提取函数对每一行输出一个分区key(可能是int值、hash值等)：
+
+```scala
+    def getPartitionKeyExtractor(): InternalRow => Any = newPartitioning match {
+      //从一个随机的分区ID开始，为每一行增加1作为分区密钥，这使得行在输出分区中均匀分布。
+      case RoundRobinPartitioning(numPartitions) =>
+        // Distributes elements evenly across output partitions, starting from a random partition.
+        var position = new Random(TaskContext.get().partitionId()).nextInt(numPartitions)
+        (row: InternalRow) => {
+          // The HashPartitioner will handle the `mod` by the number of partitions
+          position += 1
+          position
+        }
+      
+      case h: HashPartitioning =>
+      //用partitionIdExpression(Pmod(new Murmur3Hash(expressions), Literal(numPartitions))生成分区密钥。生成的分区密钥已经是一个有效的分区ID。
+        val projection = UnsafeProjection.create(h.partitionIdExpression :: Nil, outputAttributes)
+        row => projection(row).getInt(0)
+      case RangePartitioning(sortingExpressions, _) =>
+      //用排序表达式（SortOrder类型）生成分区键。同样的排序表达式将被用于计算RangePartitioner的分区边界。
+        val projection = UnsafeProjection.create(sortingExpressions.map(_.child), outputAttributes)
+        row => projection(row)
+      case SinglePartition => identity
+      //使用行标识作为分区key
+      case _ => sys.error(s"Exchange not implemented for $newPartitioning")
+    }
+```
+
+从行中生成分区键后，再用第一步创建的分区器将分区键作为输入，并返回输出分区ID（0和numPartition-1之间的数字）。
+
+
+
+## ShuffleDependency
+
+代表对shuffle stage输出的一个依赖。
+
+**_rdd**  父RDD
+***partitioner** *partitioner used to partition the shuffle output**
+***serializer** [[*org.apache.spark.serializer.Serializer Serializer*]] *to use. If not set**
+\*           *explicitly then the default serializer, as specified by* `*spark.serializer*`
+           *config option, will be used.**
+***keyOrdering** *key ordering for RDD's shuffles**
+***aggregator** *map/reduce-side aggregator for RDD's shuffle**
+***mapSideCombine** *whether to perform partial aggregation (also known as map-side combine)**
+***shuffleWriterProcessor** *the processor to control the write behavior in ShuffleMapTask*
+
+```scala
+class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
+    @transient private val _rdd: RDD[_ <: Product2[K, V]],
+    val partitioner: Partitioner,
+    val serializer: Serializer = SparkEnv.get.serializer,
+    val keyOrdering: Option[Ordering[K]] = None,
+    val aggregator: Option[Aggregator[K, V, C]] = None,
+    val mapSideCombine: Boolean = false,
+    val shuffleWriterProcessor: ShuffleWriteProcessor = new ShuffleWriteProcessor)
+  extends Dependency[Product2[K, V]]
+```
+
