@@ -245,7 +245,7 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 ### tips
 
-1. Spark的Executor拿到的内存会比配置的spark.executor.memory略小，这是因为内存分配池的堆部分划分为 Eden，Survivor 和 Tenured 三部分空间，而这里面一共包含了两个 Survivor 区域，而这两个 Survivor 区域在任何时候我们只能用到其中一个
+1. Spark的Executor拿到的 Eden，Survivor 和 Tenured 三部分空间，而这里面一共包含了两个 Survivor 区域，而这两个 Survivor 区域在任何时候我们只能用到其中一个
 2. SparkUI上显示的Storage Memory 可用内存其实等于 Execution 内存和 Storage 内存之和
 3.  Spark UI 是通过除于 1000 * 1000 * 1000 将字节转换成 GB
 
@@ -332,9 +332,81 @@ spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
 
 ![image-20220416162818460](Spark统一内存管理/image-20220416162818460.png)
 
+executor进程内存计算：
+计算公式：
+
+  val executorMem = args.executorMemory + executorMemoryOverhead
+假设executor-为X（整数，单位为M）
+1） 如果没有设置spark.yarn.executor.memoryOverhead,
+
+executorMem= X+max(X*0.1,384)
+2）如果设置了spark.yarn.executor.memoryOverhead（整数，单位是M）
+
+executorMem=X +spark.yarn.executor.memoryOverhead 
+需要满足的条件：
+
+<font color=red>executorMem< yarn.scheduler.maximum-allocation-mb </font>
+
+[spark参数调优](https://blog.csdn.net/purisuit_knowledge/article/details/94600468)
+
+通过-XX:MaxDirectMemorySize可以指定最大的direct memory。默认如果不设置，则与最大堆内存相同。基于netty的shuffle，使用direct memory存进行buffer（spark.shuffle.io.preferDirectBufs），所以在大数据量shuffle时，堆外内存使用较多。 Direct Memory是受GC控制的，例如ByteBuffer bb = ByteBuffer.allocateDirect(1024)，这段代码的执行会在堆外占用1k的内存，Java堆内只会占用一个对象的指针引用的大小，堆外的这1k的空间只有当bb对象被回收时，才会被回收，这里会发现一个明显的不对称现象，就是堆外可能占用了很多，而堆内没占用多少，导致还没触发GC。加上-XX:MaxDirectMemorySize这个大小限制后，那么只要Direct Memory使用到达了这个大小，就会强制触发GC，这个大小如果设置的不够用，那么在日志中会看到java.lang.OutOfMemoryError: Direct buffer memory。
+
 <font color=red>和spark.executor.memory一样，spark.memory.offHeap.size也是Spark Core要使用的(只是只有存储内存和执行内存)。</font>
 
+如果不配置MaxDirectMemorySize，那么netty就认为executory内存就是可用的最大堆外内存。executor申请的内存未必会全用完，剩余的空间会被netty当作Direct Memory使用，所以executor的内存就被netty认为是可以申请的最大内存(不管spark已经使用多少了)，所以就会可劲儿使用。一旦使用超过Executor申请的总量，就会OOM。 我们调整Overhead是调整Yarn的容忍度，允许我超过一些。调整spark.reducer.maxSizeInFlight调整reduce task的buff缓冲区，让它少缓存点儿数据。
+
 [Java-直接内存 DirectMemory 详解](https://cloud.tencent.com/developer/article/1586341)
+
+[databrick的解释](https://kb.databricks.com/clusters/spark-executor-memory)
+
+## 优化准则
+
+- executor-memory + spark.yarn.executor.memoryOverhead是所能使用的内存的上线，如果超过此上线，就会被yarn kill掉。
+
+- executor默认的永久代内存是64K，可以看到永久代使用率长时间为99%，通过设置spark.executor.extraJavaOptions适当增大永久代内存，例如：–conf spark.executor.extraJavaOptions=”-XX:MaxPermSize=64m”
+
+- executor除了stdout、stderr日志，我们可以把gc日志打印出来，便于我们对jvm的内存和gc进行调试。
+
+  ```shell
+  --conf "spark.executor.extraJavaOptions=-XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintHeapAtGC -XX:+PrintGCApplicationConcurrentTime -Xloggc:gc.log"
+  ```
+
+  触发Full GC可以对Direct Memory进行回收，所以想办法增加Full GC次数
+
+  1. 减少堆大小
+
+  2. 年轻代尽快进入老年代，-XX:MaxTenuringThreshold=1
+
+  3. CMS回收策略可以设置触发Full GC的老年代内存使用率，设置一个比较低的值
+
+     ```shell
+     -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintGCDateStamps -XX:+PrintGCApplicationStoppedTime -XX:+PrintHeapAtGC -XX:+PrintGCApplicationConcurrentTime -Xloggc:gc.log -XX:+HeapDumpOnOutOfMemoryError"
+     
+     每次gc.log文件会被覆盖
+     ```
+
+  ​      使用G1GC
+
+       ```shell
+       --conf "spark.executor.extraJavaOptions=-XX:+UseG1GC -XX:G1HeapRegionSize=16M -XX:+PrintGCDetails -XX:+PrintGCTimeStamps"
+       ```
+
+  
+
+  4. 调整老年代所占比例：-XX:NewRatio
+  5. 降低spark.memory.storageFraction减少用于缓存的空间
+
+    [Spark GC调优实战](https://blog.csdn.net/vfgbv/article/details/51720344)
+
+  ### GC调优
+
+[Tuning Java Garbage Collection for Apache Spark Applications](https://www.databricks.com/blog/2015/05/28/tuning-java-garbage-collection-for-spark-applications.html)
+
+
+
+
+
+
 
 
 
@@ -388,7 +460,7 @@ StorageMemory= usableMemory * spark.memory.fraction
              = 16865296384 * 0.6 = 9.42421875 GB
 ```
 
-我们通过将上面的 16865296384 * 0.6 字节除于 1024 * 1024 * 1024 转换成 9.42421875 GB，和 UI 上显示的还是对不上，这是因为 Spark UI 是通过除于 1000 * 1000 * 1000 将字节转换成 GB，如下：
+我们通过将上面的 16865296384 * 0.6 字节除于 1024 * 1024 * 1024 转换成 9.42421875 GB，和 UI 上显示的还是对不上，这是因为 Spark UI 是通过除于 1000 * 1000 * 1000 将字节转换成 GB（最新版本已经改成1204了），如下：
 
 ```scala
 systemMemory = 17179869184 字节
@@ -562,6 +634,12 @@ Executor OOM 一般发生 Shuffle 阶段，该阶段需求计算内存较大，�
 <font color=red>2、 避免数据倾斜</font>
 
 ### GC
+
+观察Executors汇总信息，GC Time列如果告警，那就说明需要调优GC了。
+
+![image-20231215093417631](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231215093417631.png)
+
+
 
 [Spark GC调优](https://cloud.tencent.com/developer/article/1032521)
 

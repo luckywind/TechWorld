@@ -6,7 +6,7 @@ Tungsten 代码生成分为三部分：
 全阶段代码生成（Whole-stage Code Generation）
 加速序列化和反序列化（speed up serialization/deserialization）
 
-
+[深入研究Spark Catalyst优化器](https://www.cnblogs.com/shishanyuan/articles/8455786.html)
 
 
 

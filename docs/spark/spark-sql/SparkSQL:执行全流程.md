@@ -595,15 +595,90 @@ val batches = (
 ```
 
 
+## QueryPlanner
 
-## SparkPlanner extends SparkStrategies extends QueryPlanner
+把一个逻辑计划转为一个物理计划，子类提供一个*GenericStrategy*列表，每个GenericStrategy返回一个物理计划候选集(因为每个Plan只能匹配到一个Strategy，所以目前的候选集里只有一个物理计划，其他全是Nil)。Strategy定义在子类SparkPlanner里面。
 
-把逻辑计划转为物理计划，其父类QueryPlanner的plan方法会把各种策略应用到逻辑计划上
+![image-20231117142634347](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231117142634347.png)
+
+### plan
+
+QueryPlanner.plan
+
+把逻辑计划转为物理计划，plan方法会把各种策略应用到逻辑计划上
 
 参考: https://issues.apache.org/jira/browse/SPARK-1251
 SparkPlanner将逻辑执行计划转换成物理执行计划，即将逻辑执行计划树中的逻辑节点转换成物理节点，如Join转换成HashJoinExec/SortMergeJoinExec...，Filter转成FilterExec等
 
-![666](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/9a5924e9df08733fdc1ec8896eb2736df65f3e16.jpeg)
+生成物理 计 划的实现代码如下， plan()方法传入 LogicalPlan 作为参数 ， 将 strategies 应用 到 LogicalPlan，生成物理计划候选集合( Candidates，目前只有一个非Nil，因为一个Plan节点基本只有一个Strategy能匹配上) 。 如果该集合中存在 PlanLater 类型的 SparkPlan， 则 通过 placeholder 中间变 量取 出对应的 LogicalPlan 后，递归调用 plan()方法，将 PlanLater 替换为子节点的物理计划 。 最后，对物理计划列表进行过滤，去掉一些不够高效的物 理计划(但目前没实现，只是next()取第一个)。
+
+![image-20230714114512998](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230714114512998.png)
+
+```scala
+  def plan(plan: LogicalPlan): Iterator[PhysicalPlan] = {
+    // Obviously a lot to do here still...
+
+    // 利用所有策略生成物理计划PhysicalPlan候选集
+    val candidates = strategies.iterator.flatMap(_(plan))
+
+    // The candidates may contain placeholders marked as [[planLater]],
+    // so try to replace them by their child plans.
+    val plans = candidates.flatMap { candidate =>
+      val placeholders = collectPlaceholders(candidate)
+
+      if (placeholders.isEmpty) {
+        //不包含placeholders，则可以直接返回
+        Iterator(candidate)
+      } else {
+        // Plan the logical plan marked as [[planLater]] and replace the placeholders.
+        placeholders.iterator.foldLeft(Iterator(candidate)) {
+          //candidate是一个包含PlaceHolder的物理计划，在下面这个case中别名为candidatesWithPlaceholders
+          //placeholders是Seq([PlaceHolder, LogicalPlan])，这里逐个把PlaceHolder所包的logicPlan进行转换
+          case (candidatesWithPlaceholders, (placeholder, logicalPlan)) =>
+            // Plan the logical plan for the placeholder.
+            // placeholders对应的逻辑计划转为物理计划，这里递归调用，一遍一遍的调用strategies的plan方法
+            val childPlans = this.plan(logicalPlan)
+           
+            candidatesWithPlaceholders.flatMap { candidateWithPlaceholders =>
+              childPlans.map { childPlan =>
+                // 把placeholder替换为子Plan
+                candidateWithPlaceholders.transformUp {
+                  case p if p.eq(placeholder) => childPlan
+                }
+              }
+            }
+        }
+      }
+    }
+
+    val pruned = prunePlans(plans)
+    assert(pruned.hasNext, s"No plan for $plan")
+    pruned
+  }
+
+```
+
+
+
+QueryExecution直接取第一个：
+
+```scala
+  def createSparkPlan(
+      sparkSession: SparkSession,
+      planner: SparkPlanner,
+      plan: LogicalPlan): SparkPlan = {
+    // TODO: We use next(), i.e. take the first plan returned by the planner, here for now,
+    //       but we will implement to choose the best plan.
+    planner.plan(ReturnAnswer(plan)).next()
+  }
+```
+
+
+
+
+
+
+## SparkPlanner extends SparkStrategies extends QueryPlanner
 
 ### 物理计划Strategy
 
@@ -928,58 +1003,6 @@ If there is no hint or the hints are not applicable, we follow these rules one b
       p
     }
   }
-```
-
-## QueryPlanner
-
-### plan
-
-QueryPlanner.plan
-
-生成物理 计 划的实现代码如下， plan()方法传入 LogicalPlan 作为参数 ， 将 strategies 应用 到 LogicalPlan，生成物理计划候选集合( Candidates) 。 如果该集合中存在 PlanLater 类型的 SparkPlan， 则 通过 placeholder 中间变 量取 出对应的 LogicalPlan 后，递归调用 plan()方法，将 PlanLater 替换为子节点的物理计划 。 最后，对物理计划列表进行过滤，去掉一些不够高效的物 理计划 。
-
-![image-20230714114512998](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230714114512998.png)
-
-```scala
-  def plan(plan: LogicalPlan): Iterator[PhysicalPlan] = {
-    // Obviously a lot to do here still...
-
-    // Collect physical plan candidates.
-    val candidates = strategies.iterator.flatMap(_(plan))
-
-    // The candidates may contain placeholders marked as [[planLater]],
-    // so try to replace them by their child plans.
-    val plans = candidates.flatMap { candidate =>
-      val placeholders = collectPlaceholders(candidate)
-
-      if (placeholders.isEmpty) {
-        //不包含placeholders，则可以直接返回
-        Iterator(candidate)
-      } else {
-        // Plan the logical plan marked as [[planLater]] and replace the placeholders.
-        placeholders.iterator.foldLeft(Iterator(candidate)) {
-          case (candidatesWithPlaceholders, (placeholder, logicalPlan)) =>
-            // Plan the logical plan for the placeholder.
-            // placeholders对应的逻辑计划转为物理计划，这里递归调用
-            val childPlans = this.plan(logicalPlan)
-
-            candidatesWithPlaceholders.flatMap { candidateWithPlaceholders =>
-              childPlans.map { childPlan =>
-                // Replace the placeholder by the child plan
-                candidateWithPlaceholders.transformUp {
-                  case p if p.eq(placeholder) => childPlan
-                }
-              }
-            }
-        }
-      }
-    }
-
-    val pruned = prunePlans(plans)
-    assert(pruned.hasNext, s"No plan for $plan")
-    pruned
-  }
-
 ```
 
 

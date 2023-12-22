@@ -48,5 +48,17 @@ when r2>=0.027 and r2<(0.027+0.162) then '11' \
 else '13' end as p_lan_id" 
 ```
 
+**注意**： 
 
-**注意**： 这里的r 是SparkSQL的函数rand()生成的一个(0,1)范围的随机数，工具内置了r, r2, r3三个，当有更多需求时，可直接调用rand()方法自行生成
+1. 这里的r 是SparkSQL的函数rand()生成的一个(0,1)范围的随机数，工具内置了r, r2, r3三个，当有更多需求时，可直接调用rand()方法自行生成
+2. 当生成char类型数据时，如果数据长度不足，请补齐
+2. 如果只想在本机生成数据，则只能使用local模式， 集群模式需要每个节点都有目标目录
+
+#### 示例2
+
+从某个集合中随机取值
+
+```scala
+split('AZ,SC,LA,MN,NJ,DC,OR,VA,RI,KY,WY,NH,MI,NV,WI,ID,CA,NE,CT,MT,NC,VT,MD,DE,MO,IL,ME,ND,WA,MS,AL,IN,OH,TN,IA,NM,PA,SD,1 ,NY,TX,WV,GA,MA,KS,FL,CO,AK,AR,OK,UT,HI',',')[cast(rand()*50 as int)] as ca_state
+```
+

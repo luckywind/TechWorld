@@ -20,3 +20,7 @@ import spark.implicits._
 ```
 
 sqlContext的隐式转换和SparkSession的好像有冲突，把下面的注释掉就可以了
+
+# 显示列名
+
+spark-sql --conf "spark.hadoop.hive.cli.print.header=true"

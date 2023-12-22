@@ -10,8 +10,14 @@
 
 # top
 
+https://baijiahao.baidu.com/s?id=1745901459006156810&wfr=spider&for=pc
+
+![img](https://pic.rmb.bdstatic.com/bjh/down/1d522cd61ecaeebf7620bd3b6b573722.png?x-bce-process=image/watermark,bucket_baidu-rmb-video-cover-1,image_YmpoL25ld3MvNjUzZjZkMjRlMDJiNjdjZWU1NzEzODg0MDNhYTQ0YzQucG5n,type_RlpMYW5UaW5nSGVpU01HQg==,w_24,text_QOeoi-W6j-mCo-eCueS6iw==,size_24,x_18,y_18,interval_2,color_FFFFFF,effect_softoutline,shc_000000,blr_2,align_1)
+
 1. `top`：是 top 命令的进程 ID。
+
 2. `Tasks`：表示当前系统运行的进程数，包括正在运行、等待、停止和僵尸进程。
+
 3. `%Cpu(s)`：包含 CPU 使用率的相关信息：
    - `us`：用户占用 CPU 百分比。
    - `sy`：内核占用 CPU 百分比。
@@ -20,20 +26,54 @@
    - `wa`：等待 I/O 的 CPU 占用百分比。
    - `hi`：硬件中断（Hardware IRQ）占用的CPU百分比。
    - `si`：软件中断（Software IRQ）占用的CPU百分比。
+   
 4. `Mem`：包含内存使用情况的相关信息：
    - `total`：总内存大小。
    - `used`：已使用的内存大小。
    - `free`：可用的内存大小。
    - `buf/cache`：用于缓存（Buffer 和 Cache）的内存大小。
+   
 5. `Swap`：包含交换空间（Swap）使用情况的相关信息：
    - `total`：总交换空间大小。
    - `used`：已使用的交换空间大小。
    - `free`：可用的交换空间大小。
-6. `PID`：表示进程的 ID。
+   
+
+表头：
+
+1. `PID`：表示进程的 ID。
+
 7. `USER`：表示进程的所属用户。
-8. `%CPU`：表示进程使用的 CPU 百分比。
-9. `%MEM`：表示进程使用的内存百分比。
-10. `TIME+`：表示进程运行的时间，包括了用户态和内核态的时间。
+
+8. PR，优先级值。
+
+9. NI，nice值，通过程序给进程设置的。
+
+10. VIRT，进程使用的虚拟内存的大小，单位是KiB。
+
+11. RES，常驻内存的内存大小，单位是KiB。
+
+12. SHR，共享内存的大小，单位是KiB。
+
+13. S，表示进程的状态，有一下几个状态。
+
+    ```shell
+    D，不能够中断的睡眠状态。
+    R，表示程序正在CPU上执行。
+    S，表示进程正在睡眠。
+    T，进程被信号停止执行。
+    t，表示进程正在被调试器追踪，调试器将这个进程停了下来。
+    Z，zombie表示是一个僵尸进程。
+    ```
+    
+    
+    
+14. `%CPU`：表示进程使用的 CPU 百分比。
+
+15. `%MEM`：表示进程使用的内存百分比。
+
+16. `TIME+`：表示进程运行的时间，包括了用户态和内核态的时间。
+
 11. `COMMAND`：表示进程的命令行。
 
 top - 17:42:30 up  6:16,  4 users,  load average: 0.10, 0.05, 0.18

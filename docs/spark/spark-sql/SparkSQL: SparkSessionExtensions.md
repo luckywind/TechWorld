@@ -2,7 +2,7 @@
 
 ## 简介
 
-在Spark2.2版本中，引入了新的扩展点，使得用户可以在Spark session中自定义自己的parser，analyzer，optimizer以及physical planning stragegy rule。[参考](https://developer.aliyun.com/article/672130#slide-11)
+在Spark2.2版本中，引入了新的扩展点，使得用户可以在Spark session中自定义自己的parser，analyzer，optimizer以及physical planning stragegy rule。[扩展Spark Catalyst，打造自定义的Spark SQL引擎](https://developer.aliyun.com/article/672130#slide-11)
 
 SparkSessionExtensions保存了所有用户自定义的扩展规则，自定义规则保存在成员变量中，对于不同阶段的自定义规则，SparkSessionExtensions提供了不同的接口。
 
@@ -125,7 +125,7 @@ package org.apache.spark.examples.extensions
 
 我们有三种方式注入扩展
 
-- withExtensions of [`SparkSession.Builder`](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/SparkSession.Builder.html)
+- withExtensions 方法 [`SparkSession.Builder`](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/SparkSession.Builder.html)
 - Config - spark.sql.extensions
 - `ServiceLoader` - Add to src/main/resources/META-INF/services/org.apache.spark.sql.SparkSessionExtensionsProvider
 

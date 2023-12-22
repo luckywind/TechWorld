@@ -10,3 +10,5 @@ DPP基本的机制就是在满足条件时插入一个包含来自另一边的fi
 2. Join类型：inner, left semi,  left outer(右边分区的), right outer(左边分区的)
 
 为了在broadcast中直接启动分区裁剪，
+
+[TiSpark 原理之下推](https://cn.pingcap.com/blog/principle-of-pushing-computing-for-tispark/#%E4%BA%86%E8%A7%A3_Spark_SQL)

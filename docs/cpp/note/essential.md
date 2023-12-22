@@ -44,3 +44,8 @@ int a(0);  //构造函数语法 进行初始化，可以处理有多个成员的
 const int max=3;
 ```
 
+[C++的头文件和实现文件分别写什么 ](https://www.cnblogs.com/ider/archive/2011/06/30/what_is_in_cpp_header_and_implementation_file.html)
+
+# C primer plus
+
+[源代码](https://gitee.com/qtyresources/cprimer-plus/)

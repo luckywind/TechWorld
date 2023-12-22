@@ -105,3 +105,40 @@ schedulerDelay =  math.max(0,
 
 [各种时间含义](https://blog.csdn.net/wankunde/article/details/121403842)
 
+# Spark SQL
+
+## [通过UI高效定位问题](https://learn.lianglianglee.com/%E4%B8%93%E6%A0%8F/%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8Spark/22%20Spark%20UI%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9A%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E5%9C%B0%E5%AE%9A%E4%BD%8D%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%EF%BC%9F.md)
+
+1. 通过分析算子数据溢出以及内存使用峰值，判断当前Executor内存是否需要调整
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231208104854599.png" alt="image-20231208104854599" style="zoom:50%;" />
+
+
+
+2. 观察Event Timeline 分析调度时间、shuffle时间
+
+   - 鼠标放在"Show Additional Metrics"上可以看到每个指标具体包含哪些时间
+   - 调度延迟:  包含调度器(master的一部分)把task调度到executor的时间+ executor发送结果到调度器的时间，如果调度延迟大，考虑减少task大小或者减小task的结果
+
+   <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231208105625206.png" alt="image-20231208105625206" style="zoom:50%;" />![image-20231208105644206](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231208105644206.png)
+
+3. Task指标汇总中的Spill指标
+
+​     Spill(Memory) 和Spill(Disk)分别代表溢出数据在内存和磁盘中的存储大小，Spill(Memory) /Spill(Disk) 可以认为是数据膨胀系数，可以用来估算磁盘中的数据消耗的内存。
+
+4. Task指标，关注**Locality level**
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

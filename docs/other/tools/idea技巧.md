@@ -405,7 +405,13 @@ CodeWithMeClientDownloader - GUEST OUTPUT: LSOpenURLsWithRole() failed for the a
 
 ### 找不到sun.misc
 
+Java抛异常： java.nio.DirectByteBuffer.<init>(long, int) not available   
+
 [程序包sun.misc找不到](https://github.com/airlift/slice/issues/106)，JDK11丢弃了sun.misc,修改为jdk8后解决了这个问题
+
+
+
+Modules->Dependencies->Module SDK改成java8
 
 ### illegal cyclic reference involving trait Iterable
 

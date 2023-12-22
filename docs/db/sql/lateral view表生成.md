@@ -77,13 +77,9 @@ group by Num,id_diff
 having count(1)>=3;
 ```
 
-# explode
-
-explode在select句中和在from子句中给虚拟字段命名的格式稍微有些差别，select句中需要加括号，from子句中不需要括号。
 
 
-
-# lateral View 表生成函数
+# lateral View 虚拟表生成函数
 
 ## 语法
 
@@ -105,6 +101,8 @@ fromClause: FROM baseTable (lateralView)*
 
 lateral view是Hive中提供给UDTF的结合，它可以解决UDTF不能添加额外的select列的问题。
 
+> 但是目前UDTF已经可以选择其他列了，所以lateral view的最大作用可能是和explode一起作为from子句的数据源
+
 lateral view其实就是用来和类似explode这种UDTF函数联用的，
 
 首先，UDTF作用到基表的每一行，lateral view会将UDTF生成的结果放到一个虚拟表中，然后这个虚拟表会和输入行进行join
@@ -121,7 +119,7 @@ lateral view udtf(expression) tableAlias as columnAlias (,columnAlias)*
 
 - lateral view在UDTF前使用，表示连接UDTF所分裂的字段。
 - UDTF(expression)：使用的UDTF函数，例如explode()。
-- tableAlias：表示UDTF函数转换的虚拟表的名称, 可省略。
+- tableAlias：表示UDTF函数转换的虚拟表的名称
 - columnAlias：表示虚拟表的虚拟字段名称，如果分裂之后有一个列，则写一个即可；如果分裂之后有多个列，按照列的顺序在括号中声明所有虚拟列名，以逗号隔开。
 
 **格式二： 用在from 语句里**
@@ -131,7 +129,7 @@ from basetable (lateral view)*
 ```
 
 - 在from子句中使用，一般和格式一搭配使用，这个格式只是说明了lateral view的使用位置。<font color=red>from 子句可以是多个表/join</font>
-- <font color=red>from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。会依次执行</font>
+- <font color=red>from子句后面也可以跟多个lateral view语句，使用空格间隔就可以了。会依次执行</font>， 只是跟第一个数据源(可以是一个表，也可以是多个表join)中间是空格隔开，感觉像是from  a join b, c, d这种写法
 
 **格式三**
 
@@ -143,7 +141,7 @@ from basetable (lateral view outer)*
 
 
 
-## 追加一列
+## 单列的虚拟表
 
 ```sql
 with tmp2 as (
@@ -157,7 +155,7 @@ select id,rd,label,value from tmp2
             lateral view explode(split('0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9',',')) myTable as  rd
 ```
 
-## 追加两列
+## 两列的虚拟表
 
 ```sql
 with tmp2 as (
@@ -317,7 +315,7 @@ FROM dwm.lateral_explode_tmp  LATERAL VIEW OUTER explode(array()) C AS a ;
 | front_page    | NULL  |
 ```
 
-## 内置udtf-一行变多行的函数
+# 内置udtf-一行变多行的函数
 
 https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF#LanguageManualUDF-Built-inTable-GeneratingFunctions(UDTF)
 
@@ -331,7 +329,78 @@ https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF#LanguageManu
 | T1,...,Tn/r          | stack(int r,T1 V1,...,Tn/r Vn)                         | <font color=red>把n个值变成r行，每行n/r列</font>             |
 | Tkey,Tvalue          | explode(MAP<Tkey,Tvalue> m)                            | 把map展开为两列(key,value)，每个kv一行                       |
 
-### poseexplode
+## explode
+
+<font color=red>其主要功能是将数组类型的列中的元素拆分成多行，每行包含数组中的一个元素，并且保留其他列</font>
+
+explode在select句中和在from子句中给虚拟字段命名的格式稍微有些差别，select句中需要加括号，from子句中不需要括号。
+
+```sql
+with tb as (
+    select stack(3,
+             0,split("1,2,3", ','),
+             1,split("4,5,6", ','),
+             2,split("7,8,9", ',')   ) 
+             as (id,value)
+             )
+select id, explode(value) from tb;             
+```
+
+id	col
+0	1
+0	2
+0	3
+1	4
+1	5
+1	6
+2	7
+2	8
+2	9
+
+
+
+
+
+
+
+
+
+```sql
+select *
+from
+   (select split(space(10), ' ') as x) t
+     lateral view
+     explode(x) ex ;
+```
+
+
+
+```sql
+select 
+row_number() over(order by ex.col) as rn,
+ex.col
+from
+   (select split(space(10), ' ') as x) t
+     lateral view
+     explode(x) ex ;
+```
+
+
+
+```sql
+select 
+explode(x)
+from
+   (select split("1,2,3,4", ',') as x) t;
+```
+
+
+
+
+
+
+
+## poseexplode
 
 ```sql
 SELECT posexplode(array(10, 20)) AS (r, elem)
@@ -341,6 +410,10 @@ SELECT posexplode(array(10, 20)) AS (r, elem)
 | ---- | ---- | ---- |
 | 0    | 10   |      |
 | 1    | 20   |      |
+
+
+
+
 
 # 函数
 

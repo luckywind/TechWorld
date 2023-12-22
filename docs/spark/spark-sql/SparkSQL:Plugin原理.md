@@ -1,5 +1,9 @@
 # Plugin原理
 
+[spark 3.x Plugin Framework](https://www.jianshu.com/p/67cb71a196ce)spark 3.0引入了一个新的插件框架，其实这个插件在spark 2.x就已经存在了，只不过spark 3.0对该插件进行了重构。因为在之前该插件是不支持driver端的，具体可以见[SPARK-29396](https://links.jianshu.com/go?to=https%3A%2F%2Fissues.apache.org%2Fjira%2Fbrowse%2FSPARK-29396)。至于为什么引入这么一个插件 是为了更好的监控和定制一些指标，以便更好的进行spark调优。
+
+[支持driver端和Executor端的Plugin Framework](https://issues.apache.org/jira/browse/SPARK-29397)
+
 ## 背景
 
 Spark 3.0 引入了一个新的Plugin Framework。Plugin Framework 是一组新的API接口能够让使用者自定义Driver和Executor。这样用户可以根据不用的使用场景控制Driver 和 Executor JVM的初始化。
@@ -46,6 +50,8 @@ public interface SparkPlugin {
 
 ### PluginContainer
 
+是DriverPluginContainer和ExecutorPluginContainer的接口，
+
 PluginContainer本身提供了metrics和task相关的接口
 
 其次，伴生对象的apply方法是SparkContext初始化时调用的，用来加载SparkPlugin，提取其中的driverPlugin和executorPlugin
@@ -87,7 +93,7 @@ private def apply(
 
 ### DriverPluginContainer
 
-它触发driver插件的init方法
+是DriverPlugin的容器，它触发driver插件的init方法
 
 ```scala
 private class DriverPluginContainer(
@@ -158,7 +164,7 @@ private class DriverPluginContainer(
 
 ### ExecutorPluginContainer
 
-它触发executorPlugin的init方法
+是executorPlugin的容器，它触发executorPlugin的init方法
 
 ```scala
 private class ExecutorPluginContainer(
@@ -250,7 +256,7 @@ private class ExecutorPluginContainer(
 
 <font color=red>--conf spark.plugins=com.yusur.spark.SQLPlugin</font>
 
-加载的插件时com.yusur.spark.SQLPlugin,它继承了SparkPlugin
+加载的插件是com.yusur.spark.SQLPlugin,它继承了SparkPlugin，且创建了RaceDriverPlugin和RaceExecutorPlugin
 
 ```scala
 class SQLPlugin extends SparkPlugin with Logging {  
@@ -344,6 +350,10 @@ object RacePluginUtils extends Logging {
 }
 
 ```
+
+### RaceExecutorPlugin
+
+它的init()方法做的事非常简单，就是在Executor上初始化设备
 
 ### SQLExecPlugin
 

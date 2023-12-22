@@ -66,6 +66,14 @@ cmd+k然后cmd+s搜索快捷键 , 把run code的快捷键修改为cmd+r
 
 [对应文档](https://yang-xijie.github.io/LECTURE/vscode-cpp/5_%E5%BC%80%E5%90%AFVSCode%E7%9A%84%E5%A4%A7%E9%97%A8/)
 
+
+
+# 插件
+
+# 运行
+
+cmd+r 运行
+
 # debug
 
 1. task.json 在`VS Code`中可以自定义一些task（任务），这些任务会帮你自动化执行一些东西。任务的配置文件是`tasks.json`。我们希望定义一个**编译程序**的task，以后调试（`debug`）之前都会自动执行这个task。
@@ -83,3 +91,70 @@ command+shift+p
 2. 打开c/c++文件的情况下，输入tasks, 选择configure task , 再选择 clang build active file 创建tasks.json
 3. launch,      选择debug:Open launch.json,选择c++(GDB/LLDB)环境，创建launch.json文件
 
+# 代码同步
+
+## sftp插件
+
+cmd+shift+p 搜索sftp安装后，配置
+
+**watcher**：files可以默认为"/*"，意思是监控当前文件夹下的所有文件，autoUpload，autoDelete也都默认为true，这样你在新增或删除任何东西的时候，本地和服务端都会实时保持同步
+
+**ignore**：这个挺关键的，你可以用glob的方式制定忽略同步的文件，比如一些很大的数据文件其实不需要被同步，只需要关键的代码就行。
+
+### 多主机
+
+```json
+{
+  "username": "username",
+  "password": "password",
+  "remotePath": "/remote/workspace/a",
+  "watcher": {
+    "files": "dist/*.{js,css}",
+    "autoUpload": false,
+    "autoDelete": false
+  },
+  "profiles": {
+    "dev": {
+      "host": "dev-host",
+      "remotePath": "/dev",
+      "uploadOnSave": true
+    },
+    "prod": {
+      "host": "prod-host",
+      "remotePath": "/prod"
+    }
+  },
+  "defaultProfile": "dev"
+}
+```
+
+使用SFTP: Set Profile 来切换profile
+
+### 多Context
+
+```json
+[
+  {
+    "name": "server1",
+    "context": "project/build",
+    "host": "host",
+    "username": "username",
+    "password": "password",
+    "remotePath": "/remote/project/build"
+  },
+  {
+    "name": "server2",
+    "context": "project/src",
+    "host": "host",
+    "username": "username",
+    "password": "password",
+    "remotePath": "/remote/project/src"
+  }
+]
+```
+
+# ssh
+
+remote -SSH
+
+按F1搜索 remote-ssh 连接服务器

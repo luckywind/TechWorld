@@ -386,9 +386,155 @@ Metrics的展示
 
 [metrics整理](https://www.jianshu.com/p/e42ad9cb66a1)
 
+# Metrics更新
+
+一个算子的duration是否包含子节点的duration，主要看该算子计时开始是在调用child.doExecute()前还是后，如果是调用前就开始计时，那么是包含的，否则就不包含。
+
+这里debug时最好单线程跑
+
+## HashAggregate
+
+### docodeGen
+
+开启codeGen后，是包含了child的时间的，这跟WSDG算子的duration计算方式有关系
+
+
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231102092750247.png" alt="image-20231102092750247" style="zoom:50%;" />
+
+
+
+
+
+### doExecute
+
+此时是不包含child的时间的
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20231102095938691.png" alt="image-20231102095938691" style="zoom:50%;" />
+
+```scala
+  protected override def doExecute(): RDD[InternalRow] = {
+    val numOutputRows = longMetric("numOutputRows")
+    val peakMemory = longMetric("peakMemory")
+    val spillSize = longMetric("spillSize")
+    val avgHashProbe = longMetric("avgHashProbe")
+    val aggTime = longMetric("aggTime")
+    val numTasksFallBacked = longMetric("numTasksFallBacked")
+    //⚠️driver端： 先触发子节点计算，此时当前算子HashAggregate并未记时,一个task在执行child.execute()时应该只是计算一个分区
+    child.execute()
+    .mapPartitionsWithIndex { (partIndex, iter) =>
+       //executor端： task执行，直到子节点的batch产出数据才触发当前节点对这个batch计时
+      val beforeAgg = System.nanoTime()
+      val hasInput = iter.hasNext
+      val res = if (!hasInput && groupingExpressions.nonEmpty) {
+        // This is a grouped aggregate and the input iterator is empty,
+        // so return an empty iterator.
+        Iterator.empty
+      } else {
+        val aggregationIterator =
+          new TungstenAggregationIterator(
+            partIndex,
+            groupingExpressions,
+            aggregateExpressions,
+            aggregateAttributes,
+            initialInputBufferOffset,
+            resultExpressions,
+            (expressions, inputSchema) =>
+              MutableProjection.create(expressions, inputSchema),
+            inputAttributes,
+            iter,
+            testFallbackStartsAt,
+            numOutputRows,
+            peakMemory,
+            spillSize,
+            avgHashProbe,
+            numTasksFallBacked)
+        if (!hasInput && groupingExpressions.isEmpty) {
+          numOutputRows += 1
+          Iterator.single[UnsafeRow](aggregationIterator.outputForEmptyGroupingKeyWithoutInput())
+        } else {
+          aggregationIterator
+        }
+      }   //更新时间
+      aggTime += NANOSECONDS.toMillis(System.nanoTime() - beforeAgg)
+      res
+    }
+  }
+```
+
+## WholeStageCodegenExec
+
+duration包含child的时间
+
+### doCodeGen
+
+```scala
+  def doCodeGen(): (CodegenContext, CodeAndComment) = {
+    val startTime = System.nanoTime() // 注意⚠️： 子节点计算前就开始计时
+    val ctx = new CodegenContext
+    val code = child.asInstanceOf[CodegenSupport].produce(ctx, this)
+
+    // main next function.
+    ctx.addNewFunction("processNext",
+      s"""
+        protected void processNext() throws java.io.IOException {
+          ${code.trim}
+        }
+       """, inlineToOuterClass = true)
+
+    val className = generatedClassName()
+
+    val source = s"""
+      public Object generate(Object[] references) {
+        return new $className(references);
+      }
+
+      ${ctx.registerComment(
+        s"""Codegened pipeline for stage (id=$codegenStageId)
+           |${this.treeString.trim}""".stripMargin,
+         "wsc_codegenPipeline")}
+      ${ctx.registerComment(s"codegenStageId=$codegenStageId", "wsc_codegenStageId", true)}
+      final class $className extends ${classOf[BufferedRowIterator].getName} {
+
+        private Object[] references;
+        private scala.collection.Iterator[] inputs;
+        ${ctx.declareMutableStates()}
+
+        public $className(Object[] references) {
+          this.references = references;
+        }
+
+        public void init(int index, scala.collection.Iterator[] inputs) {
+          partitionIndex = index;
+          this.inputs = inputs;
+          ${ctx.initMutableStates()}
+          ${ctx.initPartition()}
+        }
+
+        ${ctx.emitExtraCode()}
+
+        ${ctx.declareAddedFunctions()}
+      }
+      """.trim
+
+    // try to compile, helpful for debug
+    val cleanedSource = CodeFormatter.stripOverlappingComments(
+      new CodeAndComment(CodeFormatter.stripExtraNewLines(source), ctx.getPlaceHolderToComments()))
+
+    //注意⚠️： 全部结束后结束计时
+    val duration = System.nanoTime() - startTime
+    WholeStageCodegenExec.increaseCodeGenTime(duration)
+
+    logDebug(s"\n${CodeFormatter.format(cleanedSource)}")
+    (ctx, cleanedSource)
+  }
+```
+
+
+
 # SQL metrics的一个bug
 
-## sql
+## 多线程情况下两个stage同时跑
 
 ```scala
 161上
@@ -459,6 +605,7 @@ WSCG天然的把执行过程分为更容易计算duration的pipeline，且比tas
     assert(rdds.size <= 2, "Up to two input RDDs can be supported")
     if (rdds.length == 1) {
    // 只有一个child  , 计算所有分区的duration并累加  
+   // ⚠️： 这里并未调用rdd的action算子来提前触发rdd的计算，而是和当前算子的计算一起触发，所以当前算子的duration是包含前面算子的duration的。
       rdds.head.mapPartitionsWithIndex { (index, iter) =>
         val (clazz, _) = CodeGenerator.compile(cleanedSource)
         val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]

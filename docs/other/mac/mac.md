@@ -90,6 +90,8 @@ https://www.macwk.com/soft/all/p1
 
 https://macpedia.xyz/
 
+[folx下载器](https://www.zhiniw.com/folx_pro-mac.html)
+
 ## 打不开无法检查
 
 [打开任意](https://www.yaxi.net/2020-05-09/1990.html)
