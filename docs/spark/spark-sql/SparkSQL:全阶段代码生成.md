@@ -8,7 +8,9 @@ Tungsten 代码生成分为三部分：
 
 [深入研究Spark Catalyst优化器](https://www.cnblogs.com/shishanyuan/articles/8455786.html)
 
+[Understanding and Improving Code Generation slideshare](https://www.slideshare.net/databricks/understanding-and-improving-code-generation)
 
+[Spark Sql DataFrame processing Deep Dive](https://xuechendi.github.io/2019/04/16/Spark-Sql-Deep-Dive)
 
 ## 表达式代码生成
 
@@ -147,6 +149,85 @@ CollapseCodegenStages就是全阶段代码生成的入口
 
 对于物理算子树， CollapseCodegenStages 规则会根据节点是否支持代码生成采 用不同的处理方式 。在遍历物理算子树时，当碰到不支持代码生成的节点时， 会在其上插入一个名为 InputAdapter 的物理节点对其进行封装 。
 
+
+
+#### 源码
+
+```scala
+  private def supportCodegen(plan: SparkPlan): Boolean = plan match {
+    case plan: CodegenSupport if plan.supportCodegen =>
+      val willFallback = plan.expressions.exists(_.exists(e => !supportCodegen(e)))
+      // the generated code will be huge if there are too many columns
+      val hasTooManyOutputFields =
+        WholeStageCodegenExec.isTooManyFields(conf, plan.schema)
+      val hasTooManyInputFields =
+        plan.children.exists(p => WholeStageCodegenExec.isTooManyFields(conf, p.schema))
+      !willFallback && !hasTooManyOutputFields && !hasTooManyInputFields
+    case _ => false
+  }
+
+
+  /**
+   * Inserts an InputAdapter on top of those that do not support codegen.
+   */
+  private def insertInputAdapter(plan: SparkPlan): SparkPlan = {
+    plan match {
+      case p if !supportCodegen(p) =>
+      // 遇到不支持codegen的算子了， 在其上插入一个InputAdapter  
+      // collapse them recursively
+        InputAdapter(insertWholeStageCodegen(p))
+      case j: SortMergeJoinExec =>
+      // Join的两个字节点需要各自做codeGen, 所以总是插入InputAdapter
+      
+      // The children of SortMergeJoin should do codegen separately.
+        j.withNewChildren(j.children.map(
+          child => InputAdapter(insertWholeStageCodegen(child))))
+      case j: ShuffledHashJoinExec =>
+        // The children of ShuffledHashJoin should do codegen separately.
+        j.withNewChildren(j.children.map(
+          child => InputAdapter(insertWholeStageCodegen(child))))
+      case p => p.withNewChildren(p.children.map(insertInputAdapter))
+    }
+  }
+
+
+
+private def insertWholeStageCodegen(plan: SparkPlan): SparkPlan = {
+    plan match {
+      // 只输出一个domain object的算子，因为domain 无法写入unsafe row,不插入WholeStageCodegen
+      
+      // For operators that will output domain object, do not insert WholeStageCodegen for it as
+      // domain object can not be written into unsafe row.
+      case plan if plan.output.length == 1 && plan.output.head.dataType.isInstanceOf[ObjectType] =>
+        plan.withNewChildren(plan.children.map(insertWholeStageCodegen))
+      case plan: LocalTableScanExec =>
+        // LocalScan前不插入
+      
+        // Do not make LogicalTableScanExec the root of WholeStageCodegen
+        // to support the fast driver-local collect/take paths.
+        plan
+      case plan: CommandResultExec =>
+        // 获取结果算子前不插入
+        // Do not make CommandResultExec the root of WholeStageCodegen
+        // to support the fast driver-local collect/take paths.
+        plan
+      case plan: CodegenSupport if supportCodegen(plan) =>
+        // 支持CodeGen的算子前插入
+       
+        // The whole-stage-codegen framework is row-based. If a plan supports columnar execution,
+        // it can't support whole-stage-codegen at the same time.
+        assert(!plan.supportsColumnar)
+                            //这个insert其实是在递归查找该子树中的不支持codeGen的算子，然后插入InputAdapter
+        WholeStageCodegenExec(insertInputAdapter(plan))(codegenStageCounter.incrementAndGet())
+      case other =>
+        other.withNewChildren(other.children.map(insertWholeStageCodegen))
+    }
+  }
+
+```
+
+
+
 ### codeGenSupport
 
 在CodegenSupport中比较重要的是consume/doConsume和produce/doProduce这两对方法。 根据方法名很容易理解，
@@ -157,7 +238,7 @@ CollapseCodegenStages就是全阶段代码生成的入口
 
 在具体实现上， consume 和 produce 都是 final 类型，区别在于 produce方法会调用 doProduce方法，而 consume方法则会调用其父节点的 doConsume方法。
 
-consume方法所起到的作用就是整合当前节点的处理逻辑，构造(ctx,inputVars,rowVar)三元组并提交到父节点的doConsume方法。
+consume方法所起到的作用就是整合当前节点的处理逻辑，构造(ctx,inputVars,rowVar)三元组并提交到父节点的doConsume方法， 正好对应了子节点处理逻辑先于父节点。
 
 1. 生成下一步逻辑处理的变量 inputVars，类型为 Seq[ExprCode]， 不同的变量代表不同的列 。
 2. 生成 rowVar，类型为 ExprCode，代表整行数据的变量名 。 
@@ -166,6 +247,10 @@ consume方法所起到的作用就是整合当前节点的处理逻辑，构造(
 
 
 ![image-20230413181959965](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230413181959965.png)
+
+> 代码生成可以看作 是两个方向相反的递归过程:代码的整体框架由 produce/doProduce方法负责，父节点调用子节 点;代码具体处理逻辑由 consume/doConsume 方法负责，由子节点调用父节点。
+
+节点的 produce 方法调用 doProduce 方法，而 doProduce 中递归调用子节点的 produce 方法， 如果是叶子节点或 InputAdapter 节点， doProduce 方法会生成具体的代码框架，因此在 Fakelnput 节点的 doProduce 方法中构造代码生成的框架 。 生成的代码框架基于 while语句循环，不断地读入数据行( row)，并将数据 行的处理交给 consume 方法完成 。
 
 不支持代码生成的算子会采用FakeInput进行封装，起到数据源的作用，它的doProduce生成的代码如下：
 

@@ -63,7 +63,7 @@ env.socketTextStream("localhost", 7777)
 
 ### keyBy(按键分区)
 
-对于 Flink 而言，DataStream 是没有直接进行聚合的 API 的。因为我们对海量数据做聚合 肯定要进行分区并行处理，这样才能提高效率。所以在 Flink 中，要做聚合，需要先进行分区; 这个操作就是通过 keyBy()来完成的。分区字段可以通过lambda表达式，属性，自定义KeySelector指定
+对于 Flink 而言，**DataStream 是没有直接进行聚合的 API 的。因为我们对海量数据做聚合 肯定要进行分区并行处理，这样才能提高效率。所以在 Flink 中，要做聚合，需要先进行分区; 这个操作就是通过 keyBy()来完成的**。分区字段可以通过lambda表达式，属性，自定义KeySelector指定
 
 keyBy()是聚合前必须要用到的一个算子。keyBy()通过指定键(key)，可以将一条流从逻 辑上划分成不同的分区(partitions)。这里所说的分区，其实就是并行处理的子任务，也就对 应着任务槽(task slots)。
 

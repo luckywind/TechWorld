@@ -136,7 +136,7 @@ hexo d == hexo deploy#部署
 
 Typora支持将插入的图片文件拷贝到指定路径，通过`Typora->偏好设置->图像`，然后参照下图选择`复制到指定路径`将图片拷贝到与Markdown文件同名目录下。
 
-![image-20220415213448381](../../../../../../Library/Application Support/typora-user-images/image-20220415213448381.png)
+![image-20220415213448381](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220415213448381.png)
 
 
 

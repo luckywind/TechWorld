@@ -89,7 +89,8 @@ spark.range(1000).filter("id > 100").selectExpr("sum(id)").explain()
 
 # Tungsten项目
 
+[Project Tungsten：让Spark将硬件性能压榨到极限（转载）](https://www.cnblogs.com/shishanyuan/p/8453970.html)
+
 三大优化
 
 1.  内存管理和二进制处理
-   

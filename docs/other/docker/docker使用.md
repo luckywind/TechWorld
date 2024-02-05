@@ -1,3 +1,5 @@
+[参考](https://www.freecodecamp.org/chinese/news/the-docker-handbook/)
+
 # 简介
 
 容器： 装进程的壳子
@@ -35,6 +37,10 @@ mac安装
 brew cask install docker
 docker --version
 ```
+
+## ubuntu
+
+
 
 ## 镜像加速
 
