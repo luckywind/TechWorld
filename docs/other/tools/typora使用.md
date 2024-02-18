@@ -137,6 +137,8 @@ https://www.cnblogs.com/chengkanghua/p/11084749.html
 
 [参考](https://blog.51cto.com/u_2930144/3864611)
 
+多级标题快捷键ctrl+数字
+
 # 配合PicGo
 
 [参考](https://www.jianshu.com/p/fd8ebfcf42e3)
