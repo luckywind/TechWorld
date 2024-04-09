@@ -224,9 +224,113 @@ sec：I/O 请求总时间（单位是微秒）。
 
 用 iostat -x 命令查看磁盘工作时间，返回数据中的 %util 是磁盘读写操作的百分比时间，如果超过 70%就说明磁盘比较繁忙了，返回的 await 数据是平均每次磁盘读写的等待时间。
 
-# 网络带宽
+## fio
 
-一般在局域网做压测，网络带宽很少出现瓶颈。当传输大数据量，带宽同时被其他应用占用以及有网络限速等情况时，则带宽可能成为性能瓶颈。理论上，1000Mbit/s 网卡的传输速度是 125MB/s，100Mbit/s 网卡是 12.5MB/s，实际的传输速度会受如交换机、网卡等配套设备影响。在 Linux 服务器上查看网络流量的工具很多，有 vnStat、NetHogs、iftop 等。
+```shell
+fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjobs=1 -runtime=60 -group_reporting -filename=/dev/testblock -name=Rand_Write_Testing
+```
+
+
+
+- `-direct=1`: 表示使用直接I/O模式，绕过操作系统的缓存，直接对磁盘进行读写操作。
+- `-iodepth=32`: 设置I/O深度为32，即同时进行的I/O操作数量为32个。
+- `-rw=randwrite`: 指定测试类型为随机写入（random write）。
+- `-ioengine=libaio`: 使用Linux AIO（异步I/O）引擎进行I/O操作。
+- `-bs=4k`: 设置块大小（block size）为4KB，即每次读写的数据块大小为4KB。
+- `-size=1G`: 设置测试文件的大小为1GB。
+- `-numjobs=1`: 指定启动一个fio工作线程。
+- `-runtime=60`: 设置测试时间为60秒。
+- `-group_reporting`: 在测试结果中以组的形式报告各个I/O操作的性能数据。
+- `-filename=/dev/testblock`: 指定测试文件的路径为/dev/testblock，即对名为testblock的磁盘设备进行测试。
+- `-name=Rand_Write_Testing`: 为这个测试命名，便于识别和区分不同的测试场景。
+
+通过这个命令，可以对指定的磁盘设备进行随机写入性能测试，并收集相关的性能数据。这有助于评估磁盘的性能表现，以及在实际应用中的表现情况。
+
+
+
+输出解读：
+
+```shell
+Run status group 0 (all jobs):
+  WRITE: bw=577MiB/s (605MB/s), 577MiB/s-577MiB/s (605MB/s-605MB/s), io=1024MiB (1074MB), run=1775-1775msec
+
+Disk stats (read/write):
+    dm-0: ios=0/243535, merge=0/0, ticks=0/6663, in_queue=6667, util=88.85%, aggrios=0/131237, aggrmerge=0/0, aggrticks=0/3525, aggrin_queue=2779, aggrutil=86.21%
+  nvme0n1: ios=0/202, merge=0/0, ticks=0/526, in_queue=256, util=2.64%
+  nvme1n1: ios=0/262273, merge=0/0, ticks=0/6525, in_queue=5303, util=86.21%
+```
+
+bw表示带宽，
+
+io表示总写入的数据量
+
+run表示测试运行时间
+
+Disk stats表示磁盘读写信息统计
+
+
+
+
+
+
+
+# 网络
+
+## bps带宽是网络链路的最大传输速率
+
+带宽通常用来衡量一个网络连接的数据传输能力，它反映了这个连接理论上可以达到的最高数据传输速度。带宽的单位是bps，即每秒比特数。高带宽意味着在单位时间内可以传输更多的数据。
+
+一般在局域网做压测，网络带宽很少出现瓶颈。当传输大数据量，带宽同时被其他应用占用以及有网络限速等情况时，则带宽可能成为性能瓶颈。理论上，1000Mbit/s 网卡的传输速度是 125MB/s，100Mbit/s 网卡是 12.5MB/s，实际的传输速度会受如交换机、网卡等配套设备影响。在 Linux 服务器上查看网络流量的工具很多，有iperf3, vnStat、NetHogs、iftop 等。
+
+
+
+## pps每秒传输的数据包数量
+
+pps和bps两者的不同点在于，带宽侧重于整体的数据传输速率，而PPS关注的是具体到每个数据包的处理速率。在实际使用中，即使带宽很大，如果网络设备的PPS处理能力不足，也可能导致网络拥堵和性能瓶颈。因此，它们都是衡量网络性能的重要指标，且相辅相成。
+
+```shell
+sar -n DEV 1 -t 100
+```
+
+-n DEV 选择监控网络设备
+
+1 时间间隔1秒
+
+-t 100进行100次采样
+
+输出结果解读：
+
+```shell
+Average:        IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s
+Average:    cali6f46772d931      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    califd1a9391c79      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:       dummy0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    cali69c5e5c1631      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    cali75be0a14365      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    cali865ef3d6814      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:           lo    179.67    179.67     33.66     33.66      0.00      0.00      0.00
+Average:    virbr0-nic      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:       virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:       enp5s0      2.33      3.33      0.16      1.49      0.00      0.00      0.00
+Average:    cali087369ad67a      3.33      3.33      0.31      0.29      0.00      0.00      0.00
+Average:    kube-ipvs0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    calibac85a5c04a      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:        tunl0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    cali80d3bb471f2      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:    nodelocaldns      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+Average:      docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
+```
+
+- **IFACE**: 表示网络接口的名称。
+- **rxpck/s**: 表示每秒接收的数据包数量。
+- **txpck/s**: 表示每秒发送的数据包数量。
+- **rxkB/s**: 表示每秒接收的千字节数（KB）。
+- **txkB/s**: 表示每秒发送的千字节数（KB）。
+- **rxcmp/s**: 表示每秒接收的压缩数据包数量。
+- **txcmp/s**: 表示每秒发送的压缩数据包数量。
+- **rxmcst/s**: 表示每秒接收的多播数据包数量。
+
+
 
 # uptime
 

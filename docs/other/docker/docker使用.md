@@ -51,6 +51,24 @@ docker --version
 
 ## ubuntu
 
+```shell
+# $ curl -fsSL test.docker.com -o get-docker.sh
+$ curl -fsSL get.docker.com -o get-docker.sh
+$ sudo sh get-docker.sh --mirror Aliyun
+# $ sudo sh get-docker.sh --mirror AzureChinaCloud
+```
+
+测试
+
+docker run --rm hello-world
+
+## 启动 Docker
+
+```
+$ sudo systemctl enable docker
+$ sudo systemctl start docker
+```
+
 
 
 ## 镜像加速
@@ -60,6 +78,13 @@ docker --version
 在任务栏点击 Docker for mac 应用图标 -> Perferences... -> Daemon -> Registry mirrors。在列表中填写加速器地址即可。修改完成之后，点击 Apply & Restart 按钮，Docker 就会重启并应用配置的镜像地址了。
 
 # 使用镜像
+
+Docker 运行容器前需要本地存在对应的镜像，如果本地不存在该镜像，Docker 会从镜像仓库下载该镜像。
+
+## 增删查命令汇总
+
+- 查找镜像
+  docker search xxx
 
 - 获取镜像
 
@@ -71,9 +96,11 @@ $ docker pull [选项] [Docker Registry 地址[:端口号]/]仓库名[:标签]
 
 1. 省略了Docker镜像仓库地址，默认地址是docker.io
 
-2. 仓库名有两部分，即<用户名>/<软件名>，  用户名默认为library
+2. **仓库名有两部分，即<用户名>/<软件名>，  用户名默认为library**
 
 所以完整的镜像名称是docker.io/library/ubuntu:18.04
+
+[docker.io]/[library/ubuntu]:[18.04]
 
 - 运行容器
 
@@ -85,11 +112,34 @@ docker run -it --rm ubuntu:18.04 bash
 >
 > -rm 容器退出后自动删除
 
-- 列出镜像
+- 列出已经下载的镜像
 
 docker image ls
 
-   列出部分镜像docker image ls ubuntu
+​	  1. 列出指定仓库下的镜像docker image ls ubuntu
+
+   2. 列出中间层镜像 docker image ls -a
+
+   3. 过滤 docker image ls --filter/-f
+
+   4. 特定格式显示--format
+
+      ```shell
+      $ docker image ls -q
+      5f515359c7f8
+      05a60462f8ba
+      fe9198c04d62
+      00285df0df87
+      329ed837d508
+      329ed837d508
+      $ docker image ls --format "{{.ID}}: {{.Repository}}"
+       docker image ls --format "table {{.ID}}\t{{.Repository}}\t{{.Tag}}"
+      ```
+
+      
+
+- 镜像体积
+  docker system df 
 
 - 删除镜像
   docker image rm [选项] <镜像1> [<镜像2> ...]
@@ -99,11 +149,122 @@ docker image ls
   成批删除镜像，例如要删除所有仓库名为redis的镜像
   docker image rm $(docker image ls -q redis)
 
+- 打标签
+  docker tag 镜像ID 用户名/仓库名:tag
+
 - 虚拟镜像
   仓库名和标签都是<none>. 
 
   这是出现了新的同名镜像，这个镜像已经没有价值了，可以随意删除掉，可以用这个命令删除：
   docker  image prune
+
+## [理解 Docker 镜像和容器的存储路径](https://www.freecodecamp.org/chinese/news/where-are-docker-images-stored-docker-container-paths-explained/)
+
+```shell
+$ docker info
+
+...
+ Storage Driver: overlay2  # 存储驱动， 保存docker镜像
+ Docker Root Dir: /var/lib/docker # 根目录
+
+```
+
+`/var/lib/docker` 目录中保存着各种信息，例如：容器数据、卷、构建文件、网络文件和集群数据。
+
+```shell
+$ ls -la /var/lib/docker
+
+total 152
+drwx--x--x   15 root     root          4096 Feb  1 13:09 .
+drwxr-xr-x   13 root     root          4096 Aug  1  2019 ..
+drwx------    2 root     root          4096 May 20  2019 builder
+drwx------    4 root     root          4096 May 20  2019 buildkit
+drwx------    3 root     root          4096 May 20  2019 containerd
+drwx------    2 root     root         12288 Feb  3 19:35 containers
+drwx------    3 root     root          4096 May 20  2019 image
+drwxr-x---    3 root     root          4096 May 20  2019 network
+drwx------    6 root     root         77824 Feb  3 19:37 overlay2
+drwx------    4 root     root          4096 May 20  2019 plugins
+drwx------    2 root     root          4096 Feb  1 13:09 runtimes
+drwx------    2 root     root          4096 May 20  2019 swarm
+drwx------    2 root     root          4096 Feb  3 19:37 tmp
+drwx------    2 root     root          4096 May 20  2019 trust
+drwx------   15 root     root         12288 Feb  3 19:35 volumes
+```
+
+
+
+
+
+
+
+查看镜像
+
+```shell
+$ docker image pull nginx
+$ docker image inspect nginx
+
+[
+    {
+        "Id": "sha256:207...6e1",
+        "RepoTags": [
+            "nginx:latest"
+        ],
+        "RepoDigests": [
+            "nginx@sha256:ad5...c6f"
+        ],
+        "Parent": "",
+ ...
+        "Architecture": "amd64",
+        "Os": "linux",
+        "Size": 126698063,
+        "VirtualSize": 126698063,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/585...9eb/diff:
+                             /var/lib/docker/overlay2/585...9eb/diff",
+                "MergedDir": "/var/lib/docker/overlay2/585...9eb/merged",
+                "UpperDir": "/var/lib/docker/overlay2/585...9eb/diff",
+                "WorkDir": "/var/lib/docker/overlay2/585...9eb/work"
+            },
+...
+```
+
+**LowerDir** 包含镜像的只读层，表示变更的读写层包含在 **UpperDir** 中
+
+## Docker卷
+
+可以利用卷来持久化容器内的数据，容器和宿主机之间、容器和容器之间也可以通过共享卷来共享数据。使用 **-v** 选项可以让容器以挂载卷的方式启动：
+
+```shell
+$ docker run --name nginx_container -v /var/log nginx
+
+$ docker inspect nginx_container
+"Mounts": [
+            {
+                "Type": "volume",
+                "Name": "1e4...d9c",
+                "Source": "/var/lib/docker/volumes/1e4...d9c/_data",
+                "Destination": "/var/log",
+                "Driver": "local",
+                "Mode": "",
+                "RW": true,
+                "Propagation": ""
+            }
+        ],
+```
+
+
+
+# [仓库管理](https://www.runoob.com/docker/docker-repository.html)
+
+仓库登录需要输入用户名和密码，登录成功后，我们就可以从 docker hub 上拉取自己账号下的全部镜像。
+
+docker login/logout
+
+## 推送镜像
+
+
 
 # 操作容器
 
@@ -135,21 +296,46 @@ docker container start / restart 这些命令
 
 -it  带命令提示符的交互
 
+```shell
+$ docker exec -it 69d1 bash
+```
+
+
+
 ## 删除容器
 
 可以使用 `docker container rm` 来删除一个处于终止状态的容器。-f 可删除运行中的容器
 
 docker container prune  清理所有终止状态的容器
 
+## 查看容器日志
+
+```shell
+$ docker logs [OPTIONS] CONTAINER
+  Options:
+        --details        显示更多的信息
+    -f, --follow         跟踪实时日志
+        --since string   显示自某个timestamp之后的日志，或相对时间，如42m（即42分钟）
+        --tail string    从日志末尾显示多少行日志， 默认是all
+    -t, --timestamps     显示时间戳
+        --until string   显示自某个timestamp之前的日志，或相对时间，如42m（即42分钟）
+```
+
+
+
 # 数据管理
 
 
+
+# 其他命令
+
+docker ps
 
 
 
 # Dockerfile
 
-## 定制镜像
+## [定制镜像](https://yeasy.gitbook.io/docker_practice/image/build)
 
 ### FROM 和RUN 命令
 
@@ -227,4 +413,44 @@ docker build - < context.tar.gz
 `CMD` 指令就是用于指定默认的容器主进程的启动命令的。
 
 在运行时可以指定新的命令来替代镜像设置中的这个默认命令，比如，`ubuntu` 镜像默认的 `CMD` 是 `/bin/bash`，如果我们直接 `docker run -it ubuntu` 的话，会直接进入 `bash`。我们也可以在运行时指定运行别的命令，如 `docker run -it ubuntu cat /etc/os-release`。这就是用 `cat /etc/os-release` 命令替换了默认的 `/bin/bash` 命令了，输出了系统版本信息。
+
+# Demo
+
+参考例子/home/chengxf/code/docker-img/mynginx
+
+```shell
+# 拉取镜像
+$ docker pull luckywindwhu/helloworld:v1
+v1: Pulling from luckywindwhu/helloworld
+123275d6e508: Pull complete 
+dd1cd6637523: Pull complete 
+0c4e6d630f2c: Pull complete 
+13e9cd8f0ea1: Pull complete 
+ad62cd8fe93e: Pull complete 
+c9f8f145f5d0: Pull complete 
+f6e40a7a727e: Pull complete 
+Digest: sha256:8fc6c283c297752b6d3a509c0eea3e2bc5778a2f270f61372efcc499a893057c
+Status: Downloaded newer image for luckywindwhu/helloworld:v1
+docker.io/luckywindwhu/helloworld:v1
+
+$ docker image list 
+REPOSITORY                TAG       IMAGE ID       CREATED          SIZE
+mynginx                   v1        12326145d387   14 minutes ago   187MB
+luckywindwhu/helloworld   v1        90dbe22af504   3 weeks ago      158MB
+nginx                     latest    92b11f67642b   6 weeks ago      187MB
+hello-world               latest    d2c94e258dcb   11 months ago    13.3kB
+
+# 推送到仓库时，先打个tag
+$ docker tag mynginx:v1 luckywindwhu/mynginx:v1
+$ docker image list 
+REPOSITORY                TAG       IMAGE ID       CREATED          SIZE
+mynginx                   v1        12326145d387   16 minutes ago   187MB
+luckywindwhu/mynginx      v1        12326145d387   16 minutes ago   187MB
+luckywindwhu/helloworld   v1        90dbe22af504   3 weeks ago      158MB
+nginx                     latest    92b11f67642b   6 weeks ago      187MB
+hello-world               latest    d2c94e258dcb   11 months ago    13.3kB
+$ docker push luckywindwhu/mynginx:v1
+The push refers to repository [docker.io/luckywindwhu/mynginx]
+fecc834da549: Pushed 
+```
 
