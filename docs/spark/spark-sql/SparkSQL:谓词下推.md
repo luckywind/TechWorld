@@ -1,1 +1,0 @@
-[Spark谓词下推](https://cn.pingcap.com/blog/principle-of-pushing-computing-for-tispark/)

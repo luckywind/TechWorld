@@ -117,6 +117,21 @@ sudo dpkg -i package.deb
 
 [破解typora并创建快捷方式](https://blog.csdn.net/weixin_42905141/article/details/124071137)
 
+# 通知栏
+
+[参考](https://ubuntuqa.com/article/787.html)
+
+仓库没有release文件，
+
+1. 打开终端，进入etc/apt/sources.list.d
+`cd /etc/apt/sources.list.d`
+
+2. 删除对应文件
+
+# 终端
+
+https://gitcode.com/asbru-cm/asbru-cm/overview?utm_source=csdn_github_accelerator&isLogin=1
+
 # 死机
 
 ## 可尝试的解决方法

@@ -1,1 +1,0 @@
-[Spark SQL 性能优化再进一步 CBO 基于代价的优化](http://www.jasongj.com/spark/cbo/)
