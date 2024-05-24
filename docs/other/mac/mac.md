@@ -139,3 +139,34 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 [NTFS软件](https://www.macyy.cn/archives/78#J_DLIPPCont)
 
 激活码：3VV2VF-HQZ01U-MZ5ZU9-ZVEH45-H6CFE4
+
+# 休眠命令
+
+## 命令说明
+
+1. 命令如下：
+    `sudo shutdown [-h | -r | -s] [time]`
+    **此命令需要管理员权限**
+2. 参数说明：
+
+- `-h` ：关机（halt）
+
+- `-r` ：重启（reboot）
+
+- `-s` ：休眠（sleep）
+
+- ```
+  time
+  ```
+
+   ：执行操作的时间
+
+  - yymmddhhmm ：指定年月日时分，如 17022318 表示2017年2月23日18时
+  - now ：现在
+  - +n ：n分钟后
+  - hh:mm ：今天某时某分
+
+1. 其他关机和重启命令
+    立刻关机：`sudo halt`
+    立刻重启：`sudo reboot`
+

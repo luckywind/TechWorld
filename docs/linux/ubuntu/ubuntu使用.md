@@ -117,3 +117,145 @@ sudo dpkg -i package.deb
 
 [破解typora并创建快捷方式](https://blog.csdn.net/weixin_42905141/article/details/124071137)
 
+# 死机
+
+## 可尝试的解决方法
+
+进入TTY终端
+
+1. Ctrl+Alt+F1进入TTY1终端字符界面, 输入用户名和密码以登录
+2. 输入top命令, 找到可能造成假死的进程, 用kill命令结束掉进程。然后Ctrl+Alt+F7回到桌面
+
+直接注销用户
+
+Ctrl+Alt+F1进入TTY1终端字符界面, 输入用户名和密码以登录。
+
+然后执行以下的任意一个命令注销桌面重新登录。
+
+```mipsasm
+sudo pkill Xorg
+```
+
+或者
+
+```undefined
+sudo restart lightdm
+```
+
+### 底层方法
+
+如果上面两种方法不成功, 那有可能是比较底层的软件出现问题。
+
+可以试试 :** reisub 方法**。
+
+说具体一点, 是一种系统请求, 直接交给内核处理。
+
+键盘上一般都有一个键SysRq, 和PrintScreen(截屏)在一个键位上，这就是系统请求的键。
+
+这个方法可以在死机的情况下安全地重启计算机, 数据不会丢失。
+
+下面解释一下这个方法：
+
+> 其实 SysRq是一种叫做系统请求的东西, 按住 Alt-Print 的时候就相当于按住了SysRq键，这个时候输入的一切都会直接由 Linux 内核来处理，它可以进行许多低级操作。
+
+这个时候 reisub 中的每一个字母都是一个独立操作，分别表示：
+
+- r : unRaw 将键盘控制从 X Server 那里抢回来
+- e : terminate 给所有进程发送 SIGTERM 信号，让它们自己解决善后
+- i : kIll 给所有进程发送 SIGKILL 信号，强制他们马上关闭
+- s : Sync 将所有数据同步至磁盘
+- u : Unmount 将所有分区挂载为只读模式
+- b : reBoot 重启
+
+##### 魔法键组合 reisub 究竟该怎么用？
+
+如果某一天你的 Linux 死机了，键盘不听使唤了，Ctrl+Alt+F1 已经没有任何反应，该怎么办呢？
+
+使用“魔法键”：Alt+SysRq + r,e,i,s,u,b（确实很好背，就是单词 busier (英语"更忙"的意思)的倒写）。
+
+好的，平时电脑那么正常，你自然也不会去按这些按钮。等到真的出事的时候，你把记在小纸条上的这些 tips 拿出来，然后在键盘上按，结果发现啥反应也没有，于是只能欲哭无泪了。
+
+##### 问题在于：究竟该怎么按这些按钮才会有效？
+
+首先，你的系统要支持这个功能，查看和开启的方法大家应该很熟悉了，网上也有很多说明，而且最幸运的是：Ubuntu 默认已经开启了这个功能。
+
+接下来就是操作：马上你就会发现，同时按下<Alt>+<SysRq>压根儿行不通！只会蹦出来一个屏幕截图窗口。所以，真正的做法应该是：
+
+1. 伸出你的左手，同时按住<Ctrl>+<Alt>键，别松开
+2. 右手先按一下<SysRq>，左手别松开，等1秒
+3. 右手按一下 R，左手别松开，等1秒
+4. 右手按一下 E，左手别松开。这时包括桌面在内，所有程序都会终止，你会看到一个黑乎乎的屏幕，稍微等一段时间
+5. 右手依次按下 I，S，U，B，左手别松开。每按一次都等那么几秒种，你会发现每按一次，屏幕上信息都会有所变化。最后按下B时，屏幕显示reset，这时你的左手可以松开了，等几秒钟，计算机就会安全重启。
+
+# 磁盘
+
+## fsck
+
+```
+Emergency help:
+ -p                   Automatic repair (no questions)
+ -n                   Make no changes to the filesystem
+ -y                   Assume "yes" to all questions
+ -c                   Check for bad blocks and add them to the badblock list
+ -f                   Force checking even if filesystem is marked clean
+ -v                   Be verbose
+ -b superblock        Use alternative superblock
+ -B blocksize         Force blocksize when looking for superblock
+ -j external_journal  Set location of the external journal
+ -l bad_blocks_file   Add to badblocks list
+ -L bad_blocks_file   Set badblocks list
+```
+
+### unable to set superblock flags on
+
+```yaml
+
+unable to set superblock flags on 怎么解决
+报错信息 "unable to set superblock flags on" 通常出现在Linux文件系统（如ext4）的日志管理过程中，可能是因为文件系统处于挂起状态或者文件系统的元数据损坏导致无法设置超级块的标志。
+原因是文件系统因为故障切换到只读模式了
+
+解决方法：
+sudo e2fsck -C0 -p -f -v /dev/sdb1   参考https://ubuntuforums.org/showthread.php?t=2282368
+检查硬件问题：
+如果文件系统损坏是由硬件问题导致的（如硬盘损坏），可能需要更换硬件。
+查看日志文件：
+检查dmesg或/var/log/syslog等日志文件，可能会有更详细的错误信息，帮助确定问题的根源。
+
+
+List backup superblocks:
+sudo dumpe2fs /dev/sda5 | grep -i backup
+then use backup superblock, 32768 just an example, try several
+sudo fsck -b 32768 /dev/sda5
+```
+
+
+
+[HOWTO: Repair a broken Ext4 Superblock in Ubuntu](https://linuxexpresso.wordpress.com/2010/03/31/repair-a-broken-ext4-superblock-in-ubuntu/)
+
+```shell
+sudo mke2fs -n /dev/xxx  列出backup superblock
+#使用backup  superblock 修复文件系统 
+sudo e2fsck -b 第一个backup-block_number /dev/xxx
+```
+
+都不行，强制关机解决
+
+
+
+### initramfs无法退出
+
+```shell
+echo 1 > /proc/sys/kernel/sysrq
+echo b > /proc/sysrq-trigger
+这两个命令可以通过将1写入/proc/sys/kernel/sysrq文件来启用SysRq键，然后使用echo b > /proc/sysrq-trigger命令强制关闭计算机。请注意，在使用此命令之前请确保保存所有重要数据。
+```
+
+### fsck exited with status code 4
+
+有时文件系统有问题，但是Fsck检查不出，可以用-f参数强制
+
+```shell
+fsck -yvf xxx
+```
+
+[再参考从u盘修复](https://www.cnblogs.com/miaojx/p/15955592.html)
