@@ -248,6 +248,15 @@ fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjob
 
 
 
+```
+rw=read 顺序读
+rw=write 顺序写
+rw=readwrite 顺序混合读写
+rw=randwrite 随机写
+rw=randread 随机读
+rw=randrw 随机混合读写
+```
+
 输出解读：
 
 ```shell

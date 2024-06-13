@@ -23,3 +23,7 @@
 
 https://zh.savefrom.net/136/
 
+# 阅读medium
+
+[安装插件](https://github.com/fferrin/free-medium)
+

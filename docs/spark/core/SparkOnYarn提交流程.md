@@ -1,6 +1,12 @@
 # yarn-client模式
 
- ![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1250469-20180204232052545-738862055.png)
+Application Master进程只负责向YARN申请资源。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1*Nbm9q1VB8eRF1z7dSp-obA.png" alt="img" style="zoom:50%;" />
+
+ 
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1250469-20180204232052545-738862055.png)
 
 ## 执行流程
 
@@ -25,6 +31,10 @@
 ​    注意：**ApplicationMaster**有launchExecutor和**申请资源**的功能，**并没有作业调度的功能。**
 
 # yarn-cluster模式
+
+更适合生产模式，Driver运行在Application Master进程中，该进程同时负责驱动应用程序，以及向YARN申请资源。
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1*bnW_o3Iz6dV2qR4G198cgQ.png" alt="img" style="zoom:50%;" />
 
 ![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/1250469-20180205000026123-370362254.png)
 
