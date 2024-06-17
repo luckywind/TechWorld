@@ -161,6 +161,12 @@ PicGo 在 Mac 上是一个顶部栏应用，在 dock 栏是不会有图标的。
 
 ## 图床突然不能用了，切换阿里云oss
 
+上传区选择阿里云OSS
+
+![image-20240614095754506](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20240614095754506.png)
+
+
+
 [参考](https://blog.csdn.net/qq_38963246/article/details/123797155)
 
 9OSl6Aum4aJRRJDS
