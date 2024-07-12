@@ -1,3 +1,5 @@
+该文档参考《尚硅谷大数据之Flink》一文，可对照着看
+
 # DataSourceAPI
 
 ## 执行环境
@@ -10,8 +12,14 @@
 4. 手动指定批处理模式：
    1. 命令行传参数： -Dexecution.runtime-mode=BATCH
    2. 代码指定
+      ```scala
+      val env = StreamExecutionEnvironment.getExecutionEnvironment
+      env.setRuntimeMode(RuntimeExecutionMode.BATCH)
+      ```
+   
+      
 
-##   Source
+##   源算子(Source)
 
 需要实现 SourceFunction 接口
 
@@ -42,6 +50,51 @@ env.socketTextStream("localhost", 7777)
 </dependency>
 ```
 
+### 读取kafka
+
+```scala
+    val properties = new Properties()
+
+    properties.setProperty("bootstrap.servers", "hadoop102:9092")
+    properties.setProperty("group.id", "consumer-group")
+
+    val stream: DataStream[String] = env.addSource(new FlinkKafkaConsumer[String]("clicks", new SimpleStringSchema(), properties))
+```
+
+创建 FlinkKafkaConsumer 时需要传入三个参数：
+
+- 第一个参数topic，定义了从哪些主题中读取数据。可以是一个 topic，也可以是 topic
+
+列表，还可以是匹配所有想要读取的topic 的正则表达式。当从多个 topic 中读取数据
+
+时，Kafka 连接器将会处理所有 topic 的分区，将这些分区的数据放到一条数据流中
+
+去。
+
+- 第二个参数是一个DeserializationSchema 或者 KeyedDeserializationSchema。Kafka 消
+
+息被存储为原始的字节数据，所以需要反序列化成 Java 或者Scala 对象。上面代码中
+
+使用的 SimpleStringSchema，是一个内置的 DeserializationSchema，它只是将字节数
+
+组简单地反序列化成字符串。 DeserializationSchema 和KeyedDeserializationSchema 是
+
+公共接口，所以我们也可以自定义反序列化逻辑。
+
+- 第三个参数是一个 Properties 对象，设置了Kafka 客户端的一些属性。
+
+### 自定义源算子
+
+实现SourceFunction 接口。主要重写两个关键方法：
+
+run()和 cancel()。
+
+-  run()方法：使用运行时上下文对象（SourceContext）向下游发送数据；
+
+- cancel()方法：通过标识位控制退出循环，来达到中断数据源的效果。
+
+
+
 ## flink支持的数据类型
 
 使用TypeInfomation来统一表示数据类型
@@ -59,7 +112,15 @@ env.socketTextStream("localhost", 7777)
 
      建的一个 Scala 样例类，使用起来非常方便。
 
-## 聚合算子
+## 转换算子(Transformation)
+
+map
+
+filter
+
+flatMap
+
+## 聚合算子(Aggregation)
 
 ### keyBy(按键分区)
 
@@ -120,7 +181,7 @@ Flink 为我们 内置实现了一些最基本、最简单的聚合 API
 
 flink中的重分区算子定义上下游subtask之间数据传递的方式。SubTask之间进行数据传递模式有两种，一种是one-to-one(forwarding)模式，另一种是redistributing的模式。
 
-One-to-one：数据不需要重新分布，上游SubTask生产的数据与下游SubTask受到的数据完全一致，数据不需要重分区，也就是数据不需要经过IO，比如上图中source->map的数据传递形式就是One-to-One方式。常见的map、fliter、flatMap等算子的SubTask的数据传递都是one-to-one的对应关系。类似于spark中的窄依赖。
+One-to-one：数据不需要重新分布，上游SubTask生产的数据与下游SubTask收到的数据完全一致，数据不需要重分区，也就是数据不需要经过IO，比如上图中source->map的数据传递形式就是One-to-One方式。常见的map、fliter、flatMap等算子的SubTask的数据传递都是one-to-one的对应关系。类似于spark中的窄依赖。
 Redistributing：数据需要通过shuffle过程重新分区，需要经过IO，比如上图中的map->keyBy。创建的keyBy、broadcast、rebalance、shuffle等算子的SubTask的数据传递都是Redistributing方式，但它们具体数据传递方式是不同的。类似于spark中的宽依赖； [参考](https://blog.csdn.net/qq_37555071/article/details/122415430)
 
 “分区”(partitioning)操作就是要将数据进行重新分布，**传递到不同的流分区去进行下一 步计算**。keyBy()是一种逻辑分区(logical partitioning)操作。
@@ -748,7 +809,11 @@ Flink 提供了 8 个不同的处理函数:
 ## 迟到数据的处理
 
 1. **设置水位线延迟时间**
-   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。
+   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。因为水位线的延迟主要是用来对付分布式网络传输导致的数据乱序，而网络传
+
+   输的乱序程度一般并不会很大，大多集中在几毫秒至几百毫秒。所以实际应用中，我们往往会
+
+   给水位线设置一个“能够处理大多数乱序数据的小延迟”，视需求一般设在毫秒~秒级。
 
 2. **允许窗口处理迟到数据**
 

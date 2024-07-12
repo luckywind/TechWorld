@@ -294,6 +294,12 @@ OS2AN4OOXB-eyJsaWNlbnNlSWQiOiJPUzJBTjRPT1hCIiwibGljZW5zZWVOYW1lIjoi5rKIIOS5i+a0i
 
 
 
+
+
+### 新方法
+
+https://blog.csdn.net/B11050729/article/details/132453746
+
 ## 远程开发
 
 [连接Gateway](https://www.jetbrains.com/help/idea/remote-development-a.html#gateway)

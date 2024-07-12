@@ -212,19 +212,110 @@ cur：表示当下的活跃 I/O 请求
 sec：I/O 请求总时间（单位是微秒）。
 ```
 
+## uptime
 
+![2_15.png](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/2_15-100522188-orig.png)
+
+小数代表过去1分钟、5分钟、15分钟cpu平均负载；可以分析高负载是暂时的，还是长期的。但什么是高负载呢？数字代表请求cpu资源的任务量，1.0代表一个100%的cpu核的资源；超过1.0的部分代表等待cpu处理的进程量。
+
+需要说明的是，这些数字和cpu核数相关，如果有4个cpu，4.0才意味着所有核完全被占用。通常70%是比较健康的状态，即每个cpu核负载0.7。
 
 # 内存
 
+free -m | awk 'NR==2{printf "%.2f%", $3*100/$2 }'
+
+
+
 # 磁盘
 
-## iostat
+## iostat监控工具
 
 当磁盘成为性能瓶颈时，一般会出现磁盘 I/O 繁忙，导致执行程序在 I/O 处等待。在 Linux 中，使用 top 命令查看 wa 数据，判断 CPU 是否长时间等待 I/O。
 
 用 iostat -x 命令查看磁盘工作时间，返回数据中的 %util 是磁盘读写操作的百分比时间，如果超过 70%就说明磁盘比较繁忙了，返回的 await 数据是平均每次磁盘读写的等待时间。
 
-## fio
+iostat也有一个弱点，就是它不能对某个进程进行深入分析，仅对系统的整体情况进行分析。
+
+语法
+
+```
+iostat [ -c ] [ -d ] [ -h ] [ -N ] [ -k | -m ] [ -t ] [ -V ] [ -x ] [ -z ] [ device [...] | ALL ] [ -p [ device [,...] | ALL ] ] [ interval [ count ] ]
+```
+
+-c：仅显示CPU使用情况；
+-d：仅显示设备利用率；
+-k：显示状态以千字节每秒为单位，而不使用块每秒；
+-m：显示状态以兆字节每秒为单位；
+-p：仅显示块设备和所有被使用的其他分区的状态；
+-t：显示每个报告产生时的时间；
+-V：显示版号并退出；
+-x：显示扩展状态。
+
+### -d 设备利用率
+
+```shell
+$ iostat -d -k 1 1
+Linux 3.10.0-1160.el7.x86_64 (node15)   06/27/2024      _x86_64_        (12 CPU)
+
+Device:            tps    kB_read/s    kB_wrtn/s    kB_read    kB_wrtn
+nvme1n1          16.28         1.09        89.31    3478946  285771239
+nvme0n1           6.10         0.97        17.17    3091936   54928516
+sda              20.38        10.53      1341.86   33689776 4293693620
+dm-0             17.39         2.05       106.47    6551114  340684314
+```
+
+
+tps：该设备每秒的传输次数（Indicate the number of transfers per second that were issued to the device.）。"一次传输"意思是"一次I/O请求"。多个逻辑请求可能会被合并为"一次I/O请求"。"一次传输"请求的大小是未知的。
+
+kB_read/s：每秒从设备（drive expressed）读取的数据量；
+kB_wrtn/s：每秒向设备（drive expressed）写入的数据量；
+kB_read：读取的总数据量；
+kB_wrtn：写入的总数量数据量；这些单位都为Kilobytes。
+
+### -x 显示扩展数据,  例如设备利用率
+
+```shell
+$ iostat -d -k -x 1 1
+Linux 3.10.0-1160.el7.x86_64 (node15)   06/27/2024      _x86_64_        (12 CPU)
+
+Device:         rrqm/s   wrqm/s     r/s     w/s    rkB/s    wkB/s avgrq-sz avgqu-sz   await r_await w_await  svctm  %util
+nvme1n1           0.00     0.22    0.05   16.23     1.09    89.31    11.11     0.01    0.50    0.16    0.50   0.07   0.11
+nvme0n1           0.00     0.07    0.04    6.06     0.97    17.17     5.95     0.00    1.62    0.26    1.63   0.12   0.07
+sda               0.00    49.09    0.71   19.68    10.53  1341.80   132.69     0.53   25.73    5.49   26.46   1.00   2.03
+dm-0              0.00     0.00    0.09   17.30     2.05   106.47    12.48     0.02    1.04    0.21    1.04   0.54   0.94
+```
+
+
+
+
+rrqm/s：每秒这个设备相关的读取请求有多少被Merge了（当系统调用需要读取数据的时候，VFS将请求发到各个FS，如果FS发现不同的读取请求读取的是相同Block的数据，FS会将这个请求合并Merge）；wrqm/s：每秒这个设备相关的写入请求有多少被Merge了。
+
+rsec/s：每秒读取的扇区数；
+wsec/：每秒写入的扇区数。
+rKB/s：The number of read requests that were issued to the device per second；
+wKB/s：The number of write requests that were issued to the device per second；
+avgrq-sz 平均请求扇区的大小
+avgqu-sz 是平均请求队列的长度。毫无疑问，队列长度越短越好。    
+await：  每一个IO请求的处理的平均时间（单位是微秒毫秒）。这里可以理解为IO的响应时间，一般地系统IO响应时间应该低于5ms，如果大于10ms就比较大了。
+         这个时间包括了队列时间和服务时间，也就是说，一般情况下，await大于svctm，它们的差值越小，则说明队列时间越短，反之差值越大，队列时间越长，说明系统出了问题。
+svctm    表示平均每次设备I/O操作的服务时间（以毫秒为单位）。如果svctm的值与await很接近，表示几乎没有I/O等待，磁盘性能很好，如果await的值远高于svctm的值，则表示I/O队列等待太长，         系统上运行的应用程序将变慢。
+%util： 在统计时间内所有处理IO时间，除以总共统计时间。例如，如果统计间隔1秒，该设备有0.8秒在处理IO，而0.2秒闲置，那么该设备的%util = 0.8/1 = 80%，所以该参数暗示了设备的繁忙程度
+。一般地，如果该参数是100%表示设备已经接近满负荷运行了（当然如果是多磁盘，即使%util是100%，因为磁盘的并发能力，所以磁盘使用未必就到了瓶颈）。
+
+
+### -c 查看cpu部分指标
+
+```shell
+$ iostat -c 1 1
+Linux 3.10.0-1160.el7.x86_64 (node15)   06/27/2024      _x86_64_        (12 CPU)
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           1.87    0.00    0.89    0.78    0.00   96.46
+```
+
+
+
+## fio-压测工具
 
 ```shell
 fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjobs=1 -runtime=60 -group_reporting -filename=/dev/testblock -name=Rand_Write_Testing
@@ -233,15 +324,27 @@ fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjob
 
 
 - `-direct=1`: 表示使用直接I/O模式，绕过操作系统的缓存，直接对磁盘进行读写操作。
-- `-iodepth=32`: 设置I/O深度为32，即同时进行的I/O操作数量为32个。
+
+- `-iodepth=32`: 设置I/O深度为32，即同时进行的I/O操作数量为32个（一定程度上与性能正相关）。
+
 - `-rw=randwrite`: 指定测试类型为随机写入（random write）。
+
+  常为randwrite, randread, randrw, write, read；一般采用randrw等随机option体现性能
+
 - `-ioengine=libaio`: 使用Linux AIO（异步I/O）引擎进行I/O操作。
-- `-bs=4k`: 设置块大小（block size）为4KB，即每次读写的数据块大小为4KB。
+
+- `-bs=4k`: 设置块大小（block size）为4KB，即每次读写的数据块大小为4KB（一定程度上与性能正相关）。
+
 - `-size=1G`: 设置测试文件的大小为1GB。
+
 - `-numjobs=1`: 指定启动一个fio工作线程。
+
 - `-runtime=60`: 设置测试时间为60秒。
+
 - `-group_reporting`: 在测试结果中以组的形式报告各个I/O操作的性能数据。
-- `-filename=/dev/testblock`: 指定测试文件的路径为/dev/testblock，即对名为testblock的磁盘设备进行测试。
+
+- `-filename=/dev/testblock`: 指定测试文件的路径为/dev/testblock，即对名为testblock的磁盘设备进行测试。也可以是文件
+
 - `-name=Rand_Write_Testing`: 为这个测试命名，便于识别和区分不同的测试场景。
 
 通过这个命令，可以对指定的磁盘设备进行随机写入性能测试，并收集相关的性能数据。这有助于评估磁盘的性能表现，以及在实际应用中的表现情况。
@@ -285,7 +388,9 @@ Disk stats表示磁盘读写信息统计
 
 # 网络
 
-## bps带宽是网络链路的最大传输速率
+## 常用单位
+
+### bps带宽是网络链路的最大传输速率
 
 带宽通常用来衡量一个网络连接的数据传输能力，它反映了这个连接理论上可以达到的最高数据传输速度。带宽的单位是bps，即每秒比特数。高带宽意味着在单位时间内可以传输更多的数据。
 
@@ -293,12 +398,155 @@ Disk stats表示磁盘读写信息统计
 
 
 
-## pps每秒传输的数据包数量
+### pps每秒传输的数据包数量
 
 pps和bps两者的不同点在于，带宽侧重于整体的数据传输速率，而PPS关注的是具体到每个数据包的处理速率。在实际使用中，即使带宽很大，如果网络设备的PPS处理能力不足，也可能导致网络拥堵和性能瓶颈。因此，它们都是衡量网络性能的重要指标，且相辅相成。
 
+## 压测工具
+
+### Iperf3
+
+参考文档《使用iperf进行网络性能测试》
+
 ```shell
-sar -n DEV 1 -t 100
+## 在server端开启iperf
+iperf -s
+
+## 在clinet端通过iperf测试
+iperf -c <server_ip> -P 16
+```
+
+
+
+
+
+
+
+# 综合命令
+
+## sar
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/linux_observability_sar.png" alt="img" style="zoom:50%;" />
+
+[10个例子](https://www.thegeekstuff.com/2011/03/sar-examples/)
+
+[linux性能监控:IO性能监控命令之sar命令](https://developer.aliyun.com/article/1116214?spm=a2c6h.12873639.article-detail.32.4082e10b9Sod5n&scm=20140722.ID_community@@article@@1116214._.ID_community@@article@@1116214-OR_rec-V_1-RL_community@@article@@256795)
+
+[参考](https://developer.aliyun.com/article/256795)
+
+[参考2](https://askubuntu.com/questions/257263/how-to-display-network-traffic-in-the-terminal)
+
+[参考3](https://medium.com/@malith.jayasinghe/network-monitoring-using-sar-37bab6ce9f68)
+
+sar [options] [-A] [-o file] t [n]
+
+其中：
+
+t为采样间隔，n为采样次数，默认值是1；
+
+-o file表示将命令结果以二进制格式存放在文件中，file 是文件名。
+
+options 为命令行选项，sar命令常用选项如下：
+
+-A：所有报告的总和
+
+-u：输出CPU使用情况的统计信息
+
+-v：输出inode、文件和其他内核表的统计信息
+
+-d：输出每一个块设备的活动信息
+
+-r：输出内存和交换空间的统计信息
+
+-b：**显示I/O和传送速率的统计信息**
+
+-a：文件读写情况
+
+-c：输出进程统计信息，每秒创建的进程数
+
+-R：输出内存页面的统计信息
+
+-y：终端设备活动情况
+
+-w：输出系统交换活动信息
+
+-f: 从文件回放报告
+
+
+
+### -b io和传送速率
+
+```shell
+$ sar -b 1 1
+Linux 3.10.0-1160.el7.x86_64 (node15)   06/27/2024      _x86_64_        (12 CPU)
+
+09:49:45 AM       tps      rtps      wtps   bread/s   bwrtn/s
+09:49:46 AM    118.00      0.00    118.00      0.00   1989.00
+Average:       118.00      0.00    118.00      0.00   1989.00
+```
+
+输出项说明：
+
+tps：每秒钟物理设备的 I/O 总数，相当于iostat中的tps
+
+rtps：每秒钟从物理设备**读入**的总数
+
+wtps：每秒钟向物理设备**写入**的总数
+
+bread/s：每秒钟从物理设备读入的块总数，单位为 块/s
+
+bwrtn/s：每秒钟向物理设备写入的块总数，单位为 块/s
+
+### sar -u统计cpu使用情况
+
+```shell
+$ sar -u 1 3
+Linux 6.6.29 (host80)   07/02/24        _x86_64_        (104 CPU)
+14:16:18        CPU     %user     %nice   %system   %iowait    %steal     %idle
+Average:        all      1.37      0.00      0.99      0.00      0.00     97.63
+```
+
+%user ：用户空间的CPU使用 
+
+**%nice ：**改变过优先级的进程的CPU使用率
+
+**%system ：**内核空间的CPU使用率
+
+ **%iowait ：**CPU等待IO的百分比
+
+ **%steal ：**虚拟机使用的CPU
+
+ **%idle：** 空闲的CPU
+
+在以上的显示当中，主要看%iowait和%idle，%iowait过高表示存在I/O瓶颈，即磁盘IO无法满足业务需求，如果%idle过低表示CPU使用率比较严重，需要结合内存使用等情况判断CPU是否瓶颈。
+
+### -n 网络监控
+
+sar -n DEV 1 3    # 查看网络情况，每隔 1s 监控一次，共 3 次
+    -n 关键词如下：
+        DEV     网卡
+        EDEV    网卡 (错误)
+        NFS     NFS 客户端
+        NFSD    NFS 服务器
+        SOCK    Sockets (套接字)        (v4)
+        IP      IP 流   (v4)
+        EIP     IP 流   (v4) (错误)
+        ICMP    ICMP 流 (v4)
+        EICMP   ICMP 流 (v4) (错误)
+        TCP     TCP 流  (v4)
+        ETCP    TCP 流  (v4) (错误)
+        UDP     UDP 流  (v4)
+        SOCK6   Sockets (套接字)        (v6)
+        IP6     IP 流   (v6)
+        EIP6    IP 流   (v6) (错误)
+        ICMP6   ICMP 流 (v6)
+        EICMP6  ICMP 流 (v6) (错误)
+        UDP6    UDP 流  (v6)
+
+#### Sar -n DEV网卡流量
+
+```shell
+sar -n DEV 1 1
 ```
 
 -n DEV 选择监控网络设备
@@ -313,21 +561,6 @@ sar -n DEV 1 -t 100
 Average:        IFACE   rxpck/s   txpck/s    rxkB/s    txkB/s   rxcmp/s   txcmp/s  rxmcst/s
 Average:    cali6f46772d931      0.00      0.00      0.00      0.00      0.00      0.00      0.00
 Average:    califd1a9391c79      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:       dummy0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    cali69c5e5c1631      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    cali75be0a14365      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    cali865ef3d6814      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:           lo    179.67    179.67     33.66     33.66      0.00      0.00      0.00
-Average:    virbr0-nic      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:       virbr0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:       enp5s0      2.33      3.33      0.16      1.49      0.00      0.00      0.00
-Average:    cali087369ad67a      3.33      3.33      0.31      0.29      0.00      0.00      0.00
-Average:    kube-ipvs0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    calibac85a5c04a      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:        tunl0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    cali80d3bb471f2      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:    nodelocaldns      0.00      0.00      0.00      0.00      0.00      0.00      0.00
-Average:      docker0      0.00      0.00      0.00      0.00      0.00      0.00      0.00
 ```
 
 - **IFACE**: 表示网络接口的名称。
@@ -339,15 +572,106 @@ Average:      docker0      0.00      0.00      0.00      0.00      0.00      0.0
 - **txcmp/s**: 表示每秒发送的压缩数据包数量。
 - **rxmcst/s**: 表示每秒接收的多播数据包数量。
 
+### -r 内存使用
+
+```shell
+$ sar -r 1 1
+Linux 3.10.0-1160.el7.x86_64 (node15)   06/27/2024      _x86_64_        (12 CPU)
+
+10:43:21 AM kbmemfree kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+10:43:22 AM    855788 130791000     99.35      3316  67190144  18488160     14.04  65194468  57071456        40
+Average:       855788 130791000     99.35      3316  67190144  18488160     14.04  65194468  57071456        40
+```
+
+kbmemfree  空闲的物理内存大小
+
+kbmemused  使用中的物理内存大小
+
+%memused  物理内存使用率
+
+kbbuffers  内核中作为缓冲区使用的物理内存大小，kbbuffers和kbcached:这两个值就是free命令中的buffer和cache. 
+
+kbcached  缓存的文件大小
+
+kbcommit  保证当前系统正常运行所需要的最小内存，即为了确保内存不溢出而需要的最少内存（物理内存+Swap分区）
+
+commit  这个值是kbcommit与内存总量（物理内存+swap分区）的一个百分比的值
+
+kbactive  
+
+kbinact 
+
+kbdirty 
+
+### sar -d 设备使用情况
+
+sar -d 10 3 -p
+
+```shell
+Average:          tps     rkB/s     wkB/s     dkB/s   areq-sz    aqu-sz     await     %util DEV
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop0
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop1
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop2
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop3
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop4
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop5
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop6
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop7
+Average:        41.20      0.40    310.67      0.00      7.55      0.02      0.48      4.91 sdb
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 sda
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 ubuntu--vg-ubuntu--lv
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 dev259-0
+Average:         0.00      0.00      0.00      0.00      0.00      0.00      0.00      0.00 loop8
+```
+
+其中：[参考](https://developer.aliyun.com/article/256795)
+
+参数-p可以打印出sda,hdc等磁盘设备名称,如果不用参数-p,设备节点则有可能是dev8-0,dev22-0
+
+tps:**每秒从物理磁盘I/O的次数.多个逻辑请求会被合并为一个I/O磁盘请求,一次传输的大小是不确定的.**
+
+rd_sec/s:每秒读扇区的次数.
+
+wr_sec/s:每秒写扇区的次数.
+
+avgrq-sz:平均每次设备I/O操作的数据大小(扇区).
+
+avgqu-sz:**磁盘请求队列的平均长度.**
+
+await:从请求磁盘操作到系统完成处理,每次请求的平均消耗时间,包括请求队列等待时间,单位是毫秒(1秒=1000毫秒).
+
+svctm:系统处理每次请求的平均时间,不包括在请求队列中消耗的时间.
+
+%util:**I/O请求占CPU的百分比,比率越大,说明越饱和.**
+
+1. avgqu-sz 的值较低时，设备的利用率较高。
+2. 当%util的值接近 1% 时，表示设备带宽已经占满。
+
+### 输出到文件
+
+一般后台运行，注意，输出文件会很大！！
+
+```shell
+nohup sar -o /var/log/sar_output 1 3600 > /dev/null 2>&1 &
+```
+
+**结果保存**：-o 可以把结果保存到文件，但格式是二进制格式。注意，它保存了cpu、内存等数据。
+
+**结果读取**：之后可以用-f 读取二进制文件内容，-n DEV 可以选择只查看网络流量数据，
+
+可以用选项-s time和-e time来限定报告的起止时间，time的格式为hh[:mm[:ss]]。     另外-i sec选项以sec秒为间隔选取记录。否则数据文件中找到的所有间隔都会被上报。   
+
+示例：
+
+```shell
+sar -n DEV -s 08:00:00 -e 10:00:00 -f /var/log/sa/sa01
+```
 
 
-# uptime
 
-![2_15.png](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/2_15-100522188-orig.png)
+# [linux Performance](https://www.brendangregg.com/linuxperf.html)
 
-小数代表过去1分钟、5分钟、15分钟cpu平均负载；可以分析高负载是暂时的，还是长期的。但什么是高负载呢？数字代表请求cpu资源的任务量，1.0代表一个100%的cpu核的资源；超过1.0的部分代表等待cpu处理的进程量。
 
-需要说明的是，这些数字和cpu核数相关，如果有4个cpu，4.0才意味着所有核完全被占用。通常70%是比较健康的状态，即每个cpu核负载0.7。
 
 
 

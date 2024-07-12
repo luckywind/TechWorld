@@ -27,3 +27,6 @@ https://zh.savefrom.net/136/
 
 [安装插件](https://github.com/fferrin/free-medium)
 
+# 阅读csdn
+
+[油猴插件](https://greasyfork.org/zh-CN/scripts/495150-100-%E8%A7%A3%E9%94%81csdn%E6%96%87%E5%BA%93vip%E6%96%87%E7%AB%A0%E9%98%85%E8%AF%BB%E9%99%90%E5%88%B6)
