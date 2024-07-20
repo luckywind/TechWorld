@@ -1,4 +1,4 @@
-[参考](https://blog.csdn.net/ainidong2005/article/details/53141822)
+# [Spark优化](https://blog.csdn.net/ainidong2005/article/details/53141822)
 
 在Spark中GC优化的目标是，只有生命周期足够大的RDD才能够被放到老年代之中，并且保证新生代的空间足够用来存储程序运行期间的短生命周期对象。这将有利于预防对程序运行期创建的临时对象使用Full GC进行空间回收，如下几点将会对此起到帮助：
 

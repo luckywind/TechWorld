@@ -86,7 +86,7 @@ https://baijiahao.baidu.com/s?id=1745901459006156810&wfr=spider&for=pc
 
 11. `COMMAND`：表示进程的命令行。
 
-top - 17:42:30 up  6:16,  4 users,  load average: 0.10, 0.05, 0.18
+top - 17:42:30 up  6:16,  4 users,  load average: 0.10, 0.05, 0.18. 系统负载，即任务队列的平均长度。三个数值分别为 1分钟、5分钟、15分钟前到现在的平均值。
 Tasks: 979 total,   2 running, 977 sleeping,   0 stopped,   0 zombie
 %Cpu(s):  0.0 us,  0.0 sy,  0.0 ni, 99.9 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
 KiB Mem : 26341355+total, 23542512+free, 13165988 used, 14822444 buff/cache
@@ -315,17 +315,19 @@ avg-cpu:  %user   %nice %system %iowait  %steal   %idle
 
 
 
-## fio-压测工具
+## [fio-压测工具](https://www.alibabacloud.com/help/zh/ecs/user-guide/test-the-iops-performance-of-an-essd)
+
+
 
 ```shell
 fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjobs=1 -runtime=60 -group_reporting -filename=/dev/testblock -name=Rand_Write_Testing
 ```
 
-
+[参数含义](https://www.cnblogs.com/shiwei1930/p/17828292.html)
 
 - `-direct=1`: 表示使用直接I/O模式，绕过操作系统的缓存，直接对磁盘进行读写操作。
 
-- `-iodepth=32`: 设置I/O深度为32，即同时进行的I/O操作数量为32个（一定程度上与性能正相关）。
+- `-iodepth=32`: 设置I/O深度为32，即同时进行的I/O操作数量为32个（一定程度上与性能正相关）。**一个线程有32个io请求在排队**
 
 - `-rw=randwrite`: 指定测试类型为随机写入（random write）。
 
@@ -343,11 +345,19 @@ fio -direct=1 -iodepth=32 -rw=randwrite -ioengine=libaio -bs=4k -size=1G -numjob
 
 - `-group_reporting`: 在测试结果中以组的形式报告各个I/O操作的性能数据。
 
-- `-filename=/dev/testblock`: 指定测试文件的路径为/dev/testblock，即对名为testblock的磁盘设备进行测试。也可以是文件
+- `-filename=/dev/testblock`: 如果云盘上的数据丢失不影响业务，可以设置`filename=[设备名，例如/dev/vdb]`；否则，请设置为`filename=[具体的文件路径，例如/mnt/test.image]`
 
 - `-name=Rand_Write_Testing`: 为这个测试命名，便于识别和区分不同的测试场景。
 
 通过这个命令，可以对指定的磁盘设备进行随机写入性能测试，并收集相关的性能数据。这有助于评估磁盘的性能表现，以及在实际应用中的表现情况。
+
+- Cpu亲和性设置： 设置的是客户端的CPU, 会默认使用系统的CPU调度策略，充分利用所有可用的CPU资源来运行测试负载。
+
+- --cpumask=int: 设置该作业的CPU亲和性。给定的参数是作业可以运行的允许 CPU 的位掩码,例如允许cpu 1和5，则传递(1 << 1 | 1 << 5)的值或者34。 该参数只能控制cpu1-32, 大cpu数推荐使用cpus_allowed
+
+- --cpus_allowed=str: 含义和cpusmask相同，但可接收字符串参数指定cpu，例如，0,5,8-15。
+- --cpus_allowed_policy=split # 设置fio分配cpu的策略： shared 所有作业将共享指定的CPU集 ，split 每个作业将从CPU集中获得一个唯一的CPU
+- --time_based  # file若已被完全读写或写完，强制执行完runtime规定的时间。它是通过循环执行相同的负载来实现的，与runtime相对应
 
 
 
@@ -379,6 +389,12 @@ io表示总写入的数据量
 run表示测试运行时间
 
 Disk stats表示磁盘读写信息统计
+
+
+
+
+
+
 
 
 

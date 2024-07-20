@@ -504,3 +504,7 @@ settings里检查java compiler
 到Modify options列表里去选择
 
 ![image-20230513171819716](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20230513171819716.png)
+
+###  No 'scala-library*.jar' in Scala compiler classpath
+
+reload. Project即可
