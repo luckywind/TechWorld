@@ -16,7 +16,7 @@ $ **export PATH=$PATH:$GOPATH/bin**
 
 ## [go mod](https://golang-minibear2333.github.io/1.base/1-3-go-mod/)
 
-[参考](https://blog.csdn.net/weixin_43700106/article/details/118279983)
+
 
 `java` 里有一个叫 `maven` 的包管理工具， `go` 也有一个叫 `go mod` 的管理工具，可以管理项目引用的第三方包版本、自动识别项目中用到的包、自动下载和管理包。
 
@@ -194,4 +194,29 @@ go run命令可以运行程序，但是并不会生成二进制可执行文件�
    go list -f '{{.Target}}'  #查找go安装路径
    ```
 
-   
+
+
+# go模块管理
+
+[参考](https://blog.csdn.net/weixin_43700106/article/details/118279983)
+
+GO111MODULE=auto，即默认情况，当然=on与=off也包含在下述情况中：
+一、没go.mod文件时，属于GOPATH模式，则使用 vendor 特性
+二、有go.mod文件时，此时默认启用 modules特性
+1.只找当前目录，不找GOPATH/src目录
+2.当前目录下有vendor目录，则查找当前目录下vendor是否有此包；
+3.当前目录下没有vendor目录，则查找GOROOT/src下是否有此包；
+4.如果未找到，则启动GOPROXY特性，到仓库下载此包；
+5.如果未下载到则提示包不存在；
+
+包顺序：标准库 -> 项目内包 -> 内部第三方 -> 外部第三方包
+
+
+
+
+
+
+# 管理依赖项
+
+go help获取帮助
+
