@@ -14,6 +14,13 @@ $ **export PATH=$PATH:$GOPATH/bin**
 3. 包路径，要选择一个基本路径，保证不会与其他标准库冲突
 3. 在 Go 中，作为应用程序执行的代码必须在`main`包中.
 
+## [vendor机制](https://blog.csdn.net/weixin_44211968/article/details/123165464)
+
+包中引入vendor目录存放外部依赖包，查找顺序：
+当前vendor->上一级包vendor->`$GOPATH/src/vendor`->`$GOROOT`->`$GOPATH/src`
+
+
+
 ## [go mod](https://golang-minibear2333.github.io/1.base/1-3-go-mod/)
 
 [参考](https://blog.csdn.net/weixin_43700106/article/details/118279983)
