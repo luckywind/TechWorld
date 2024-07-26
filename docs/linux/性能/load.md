@@ -20,7 +20,19 @@
 
 ## top-进程cpu
 
-https://baijiahao.baidu.com/s?id=1745901459006156810&wfr=spider&for=pc
+```shell
+top 
+-d 刷新间隔
+-b 批量模式，用来将输出重新定向到指定文件，一般配合-n指定输出几次统计信息
+-c 显示进程完整命令
+-p 只显示指定进程的状态，可以用逗号隔开指定多个
+```
+
+[top官方文档](https://man7.org/linux/man-pages/man1/top.1.html)
+
+[参考1](https://baijiahao.baidu.com/s?id=1745901459006156810&wfr=spider&for=pc)
+
+[参考2](https://blog.csdn.net/WUFUSHANLI/article/details/124286077)
 
 ![img](https://pic.rmb.bdstatic.com/bjh/down/1d522cd61ecaeebf7620bd3b6b573722.png?x-bce-process=image/watermark,bucket_baidu-rmb-video-cover-1,image_YmpoL25ld3MvNjUzZjZkMjRlMDJiNjdjZWU1NzEzODg0MDNhYTQ0YzQucG5n,type_RlpMYW5UaW5nSGVpU01HQg==,w_24,text_QOeoi-W6j-mCo-eCueS6iw==,size_24,x_18,y_18,interval_2,color_FFFFFF,effect_softoutline,shc_000000,blr_2,align_1)
 
