@@ -13,7 +13,7 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "go/go语言之旅.md",
+                "file": "obsidian/使用.md",
                 "mode": "source",
                 "source": false
               }
@@ -69,7 +69,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 207.5
+    "width": 320.5
   },
   "right": {
     "id": "677f05bdef4226d5",
@@ -85,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "go/go语言之旅.md",
+                "file": "obsidian/使用.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "go/go语言之旅.md",
+                "file": "obsidian/使用.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,16 +125,25 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "go/go语言之旅.md"
+                "file": "obsidian/使用.md"
               }
+            }
+          },
+          {
+            "id": "ccb9d1bc48bbdbe2",
+            "type": "leaf",
+            "state": {
+              "type": "note-preview",
+              "state": {}
             }
           }
         ],
-        "currentTab": 3
+        "currentTab": 4
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 469.5,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -143,15 +152,39 @@
       "canvas:新建白板": false,
       "daily-notes:打开/创建今天的日记": false,
       "templates:插入模板": false,
-      "command-palette:打开命令面板": false
+      "command-palette:打开命令面板": false,
+      "note-to-mp:复制到公众号": false
     }
   },
   "active": "b2b8df2793d56c72",
   "lastOpenFiles": [
-    "go/go开发.md",
-    "go/go编程记录.md",
-    "go/go语言之旅.md",
-    "go/资源.md",
-    "linux/性能/load.md"
+    "spark/graphx/图计算.md",
+    "obsidian/使用.md",
+    "obsidian/01_模板/文章推荐.md",
+    "spark/graphx/顶点表示.md",
+    "spark/graphx/节点深度.md",
+    "spark/graphx/单源最短路径.md",
+    "spark/graphx/博客.md",
+    "spark/core/0-Introduction.md",
+    "spark/优化/spark3Join优化.md",
+    "spark/优化/GC优化.md",
+    "spark/core/withScope理解.md",
+    "spark/core/SparkUI.md",
+    "spark/core/coalesce与repartition.md",
+    "obsidian/01_模板/文章开头.md",
+    "obsidian/01_模板/公众号文章.md",
+    "obsidian/01_模板/公众号卡片.md",
+    "spark/core/BlockManager原理.md",
+    "spark/core/groupbyKey vs reduceByKey.md",
+    "obsidian/01_模板",
+    "obsidian",
+    "spark/core/distinct原理.md",
+    "spark/core/cogroup.md",
+    "spark/core/总结by幸福.md",
+    "spark/core/源码阅读.md",
+    "spark/core/数据倾斜.md",
+    "spark/core/数据本地化.md",
+    "cpp/note/编译.md",
+    "cpp/note/how to learn c++.md"
   ]
 }

@@ -1,0 +1,18 @@
+{
+  "defaultStyle": "mweb-v-green",
+  "defaultHighlight": "默认",
+  "showStyleUI": true,
+  "linkStyle": "inline",
+  "embedStyle": "quote",
+  "lineNumber": true,
+  "authKey": "aae18b4c-8e02-4954-8266-f82a96930f70",
+  "wxInfo": [
+    {
+      "name": "大数据那点事儿",
+      "appid": "wx32c79fa90fb17298",
+      "secret": "SECRET590dc05edf30891f5e6410e0ad0e2108d5110075cc86e60993fef29bbef8cee0796f65c4e6997821218cad39695cb3ca67e163c6b2832449d9189fa2f88ce2567d6dc6d2b064cfe263a6472a88c285b028a902c936beb590597816be7ea0ef7b8d5aa99be223214a9bba759e1b9abe13714ca290c80f1cce6d719b389e0c734fd6a7512d19317a0bb49bf9636308d06a21391f363f9681e628d8a7d0d8aae392aeeb3a693ee8e0de13848f3852ae4585a6e577c40fabf85dda5d6fd76b5cee8a6098a38b42e714bd4f858a327f72890532924303c36959f2d8fbb407b2085ada6b096a355217cb9d1f215dbb5dd95683359ba1446ccc2bf74102e04ed3deee4a"
+    }
+  ],
+  "math": "latex",
+  "useCustomCss": false
+}

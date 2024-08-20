@@ -1,3 +1,5 @@
+[深入C语言和程序运行原理](https://ppd0705.github.io/post/learn_c/)笔记
+
 [阿里云开发文档](https://edu.aliyun.com/course/313633/lesson/6004)
 
 [c语言入门学习笔记(一万字)](https://segmentfault.com/a/1190000015699060)

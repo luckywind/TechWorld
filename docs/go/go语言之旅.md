@@ -227,7 +227,12 @@ func main() {
 
 defer 语句会将函数推迟到外层函数返回之后执行。
 
-推迟调用的函数其参数会立即求值，但直到外层函数返回前该函数都不会被调用
+1. 推迟调用的函数其参数会立即求值，但直到外层函数返回前该函数都不会被调用。即使包含`defer`的函数在执行过程中发生了错误或提前返回，这个被`defer`的函数仍然会被执行。
+2. 多个defer函数会按照倒序执行
+
+
+
+用于在函数返回之前执行一些必要的清理操作或者释放资源
 
 ```go
 package main
@@ -235,11 +240,12 @@ package main
 import "fmt"
 
 func main() {
-	defer fmt.Println("world")
-
+	defer fmt.Println("world") //会在外层函数main返回前执行
 	fmt.Println("hello")
 }
-
+// 输出：
+// Hello
+// World
 ```
 
 ## 更多类型
@@ -354,6 +360,8 @@ func main() {
 
 5. **切片的长度len是它包含的元素个数，容量cap是切片开始到底层数组末尾的个数。** 
    可以通过重新切片（修改其low和high值）来扩展一个切片
+   
+   > Low影响容量，high-low是Len，所以共同影响
 
 ```go
 package main
@@ -410,7 +418,7 @@ func printSlice(s []int) {
    
 ### range
 
-Go 语言中 range 关键字用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对。
+**Go 语言中 range 关键字用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对。**
 
 for 循环的 range 格式可以对 slice、map、数组、字符串等进行迭代循环。格式如下：
 
@@ -422,7 +430,7 @@ for key, value := range oldMap {
 
 以上代码中的 key 和 value 是可以省略。
 
-   当使用 `for` 循环遍历切片时，每次迭代都会返回两个值。 第一个值为当前元素的下标，第二个值为该下标所对应元素的一份副本。
+   当使用 `for` 循环遍历切片时，每次迭代都会返回两个值。 第一个值为当前元素的下标，第二个值为该下标所对应元素的一份**副本**。
 
    ```go
    package main
@@ -452,8 +460,8 @@ for key, value := range oldMap {
 
 1. `make` 函数会返回给定类型的映射，并将其初始化备用。
 2. 映射字面量： 和结构体类似，只不过必须有键名。 Map[键类型]值类型{}
-3. 删除元素delete(m , key)
-4. 检查键是否存在elem, ok := m[key]
+3. **删除元素delete(m , key)**
+4. **检查键是否存在elem, ok := m[key]**
 
 ```go
 package main
@@ -464,7 +472,7 @@ type Vertex struct {
 	Lat, Long float64
 }
 
-var m map[string]Vertex
+var m map[string]Vertex  // 只声明不初始化
 
 func main() {
 	m = make(map[string]Vertex)
@@ -748,7 +756,7 @@ func main() {
 提供了访问接口值底层具体值的方式，有两种写法
 
 1. `t := i.(T)`: 相当于把i强制转换为T，如果失败，则触发panic
-2. `t, ok := i.(T)` : 成功则ok为true, 失败则ok为false,并不会触发panic
+2. `t, ok := i.(T)` : **成功则ok为true, 失败则ok为false,并不会触发panic**
 
 ```go
 package main
@@ -910,3 +918,191 @@ func main() {
 
 ```
 
+# 并发编程
+
+## [goroutine](https://www.topgoer.com/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/goroutine.html)
+
+goroutine的概念类似于线程，但 goroutine是由Go的运行时（runtime）调度和管理的。Go程序会智能地将 goroutine 中的任务合理地分配给每个CPU。Go语言之所以被称为现代化的编程语言，就是因为它在语言层面已经内置了调度和上下文切换的机制。
+
+在Go语言编程中你不需要去自己写进程、线程、协程，你的技能包里只有一个技能–goroutine，当你需要让某个任务并发执行的时候，你只需要把这个任务包装成一个函数，开启一个goroutine去执行这个函数就可以了，就是这么简单粗暴。
+
+- 使用goroutine
+
+Go语言中使用goroutine非常简单，只需要在调用函数的时候在前面加上`go`关键字，就可以为一个函数创建一个goroutine。
+
+一个goroutine必定对应一个函数，可以创建多个goroutine去执行相同的函数。
+
+
+
+多任务同步
+
+```go
+var wg sync.WaitGroup
+
+func hello(i int) {
+    defer wg.Done() // goroutine结束就登记-1
+    fmt.Println("Hello Goroutine!", i)
+}
+func main() {
+
+    for i := 0; i < 10; i++ {
+        wg.Add(1) // 启动一个goroutine就登记+1
+        go hello(i)
+    }
+    wg.Wait() // 等待所有登记的goroutine都结束
+}
+```
+
+## channel
+
+channel是可以让一个goroutine发送特定值到另一个goroutine的通信机制。Go 语言中的通道（channel）是一种特殊的类型。通道像一个传送带或者队列，总是遵循先入先出（First In First Out）的规则，保证收发数据的顺序。每一个通道都是一个具体类型的导管，也就是声明channel的时候需要为其指定元素类型。
+
+>单纯地将函数并发执行是没有意义的。函数与函数间需要交换数据才能体现并发执行函数的意义。
+>
+>虽然可以使用共享内存进行数据交换，但是共享内存在不同的goroutine中容易发生竞态问题。为了保证数据交换的正确性，必须使用互斥量对内存进行加锁，这种做法势必造成性能问题。
+>
+>Go语言的并发模型是CSP（Communicating Sequential Processes），提倡通过通信共享内存而不是通过共享内存而实现通信。
+>
+>如果说goroutine是Go程序并发的执行体，channel就是它们之间的连接。channel是可以让一个goroutine发送特定值到另一个goroutine的通信机制。
+
+
+
+1. channel是引用类型
+
+```go
+var 变量 chan 元素类型
+例如：
+    var ch1 chan int   // 声明一个传递整型的通道
+    var ch2 chan bool  // 声明一个传递布尔型的通道
+    var ch3 chan []int // 声明一个传递int切片的通道
+```
+
+
+
+2. 创建channel
+
+声明的通道后需要使用make函数初始化之后才能使用。
+
+创建channel的格式如下：
+
+```go
+    make(chan 元素类型, [缓冲大小])
+```
+
+3. channel操作
+
+通道有发送（send）、接收(receive）和关闭（close）三种操作。
+
+发送和接收都使用<-符号。
+
+```go
+ch := make(chan int)
+ch <- 10 //把10发送到ch中
+x := <- ch // 从ch中接收值并赋值给变量x
+<-ch       // 从ch中接收值，忽略结果
+close(ch) // 关闭通道， 用于通知接收方goroutine数据已发送完毕
+```
+
+### 有/无缓冲通道
+
+ 不指定缓冲大小就得到一个无缓冲通道， 无缓冲通道也被称为同步通道，使用无缓冲通道进行通信将导致发送和接收的goroutine同步化。无缓冲的通道只有在有人接收值的时候才能发送值。
+
+### 从通道中循环取值
+
+有两种方式判断通道是否被关闭
+
+1. 读取时，判断ok
+2. for range自动判断， 常用
+
+```go
+func main() {
+    ch1 := make(chan int)
+    ch2 := make(chan int)
+    // 开启goroutine将0~100的数发送到ch1中
+    go func() {
+        for i := 0; i < 100; i++ {
+            ch1 <- i
+        }
+        close(ch1)
+    }()
+    // 开启goroutine从ch1中接收值，并将该值的平方发送到ch2中
+    go func() {
+        for {
+            i, ok := <-ch1 // 通道关闭后再取值ok=false
+            if !ok {
+                break
+            }
+            ch2 <- i * i
+        }
+        close(ch2)
+    }()
+    // 在主goroutine中从ch2中接收值打印
+    for i := range ch2 { // 通道关闭后会退出for range循环
+        fmt.Println(i)
+    }
+}
+```
+
+
+
+### 单向通道
+
+```
+    1.chan<- int是一个只能发送的通道，可以发送但是不能接收；
+    2.<-chan int是一个只能接收的通道，可以接收但是不能发送。
+```
+
+### select
+
+select关键字，可以同时响应多个通道的操作。
+
+select的使用类似于switch语句，它有一系列case分支和一个默认的分支。每个case会对应一个通道的通信（接收或发送）过程。select会一直等待，直到某个case的通信操作完成时，就会执行case分支对应的语句。具体格式如下：
+
+```go
+    select {
+    case <-chan1:
+       // 如果chan1成功读到数据，则进行该case处理语句
+    case chan2 <- 1:
+       // 如果成功向chan2写入数据，则进行该case处理语句
+    default:
+       // 如果上面都没有成功，则进入default处理流程
+    }
+```
+
+- select可以同时监听一个或多个channel，直到其中一个channel ready
+
+  ```go
+  package main
+  
+  import (
+     "fmt"
+     "time"
+  )
+  
+  func test1(ch chan string) {
+     time.Sleep(time.Second * 5)
+     ch <- "test1"
+  }
+  func test2(ch chan string) {
+     time.Sleep(time.Second * 2)
+     ch <- "test2"
+  }
+  
+  func main() {
+     // 2个管道
+     output1 := make(chan string)
+     output2 := make(chan string)
+     // 跑2个子协程，写数据
+     go test1(output1)
+     go test2(output2)
+     // 用select监控
+     select {
+     case s1 := <-output1:
+        fmt.Println("s1=", s1)
+     case s2 := <-output2:
+        fmt.Println("s2=", s2)
+     }
+  }
+  ```
+
+  
