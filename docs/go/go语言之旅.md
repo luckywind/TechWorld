@@ -920,11 +920,11 @@ func main() {
 
 # 并发编程
 
-## [goroutine](https://www.topgoer.com/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/goroutine.html)
+## [go  routine](https://www.topgoer.com/%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B/goroutine.html)
 
-goroutine的概念类似于线程，但 goroutine是由Go的运行时（runtime）调度和管理的。Go程序会智能地将 goroutine 中的任务合理地分配给每个CPU。Go语言之所以被称为现代化的编程语言，就是因为它在语言层面已经内置了调度和上下文切换的机制。
+goroutine的概念类似于线程，但 goroutine是由Go的运行时（runtime）调度和管理的。**Go程序会智能地将 goroutine 中的任务合理地分配给每个CPU**。Go语言之所以被称为现代化的编程语言，就是因为它在**语言层面已经内置了调度和上下文切换的机制。**
 
-在Go语言编程中你不需要去自己写进程、线程、协程，你的技能包里只有一个技能–goroutine，当你需要让某个任务并发执行的时候，你只需要把这个任务包装成一个函数，开启一个goroutine去执行这个函数就可以了，就是这么简单粗暴。
+**在Go语言编程中你不需要去自己写进程、线程、协程，你的技能包里只有一个技能–goroutine，当你需要让某个任务并发执行的时候，你只需要把这个任务包装成一个函数，开启一个goroutine去执行这个函数就可以了，就是这么简单粗暴。**
 
 - 使用goroutine
 
@@ -952,6 +952,11 @@ func main() {
     wg.Wait() // 等待所有登记的goroutine都结束
 }
 ```
+
+### goroutine与线程
+
+- **可增长的栈** :OS线程（操作系统线程）一般都有固定的栈内存（通常为2MB）,一个goroutine的栈在其生命周期开始时只有很小的栈（典型情况下2KB），goroutine的栈不是固定的，他可以按需增大和缩小，goroutine的栈大小限制可以达到1GB，虽然极少会用到这个大。所以在Go语言中一次创建十万左右的goroutine也是可以的。
+- **goroutine调度**：
 
 ## channel
 

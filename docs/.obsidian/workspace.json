@@ -4,16 +4,16 @@
     "type": "split",
     "children": [
       {
-        "id": "a40735d030e953c8",
+        "id": "9741bb1e1dc0577f",
         "type": "tabs",
         "children": [
           {
-            "id": "b2b8df2793d56c72",
+            "id": "b90844467f016675",
             "type": "leaf",
             "state": {
               "type": "markdown",
               "state": {
-                "file": "obsidian/使用.md",
+                "file": "dw/2. 数据仓库系统(重要).md",
                 "mode": "source",
                 "source": false
               }
@@ -85,7 +85,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "obsidian/使用.md",
+                "file": "dw/2. 数据仓库系统(重要).md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -102,7 +102,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "obsidian/使用.md",
+                "file": "dw/2. 数据仓库系统(重要).md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               }
@@ -125,7 +125,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "obsidian/使用.md"
+                "file": "dw/2. 数据仓库系统(重要).md"
               }
             }
           },
@@ -156,11 +156,14 @@
       "note-to-mp:复制到公众号": false
     }
   },
-  "active": "b2b8df2793d56c72",
+  "active": "b90844467f016675",
   "lastOpenFiles": [
-    "spark/graphx/图计算.md",
-    "obsidian/使用.md",
     "obsidian/01_模板/文章推荐.md",
+    "obsidian/01_模板/文章开头.md",
+    "obsidian/01_模板/公众号文章.md",
+    "obsidian/01_模板/公众号卡片.md",
+    "obsidian/使用.md",
+    "spark/graphx/图计算.md",
     "spark/graphx/顶点表示.md",
     "spark/graphx/节点深度.md",
     "spark/graphx/单源最短路径.md",
@@ -171,9 +174,6 @@
     "spark/core/withScope理解.md",
     "spark/core/SparkUI.md",
     "spark/core/coalesce与repartition.md",
-    "obsidian/01_模板/文章开头.md",
-    "obsidian/01_模板/公众号文章.md",
-    "obsidian/01_模板/公众号卡片.md",
     "spark/core/BlockManager原理.md",
     "spark/core/groupbyKey vs reduceByKey.md",
     "obsidian/01_模板",

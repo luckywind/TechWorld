@@ -28,6 +28,61 @@ top
 -p 只显示指定进程的状态，可以用逗号隔开指定多个
 ```
 
+### top交互指令
+
+```shell
+Help for Interactive Commands - procps-ng 3.3.17
+Window 1:Def: Cumulative mode Off.  System: Delay 3.0 secs; Secure mode Off.
+
+  Z,B,E,e   Global: 'Z' colors; 'B' bold; 'E'/'e' summary/task memory scale
+  l,t,m,I   Toggle: 'l' load avg; 't' task/cpu; 'm' memory; 'I' Irix mode
+  0,1,2,3,4 Toggle: '0' zeros; '1/2/3' cpu/numa views; '4' cpus two abreast
+  f,F,X     Fields: 'f'/'F' add/remove/order/sort; 'X' increase fixed-width
+
+  L,&,<,> . Locate: 'L'/'&' find/again; Move sort column: '<'/'>' left/right
+  R,H,J,C . Toggle: 'R' Sort; 'H' Threads; 'J' Num justify; 'C' Coordinates
+  c,i,S,j . Toggle: 'c' Cmd name/line; 'i' Idle; 'S' Time; 'j' Str justify
+  x,y     . Toggle highlights: 'x' sort field; 'y' running tasks
+  z,b     . Toggle: 'z' color/mono; 'b' bold/reverse (only if 'x' or 'y')
+  u,U,o,O . Filter by: 'u'/'U' effective/any user; 'o'/'O' other criteria
+  n,#,^O  . Set: 'n'/'#' max tasks displayed; Show: Ctrl+'O' other filter(s)
+  V,v     . Toggle: 'V' forest view; 'v' hide/show forest view children
+
+  k,r       Manipulate tasks: 'k' kill; 'r' renice
+  d or s    Set update interval
+  W,Y,!     Write config file 'W'; Inspect other output 'Y'; Combine Cpus '!'
+  q         Quit
+          ( commands shown with '.' require a visible task display window )
+Press 'h' or '?' for help with Windows,
+```
+
+#### 单位和颜色
+
+E: 切换汇总内存显示单位，e：切换任务内存显示单位，
+
+> 切换顺序： k M G T P E (字节)
+
+Z: 切换颜色
+
+![image-20240906140924280](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20240906140924280.png)
+
+#### 多cpu视图控制
+
+- 1显示每个cpu自己的使用率
+- 4分栏显示每个cpu的使用率
+
+#### 字段排序与管理
+
+- **f**: 进入字段管理界面，允许添加、删除、排序显示的字段。
+- **F**: 进入排序选择界面，允许更改字段的排序顺序，例如按CPU使用率或内存使用率排序进程。
+- **X**: 调整字段宽度，增加显示字段的固定宽度，便于更好地查看长字段的内容。
+
+
+
+
+
+### top输出
+
 [top官方文档](https://man7.org/linux/man-pages/man1/top.1.html)
 
 [参考1](https://baijiahao.baidu.com/s?id=1745901459006156810&wfr=spider&for=pc)
