@@ -181,11 +181,26 @@ git stash branch 新分支   用stash中的修改创建一个新的分支，创�
 
 # 问题解决记录
 
-强制丢弃本地修改,[参考](https://www.cnblogs.com/feifeicui/p/11351433.html)
+## 强制丢弃本地修改,[参考](https://www.cnblogs.com/feifeicui/p/11351433.html)
 
 ```shell
 git clean -d -fx
 ```
+
+## 443问题
+
+[Git报错： Failed to connect to github.com port 443 解决方案](https://blog.csdn.net/zpf1813763637/article/details/128340109)
+
+```shell
+git config --global http.proxy 127.0.0.1:7890
+git config --global https.proxy 127.0.0.1:7890
+```
+
+
+
+
+
+
 
 # 参考
 

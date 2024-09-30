@@ -19,3 +19,5 @@
 
 
 [clion入门到进阶](https://www.bilibili.com/video/BV16h411t7YL/?vd_source=fa2aaef8ece31d2c310d46092c301b46)
+
+[c++ socket编程教程](https://docs.oldtimes.me/c.biancheng.net/cpp/socket/index.html)， [c语言入门教程](https://docs.oldtimes.me/c.biancheng.net/cpp/u/jiaocheng/index.html)
