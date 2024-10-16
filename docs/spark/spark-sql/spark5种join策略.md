@@ -28,7 +28,13 @@ Spark将参与Join的两张表抽象为流式遍历表(streamIter)和查找表(b
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220929103146591.png" alt="image-20220929103146591" style="zoom:50%;" />
 
-**Join 步骤**：把大表和小表按照<font color=red>相同的分区算法和分区数</font>进行分区(Join 的 keys 进行分区)，保证了 hash 值一样(相同key)的数据都分发到同一个分区中（分区内不排序），然后在同一个 Executor 中两张表 hash 值一样的分区就可以在本地进行 hash Join 。在进行 Join 之前，还会对小表的分区构建 Hash 桶(<font color=red>这就要求每个分区都不能太大</font>)，便于查找。
+**Join 步骤**：
+
+1. 确定Build Table和ProbeTable
+2. 构建Hash Table:
+3. 匹配： 生成Hash Table后，在依次扫描Probe Table(order)的数据，使用相同的hash函数(在spark中，实际上就是要使用相同的partitioner)在Hash Table中寻找hash(join key)相同的值，如果匹配成功就将两者join在一起。
+
+把大表和小表按照<font color=red>相同的分区算法和分区数</font>进行分区(Join 的 keys 进行分区)，保证了 hash 值一样(相同key)的数据都分发到同一个分区中（分区内不排序），然后在同一个 Executor 中两张表 hash 值一样的分区就可以在本地进行 hash Join 。在进行 Join 之前，还会对小表的分区构建 Hash 桶(<font color=red>这就要求每个分区都不能太大</font>)，便于查找。最后会生成一张HashTable，HashTable会缓存在内存中，如果内存放不下会dump到磁盘中。
 
 > 注意，和broadcast hash join的区别，这里并没有广播小表，在双方shuffle后的分区内，小表转成Hash桶与大表进行hash join。
 
@@ -98,7 +104,9 @@ Spark将参与Join的两张表抽象为流式遍历表(streamIter)和查找表(b
 
 如果左表有n个分区，右表有m个分区，那么笛卡尔积后的分区数是K=n * m个；并且这K个分区中，第K(i)个分区获取的左表分区为 kn=i / m，获取的右表分区为 km=i % m，然后kn和km这两个分区做笛卡尔积；<font color=red>由于是以分区为单位，所以不会触发shuffle；</font>
 
-
+> 在常规的 Join 操作中，Spark 需要 shuffle 数据来确保关联键相同的记录可以被分配到同一个分区进行处理。但 Cartesian Join 没有键值匹配的需求，它只需要遍历所有记录。
+>
+> 虽然 Cartesian Join 不会触发 Spark 中典型的 shuffle 操作，但在跨节点的分区之间进行 Cartesian Join 时，仍然可能发生数据的跨节点传输。
 
 
 

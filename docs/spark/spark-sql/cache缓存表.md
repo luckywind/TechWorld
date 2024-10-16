@@ -10,7 +10,7 @@
  with tempTable as (
 select name, rand_number
 from
-   (select 'Withas' as name, rand() as rand_number) as t1;
+   (select 'Withas' as name, rand() as rand_number) as t1
 )
 select name, rand_number
 from tempTable
@@ -25,9 +25,11 @@ Withas	0.23821274450502994
 
 两个随机数不一样，说明with as 语句执行了两次！
 
-
+> 注意，这个问题已经修复了，经验证spark3.4.2只执行了一次。
 
 改用cache，发现结果还是会执行两次
+
+> 每次的执行结果都不同
 
 ```sql
  cache table tempTable 
@@ -39,7 +41,7 @@ select name, rand_number
 from tempTable
 union all
 select name, rand_number
-from tempTable
+from tempTable;
 name	rand_number
 Withas	0.20437213954492972
 Withas	0.5678513751386931
@@ -119,7 +121,7 @@ REFRESH TABLE tempDB.view1;
 
 # SparkSQL缓存最佳实践
 
-[参考](https://towardsdatascience.com/best-practices-for-caching-in-spark-sql-b22fb0f02d34)
+[cache最佳实践](https://blog.csdn.net/monkeyboy_tech/article/details/113986074)， [对应的英文原文](https://towardsdatascience.com/best-practices-for-caching-in-spark-sql-b22fb0f02d34)
 
 ### dataframe API
 
@@ -134,7 +136,99 @@ cache是一个lazy transformation, 调用它时，缓存管理器(*Cache Manager
 
 ### 缓存管理器
 
-[cache最佳实践](https://blog.csdn.net/monkeyboy_tech/article/details/113986074)
+Cache manager用来追踪记录对于当前查询计划哪些计算已经被缓存了。当缓存函数被调用的时候，Cache Manager被直接调用,并且把被调用的dataFrame从逻辑计划中脱离出来，从而储存在名为cachedData的顺序结构中
+
+cache manager阶段是逻辑计划的一部分，作用在sql分析器之后，sql优化器之前。
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/c6a9d834f0219bddb9aaee98aae54005.png)
+
+当我们触发一个query的时候，查询计划将会被处理以及转化，在处理到cachemanager阶段（在优化阶段之前）的时候,spark将会检查分析计划的每个子计划是否存储在cachedData里。如果存在，则说明同样的计划已经被执行过了，所以可以重新使用该缓存，并且使用InMemoryRelation操作来标示该缓存的计划。InMemoryRelation将在物理计划阶段转换为InMemoryTableScan
+
+```scala
+df = spark.table("users").filer(col(col_name) > x).cache  
+df.count() # now check the query plan in Spark UI
+```
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/cda06825bd4e995820cd4ff63eb4b6cc.png)
+
+缓存一个查询
+
+```scala
+df = spark.read.parquet(data_path)
+df.select(col1, col2).filer(col2 > 0).cache()
+```
+
+考虑如下三个查询
+
+```sql
+1) df.filter(col2 > 0).select(col1, col2)
+2) df.select(col1, col2).filter(col2 > 10)
+3) df.select(col1).filter(col2 > 0) 
+```
+
+实际上语句1和2都不会用到缓存，因为他们的分析计划和缓存计划是不同的，即使优化后可能相同。
+
+语句3反而会用到缓存，ResolveMissingRefecences解析规则会把filter中出现的列加到select里，从而分析计划和缓存计划相同。
+
+语句2只要做一个简单的修改就可以用到缓存，原则就是构造和缓存的分析计划相同的分析计划：
+
+```sql
+ df.select(col1, col2).filter(col2 > 0).filter(col2 > 10)
+```
+
+**最佳实践**
+
+1. 缓存df时直接创建一个变量cacheDF = df.cache()， 需要用缓存的时候直接使用该变量就行 
+2. 使用cacheDF.unpersist()释放不用的缓存的计划
+3. 只缓存需要的列，而非所有列
+
+**比缓存更快**
+
+1. 直接读取parquet文件会有几个优化：
+
+   - 只读取元数据进行统计运算
+   - 对于过滤则会进行列裁剪，无需扫描整个数据集
+
+2. 从缓存读的缺点：
+
+   - 带cache的计算有把数据写入内存的开销
+
+   - 读缓存会读取整个数据集
+
+     
+
+**SQL中使用缓存**
+
+```sql
+spark.sql("cache table table_name") #立即缓存
+spark.sql("cache lazy table table_name")#懒执行
+spark.sql("uncache table table_name")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 with语句
 
