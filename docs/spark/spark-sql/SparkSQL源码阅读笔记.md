@@ -58,7 +58,7 @@
     3. optimizer阶段生成<font color=red>优化后的逻辑计划</font>
        方法和anlyzer类似，optimizer调优阶段 --> 基于规则的RBO优化rule-based optimizer --> 谓词下推 + 列剪枝 + 常量替换 + 常量累加
 
-​		 4. planner阶段<font color=red>生成物理计划</font>，将树节点转化成 RDD、 Transformation 和 Action等
+​	4. planner阶段<font color=red>生成物理计划</font>，将树节点转化成 RDD、 Transformation 和 Action等
 
 这里和前面逻辑计划绑定和优化不一样，这里使用的是策略（Strategy），而且前面介绍的逻辑计划绑定和优化经过 Transformations 动作之后，树的类型并没有改变，也就是说：Expression 经过 Transformations 之后得到的还是 Expression ；Logical Plan 经过 Transformations 之后得到的还是 Logical Plan。而到了这个阶段，经过 Transformations 动作之后，树的类型改变了，由 Logical Plan 转换成 Physical Plan 了。
 

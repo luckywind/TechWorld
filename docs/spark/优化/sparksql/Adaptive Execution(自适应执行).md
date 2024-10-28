@@ -29,7 +29,7 @@
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_fix_reducer_detail.png" alt="Spark Shuffle 过程" style="zoom:50%;" />
 
-## 开启后
+## 开启后(合并后拉取)
 
 我们看自适应执行是如何分配分区给reducer的：
 

@@ -170,3 +170,14 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
     立刻关机：`sudo halt`
     立刻重启：`sudo reboot`
 
+# 软件问题
+
+## 已损坏
+
+https://sysin.org/blog/macos-if-crashes-when-opening/
+
+```shell
+ sudo spctl --master-disable                                                                                     1 ↵
+ sudo xattr -dr com.apple.quarantine /Applications/ChatGPT.app
+```
+

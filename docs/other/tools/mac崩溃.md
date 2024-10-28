@@ -98,7 +98,45 @@ help            Prints the usage for a given subcommand.
 
 [com.apple.filesystems.smbfs](https://apple.stackexchange.com/questions/469376/why-mac-m1-m2-crashed-while-connecting-to-win-7-pc-via-smb)
 
+# 关闭SIP
 
+1、关机
+
+2、按住开机键不松手直到出现下图的画面，然后点击【选项】
+
+3、点击【继续】
+
+
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/5ebc43650db26ef343db2089d161c5ca.jpeg)
+
+
+
+4、点击菜单栏的【实用工具】，再点击【启动安全性实用工具】
+
+
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/b184699c9763778441a74769ca0dad00.jpeg)
+
+
+
+5、勾选 允许用户管理来自被认可开发者的内核扩展
+
+
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/3a02f47c392ef80e90dea8525af3799e.jpeg)
+
+
+
+6、输入电脑密码，点击好。
+
+
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/b691781dfc5845d5718254cbf698a2ce.jpeg)
+
+
+
+7、重启电脑即可。
 
 
 
