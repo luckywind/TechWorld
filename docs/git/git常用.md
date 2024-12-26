@@ -1,4 +1,6 @@
-# 查看提交历史
+# 常用操作
+
+## 查看提交历史
 
 ```shell
 git log
@@ -76,7 +78,23 @@ git remote rm 仓库名
 
 ```
 
-## 打tag
+## 分支与tag的区别
+
+1.**Branch（分支）**：
+分支是指项目中的一个独立的、可移动的指针，它指向一个特定的提交（commit）对象。在Git中，每个分支都可以代表项目的一个独立开发路径，允许开发者并行开发多个功能、修复bug或者进行其他工作；
+分支可以用来创建新的特性、修复bug、实现实验性的功能等。可以在不影响主分支（通常是master或main）的情况下，在自己的分支上工作，并在完成后将变更合并到主分支中；
+分支的创建、切换、合并和删除等操作都可以通过Git命令进行管理。
+2.**Tag（标签）**：
+标签是指项目中某个特定版本的一个标记，用于标识项目的重要节点，例如发布版本或者里程碑。标签可以附加到任意的提交对象上，通常用于标记项目的稳定版本。
+标签一般用于固定项目的某个特定版本，以便后续可以方便地回溯到该版本。<font color=red>与分支不同，标签是不可移动的，一旦创建，它就与特定的提交对象相关联，并且不能被修改。</font>
+标签可以用来发布软件版本、记录项目的重要事件或者用于其他类似的目的。它们通常用于公共发布或发布到生产环境中。
+
+总而言之：
+
+**1.tag是一系列commit的中的一个点，只能查看，不能移动。branch是一系列串联的commit的线。**
+**2.tag是静态的，branch是动态的，要向前走。**
+
+## tag操作
 
 tag就是某个时间点上的版本
 
@@ -87,7 +105,7 @@ git tag
 搜索tag
 git tag -l 'v1.4.2.*'
 
-查看tag
+查看tag(包括它对应的commit信息)
 git show v1.4
 
 新建tag
@@ -106,6 +124,31 @@ git checkout 2.0.0
 ```
 
 ## 分支操作
+
+```SHELL
+#新增分支
+git branch cat
+#如果把cat分支改成tiger分支，使用的是-m参数：
+git branch -m cat tiger
+#查看当前分支
+git branch
+#删除分支 可以使用-d参数来删除
+git branch -d dog
+#tiger的内容还没有被合并，使用-d参数无法将其删除。这时只需改用-D参数即可将其强制删除
+git branch -D tiger
+#要切换分支，就是git checkout：
+git checkout tiger
+#使用git merge命令合并分支
+git merge cat
+#恢复已被删除的还没合并过的分支
+git branch -D cat 
+Deleted branch cat （was b174a5a）.
+git branch new_cat b174a5a
+还没有把刚刚删除的那个cat分支的SHA-1值记下来怎么办？查得到吗
+可以用git reflog命令去查找，Reflog默认会保留30天，所以30天内还找得到。
+```
+
+
 
 ### merge
 
@@ -178,6 +221,39 @@ git stash apply stash@{第几个储藏}
 git stash drop 移除储藏,从最老的开始drop
 git stash branch 新分支   用stash中的修改创建一个新的分支，创建成功后会删除此stash
 ```
+
+### 查看父分支
+
+```shell
+git reflog show 子分支
+```
+
+
+
+## 账号相关
+
+### 查看登录信息
+
+```shell
+ git config –-list
+ user.name=chengxf
+ user.email=chengxf@yusur.tech
+```
+
+
+
+### 登录账号
+
+```shell
+git config --global user.name hadosdev
+git config --global user.email hadosdev@yusur.tech
+```
+
+hadosyusur
+
+
+
+
 
 # 问题解决记录
 

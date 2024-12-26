@@ -124,6 +124,38 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 # vpn
 
+## 设置
+
+#### 忽略某些网站的代理
+
+多个域名之间需要用逗号分割，保存后会自动转为、。
+
+```shell
+*adip.devhub.yusur.tech*、*yusur*、192.168.0.0/16、10.0.0.0/8、172.16.0.0/12、127.0.0.1、localhost、*.local、timestamp.apple.com、sequoia.apple.com、seed-sequoia.siri.apple.com
+```
+
+
+
+
+
+![image-20241028161953293](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20241028161953293.png)
+
+问题： 每次关闭代理，重新打开，新增的域名就没了，发现是被clash给覆盖了。
+
+解决：clashx -> 更多设置 里填写要忽略的域名，有效！
+
+>  [ClashX配置指定域名不经过代理](https://www.shiqidu.com/d/1023), 新建文件，自测无效
+
+
+
+#### 终端代理
+
+[参考](https://limbopro.com/archives/MacOS_terminal_proxy_setting.html)
+
+开启：proxy
+
+关闭：unproxy
+
 ## [greenHub](chrome-extension://knmhokeiipedacnhpjklbjmfgedfohco/options.html)
 
 每天60分钟
@@ -181,3 +213,11 @@ https://sysin.org/blog/macos-if-crashes-when-opening/
  sudo xattr -dr com.apple.quarantine /Applications/ChatGPT.app
 ```
 
+## 双面打印
+
+[参考](https://h30471.www3.hp.com/t5/da-yin-ji-shi-yong-xiang-guan-wen-ti/Mac-xi-tong-word-bu-neng-shuang-mian-da-yin/td-p/1133834)
+
+在打印的页中，打印方向下方默认是布局选项。
+将布局改为：纸张处理。
+第一次打印时，打印页数选择：仅奇数页
+第二次打印机，将纸张平移到纸中后，打印页数选择：仅偶数页，页面顺序改为：倒序。
