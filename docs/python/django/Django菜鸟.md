@@ -639,7 +639,37 @@ save
 方式二
 update(字段名=更改的数据)（推荐）  返回受影响的行
 
-### 其他查询方法
+### QuerySet查询方法
+
+[参考](https://docs.djangoproject.com/en/5.1/ref/models/querysets/#database-time-zone-definitions)
+
+1. 逻辑运算
+
+   ```python
+   # &   以下两句等价
+   Model.objects.filter(x=1) & Model.objects.filter(y=2)
+   Model.objects.filter(x=1).filter(y=2)
+   # |   QuerySet或操作， 以下两种方式等价
+   Model.objects.filter(x=1) | Model.objects.filter(y=2)
+   
+   from django.db.models import Q
+   Model.objects.filter(Q(x=1) | Q(y=2))
+   ```
+
+2. date
+
+   把日期强转为date，
+
+   ```python
+   TIME_ZONE = "Asia/Shanghai"    #默认时区
+   USE_I18N = True
+   USE_TZ = False
+   ```
+
+   - USE_TZ :  datetime是否支持时区，为True，Django将在内部使用时区感知的日期时间。
+     当USE_TZ=False, 则Django会使用TIME_ZONE时区存储所有datetimes字段，当USE_TZ=True，这是 Django 将用来在模板中显示日期时间并解释在表单中输入的日期时间的默认时区
+
+3. 示例
 
 ```python
     books = models.Book.objects.all()
@@ -668,6 +698,12 @@ update(字段名=更改的数据)（推荐）  返回受影响的行
    in、gt、gte、lt、lte、range、contains/icontains、startswith、endswith、year、month、day
 
 2. values可以查询部分字段，且返回的就是字典
+
+
+
+
+
+
 
 
 
@@ -978,6 +1014,14 @@ def research(request):
     return HttpResponse(sql)
 ```
 
+# 权限
+
+[用户模块与权限系统](https://ebook-django-study.readthedocs.io/zh-cn/latest/django%E5%85%A5%E9%97%A8%E8%BF%9B%E9%98%B607%E7%94%A8%E6%88%B7%E6%A8%A1%E5%9D%97%E4%B8%8E%E6%9D%83%E9%99%90%E7%B3%BB%E7%BB%9F.html)
+
+
+
+
+
 
 
 # Django From组件
@@ -1119,7 +1163,25 @@ $django-admin help
 
 参考[日志配置](https://bbs.huaweicloud.com/blogs/372260)
 
-子模块在设置日志名时不要与主模块重名，而要在主模块后面追加，例如`logger = logging.getLogger('mainModuleHTTP')`
+1. 通过`logging.getLogger(name)`来获取logger对象
+2. loggers对象是有父子关系的，`logging.getLogger("abc.xyz")` 会创建两个logger对象，一个是abc父对象，一个是xyz子对象。子对象会复用父对象的日志配置
+
+多模块项目有两种方式配置logging:
+
+1. 通过继承关系实现
+2. 通过yaml配置文件实现
+
+
+
+
+
+
+
+
+
+
+
+
 
 # requests
 
@@ -1176,7 +1238,9 @@ CORS_ALLOWED_ORIGINS = [
 
 ## django.contrib.auth.middleware.AuthenticationMiddleware' must be in MIDDLEWARE in order to use the admin application
 
+## Watching for file changes with StatReloade
 
+虚拟环境缺少依赖包
 
 
 
@@ -1187,3 +1251,8 @@ CORS_ALLOWED_ORIGINS = [
 [Django框架教程](https://c.biancheng.net/django/)
 
 [日志配置](https://bbs.huaweicloud.com/blogs/372260)
+
+[Django settings多环境配置](https://www.cnblogs.com/dannyyao/p/10345905.html)
+
+[大讲狗](https://pythondjango.cn/python/tools)
+

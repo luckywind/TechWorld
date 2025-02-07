@@ -232,6 +232,30 @@ git reflog show 子分支
 
 ## 账号相关
 
+测试连接
+
+```shell
+ssh -T git@192.168.2.114
+```
+
+### ssh登录
+
+生成公钥和私钥后，把公钥配置到gitLab，私钥配置到.ssh/config文件里：
+
+```shell
+# GitLab.com server
+Host gitlab.yusur.tech
+IdentityFile ~/.ssh/id_rsa.gitlab-pre
+```
+
+
+
+
+
+
+
+
+
 ### 查看登录信息
 
 ```shell
@@ -250,6 +274,16 @@ git config --global user.email hadosdev@yusur.tech
 ```
 
 hadosyusur
+
+### 问题
+
+#### Fingerprint has already been taken
+
+[参考](https://www.5bug.wang/post/97.html)
+
+
+
+
 
 
 
