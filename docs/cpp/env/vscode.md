@@ -91,6 +91,48 @@ command+shift+p
 2. 打开c/c++文件的情况下，输入tasks, 选择configure task , 再选择 clang build active file 创建tasks.json
 3. launch,      选择debug:Open launch.json,选择c++(GDB/LLDB)环境，创建launch.json文件
 
+## React项目debug
+
+[参考文档](https://www.hi-ruofei.com/archives/react-debug-with-vscode.html)
+
+1. 先跑起来项目
+
+2. 创建launch.json
+   $ touch <project_dir>/.vscode/launch.json
+
+   ```json
+   {
+     // 欲了解更多信息，请访问: <https://go.microsoft.com/fwlink/?linkid=830387>
+     "version": "0.2.0",
+     "configurations": [
+       {
+         "name": "debug",
+         "request": "launch",
+         "type": "chrome",
+         "url": "<http://localhost:3000>"
+       }
+     ]
+   }
+   ```
+
+   - `name`：定义名为 `debug` 的调试配置。
+   - `request`：该字段有两个值，分别是 `launch` 和 `attach`。`launch` 的意思是，我们希望调试器启动我们的代码并开始调试会话。
+   - `type`：表示让调试器应该使用哪种类型的调试器。`chrome` 的意思是，我们希望使用 Chrome 调试器来调试我们的代码。
+   - `url`：指定了我们要调试的 Web 应用的 URL。显然，我们这个 Demo 是跑在本地 3000 端口上的。
+
+3. 然后，按下键盘的 `F5` 键，或者是点一下 VS Code 中的调试按钮：
+   这时候你会发现打开了一个新的 Chrome 窗口。
+
+![image-20250213093452049](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250213093452049.png)
+
+调试按钮作用：
+
+- 逐过程F10：一行一行的执行，不进入函数内部
+- 单步调试F11：进入函数内部
+- 单步跳出Shift + F11: 退出当前函数并继续执行函数外部的代码
+
+调试过程中左上角可以看到变量
+
 # 代码同步
 
 ## sftp插件

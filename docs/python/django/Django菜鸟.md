@@ -345,6 +345,10 @@ Body选择
 2. render(request,"runoob.html",{"name":name})
 3. redirect("/index/")
 
+## [基于类的视图](https://docs.djangoproject.com/zh-hans/3.2/topics/class-based-views/)
+
+
+
 
 
 # 路由
@@ -571,7 +575,7 @@ urlpatterns = [
 
 原因是$意味着结尾，但是我们需要在正则的url后面追加included的url。
 
-## 注册数据模型到admin
+## 注册模型到admin
 
 app/admin.py里进行注册,例如注册TestModel这个app的Test模型：
 
@@ -583,9 +587,53 @@ from TestModel.models import Test
 admin.site.register(Test)
 ```
 
+## 权限
+
+权限这部分实践可参考HelloWorld.app01， 我们通过Django admin给用户chengxf授权Book模型的CRUD权限。
+
+### group权限
+
+![image-20250214112229291](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250214112229291.png)
 
 
-## 自定义表单
+
+### user权限
+
+![image-20250214112611502](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250214112611502.png)
+
+用户加入组后就自动拥有组的权限。
+
+
+
+### 在视图中检查权限
+
+[参考](https://keepsimple.dev/p/django-permissions.html)
+
+```python
+from datetime import date
+from django.http import HttpResponse
+from app01 import models
+def add_book(request):
+    # 这里先校验权限，注意权限的写法 
+    if request.user.has_perm("app01.add_book") :
+        pub_obj=models.Publish.objects.filter(pk=1).first()
+        book=models.Book.objects.create(title="菜鸟教程", price=200, pub_date=date.today(), publish=pub_obj)
+        print(book, type(book))
+        return HttpResponse(book.pub_date)
+    else:
+        return HttpResponse("没有权限")
+
+```
+
+有个问题，这种权限粒度太粗，用户要么对所有Book都有新增权限，要么都没有新增权限。这也是Django权限系统的缺陷，后续介绍基于规则的对象级别的权限控制。
+
+### note
+
+1. 重置管理员密码`python manage.py changepassword admin`
+2. 用户是否可登录，需要勾选Staff status
+   ![image-20250214141516608](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250214141516608.png)
+
+3. 自定义模型展示的字段
 
 我们可以自定义管理页面，来取代默认的页面。
 
@@ -600,6 +648,184 @@ class ContactAdmin(admin.ModelAdmin):
 admin.site.register(Contact, ContactAdmin)
 admin.site.register([Test, Tag])
 ```
+
+## [rules](https://github.com/dfunckt/django-rules?tab=readme-ov-file#creating-predicates)
+
+对象级的权限控制[Django Permissions - Complete Guide](https://keepsimple.dev/p/django-permissions.html#Django_Rules)
+
+ruleset 就是字典，key是类似id的东西，value是称为断言(Predicate)的函数。
+
+有两个预定义的rule sets:
+
+- 默认的rule set存储共享rules
+- 作为Django上下文权限的rules
+
+1. 创建断言只需要使用一个注解
+   **django-rules 会将当前用户（通常是 request.user）作为第一个参数传递给断言函数**
+
+```python
+@rules.Predicate
+def is_book_author(user,book):
+    return book.author == user
+```
+
+2. 动态断言:根据参数动态创建断言
+
+   ```python
+   import rules
+   
+   def role_is(role_id):
+       @rules.predicate
+       def user_has_role(user):
+           return user.role.id == role_id
+   
+       return user_has_role
+   
+   # 动态设置权限
+   rules.add_perm("reports.view_report_abc", role_is(12))
+   rules.add_perm("reports.view_report_xyz", role_is(13))
+   ```
+
+### 设置rule
+
+add_rule用于向共享ruleSet中添加规则
+
+```python
+@rules.Predicate
+def is_book_author(user,book):
+    return book.author == user
+
+rules.add_rule('can_edit_book', is_book_author)
+rules.add_rule('can_delete_book', is_book_author)
+
+#校验权限
+rules.test_rule('can_edit_book', user, book)
+```
+
+### 断言的组合
+
+断言本身不够有用，但是它组合起来就很有用，支持`& | ^ ~` 二元操作。
+
+```python
+>>> is_editor = rules.is_group_member('editors')
+>>> is_editor
+<Predicate:is_group_member:editors object at 0x10eee1350>
+
+#创建一个新的断言
+>>> is_book_author_or_editor = is_book_author | is_editor
+>>> is_book_author_or_editor
+<Predicate:(is_book_author | is_group_member:editors) object at 0x10eee1390>
+
+# 设置权限并测试    
+>>> rules.set_rule('can_edit_book', is_book_author_or_editor)
+>>> rules.test_rule('can_edit_book', adrian, guidetodjango)
+True
+>>> rules.test_rule('can_delete_book', adrian, guidetodjango)
+True 
+```
+
+### django中使用rule
+
+#### api
+
+- `add_perm(name, predicate)`
+
+  Adds a rule to the permissions rule set. See `RuleSet.add_rule`.
+
+- `set_perm(name, predicate)`
+
+  Replace a rule from the permissions rule set. See `RuleSet.set_rule`.
+
+- `remove_perm(name)`
+
+  Remove a rule from the permissions rule set. See `RuleSet.remove_rule`.
+
+- `perm_exists(name)`
+
+  Returns whether a rule exists in the permissions rule set. See `RuleSet.rule_exists`.
+
+- `has_perm(name, user=None, obj=None)`
+
+  Tests the rule with the given name. See `RuleSet.test_rule`.
+
+
+
+1. 创建权限
+
+Django的权限名称是`app名称.动作_对象` 格式，可以这么创建权限
+
+```python
+>>> rules.add_perm('books.change_book', is_book_author | is_editor)
+>>> rules.add_perm('books.delete_book', is_book_author)
+```
+
+add_perm用于向权限ruleSet添加规则
+
+2. 校验权限
+
+```python
+>>> adrian.has_perm('books.change_book', somebook)
+False
+```
+
+#### model中使用
+
+**model改为继承RulesModel，新增一个Meta**，  [也可参考这里](https://keepsimple.dev/p/django-permissions.html)
+
+用于权限的断言，就是接收一个user和一个对象作为参数的函数，例如把publish操作集成对象级权限。
+
+```python
+import rules
+from rules.contrib.models import RulesModel
+
+class Book(RulesModel):
+    class Meta:
+        rules_permissions = {
+            "add": rules.is_staff,
+            "read": rules.is_authenticated,
+        }
+```
+
+这段代码和下面的等价
+
+```python
+rules.add_perm("app_label.add_book", rules.is_staff)
+rules.add_perm("app_label.read_book", rules.is_authenticated)
+```
+
+
+
+#### view中使用
+
+使用注解`from rules.contrib.views import permission_required`
+
+```python
+from django.shortcuts import get_object_or_404
+from rules.contrib.views import permission_required
+from posts.models import Post
+
+def get_post_by_pk(request, post_id):
+    return get_object_or_404(Post, pk=post_id)
+
+@permission_required('posts.change_post', fn=get_post_by_pk)
+def post_update(request, post_id):
+    # ...
+```
+
+这里get_post_by_pk根据view函数的参数获取到Post对象，注解再校验该对象的权限，这个场景太常见，因此有一个泛型方法可用：
+
+```python
+from rules.contrib.views import permission_required, objectgetter
+from posts.models import Post
+
+@permission_required('posts.change_post', fn=objectgetter(Post, 'post_id'))
+def post_update(request, post_id):
+    # ...
+```
+
+
+
+
 
 # ORM
 
@@ -690,6 +916,7 @@ update(字段名=更改的数据)（推荐）  返回受影响的行
     books = models.Book.objects.values("pk", "price")#类似select 类型是字典
     books = models.Book.objects.values_list("price", "publish")
     books = models.Book.objects.values_list("publish").distinct()
+    .filter(start_time__date__gte=build_date_from,start_time__date__lte=build_date_to)
 ```
 
 **注意：**
@@ -1014,9 +1241,46 @@ def research(request):
     return HttpResponse(sql)
 ```
 
-# 权限
+# session
 
 [用户模块与权限系统](https://ebook-django-study.readthedocs.io/zh-cn/latest/django%E5%85%A5%E9%97%A8%E8%BF%9B%E9%98%B607%E7%94%A8%E6%88%B7%E6%A8%A1%E5%9D%97%E4%B8%8E%E6%9D%83%E9%99%90%E7%B3%BB%E7%BB%9F.html)
+
+## [session 框架](https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Django/Sessions)
+
+Django使用Session机制跟踪网站和浏览器之间的状态。浏览器存储的数据在连接网站时，对网站可见。
+
+Django使用一个包含特殊session id的cookie识别浏览器以及它的本网站相关的session。实际的session数据默认存储在网站数据库，可以配置Django把session数据存储到其他位置，但推荐默认。
+
+1. 启用session
+
+```python
+INSTALLED_APPS = [
+    # …
+    'django.contrib.sessions',
+    # …
+
+MIDDLEWARE = [
+    # …
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    # 
+```
+
+2. 使用session
+   从视图函数的request参数中获取session, 该session代表了当前浏览器的连接(使用浏览器保存的网站的cookie中的session id标记)。
+   session属性是字典对象，可以做增删改查
+
+3. 保存会话数据
+   默认情况下，Django会在session修改/删除时保存到session数据库并发送session cookie到客户端。但如果我们修改的是session内部的数据，则需要我们明确标记已修改。
+
+   ```python
+   # Session object not directly modified, only data within the session. Session changes not saved!
+   request.session['my_car']['wheels'] = 'alloy'
+   
+   # Set session as modified to force data updates/cookie to be saved.
+   request.session.modified = True
+   ```
+
+   
 
 
 
@@ -1256,3 +1520,4 @@ CORS_ALLOWED_ORIGINS = [
 
 [大讲狗](https://pythondjango.cn/python/tools)
 
+[django tutorial](https://developer.mozilla.org/en-US/docs/Learn_web_development/Extensions/Server-side/Django/Sessions)

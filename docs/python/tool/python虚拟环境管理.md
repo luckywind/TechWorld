@@ -94,9 +94,23 @@ CPPFLAGS="$(pkg-config --cflags openssl11)" LDFLAGS="$(pkg-config --libs openssl
 
 [centos默认的openssl版本太低，python3+的版本要求openssl1.1.1](https://blog.csdn.net/soupersoul/article/details/139182250)
 
+3. ` setlocale: LC_CTYPE: cannot change locale (zh_CN.UTF-8): No such file or directory`
 
+`sudo yum -y install glibc-locale-source glibc-langpack-zh`
 
 ### pyenv-virtualenv切换、配置虚拟环境
+
+#### 安装pyenv-virtualenv
+
+```shell
+git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
+
+echo 'eval "$(pyenv virtualenv-init -)"' >> ~/.bashrc
+```
+
+
+
+#### 使用
 
 ```shell
 pyenv virtualenvs   #查看
@@ -266,5 +280,9 @@ exec "$PYENV_COMMAND_PATH" "$@"   # 执行命令
 
 
 
+# 软件包管理
 
+默认虚拟环境使用全局安装的系统包。 但也可以通过`--no-site-packages`选项安装独立的包。
+
+> 1.7 使用--no-site-packages参数使用系统包
 

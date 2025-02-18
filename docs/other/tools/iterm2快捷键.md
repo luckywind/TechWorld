@@ -30,3 +30,9 @@
 粘贴：中键
 ⌘ + shift + h 会列出剪切板历史
 ```
+
+# Profile设置
+
+## 免密登录到指定目录
+
+`/usr/local/bin/sshpass -p hados ssh -t xxx@xxx "cd /opt/hados/workspace; bash -l"`
