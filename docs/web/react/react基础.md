@@ -99,7 +99,7 @@ React 组件的好处在于它们只是 JavaScript
 
 <font color=red>在 React 中，组件是返回一个 UI 元素(也就是标记)的**Js函数**，在函数的 return 语句中，您可以编写 JSX。</font>
 
-1. 组件需要大写开头
+1. <u>组件需要大写开头</u>
 2. 组件的使用方式与HTML标签相同，使用尖括号<>。 且只能返回一个JSX标签，如果需要返回多个，必须包装到一个共享的父级中，例如`<div>...<div>`或者一个空的`<>...</>`包装器。
 3. export default关键字指定文件中的主组件
 
@@ -638,9 +638,20 @@ DOM `<button>` 元素的 `onClick` props 对 React 有特殊意义，因为它�
   }
 ```
 
+## 描述UI
 
+[组件](https://reactjs.ac.cn/learn/your-first-component)：UI构建块，React 允许你将你的标记、CSS 和 JavaScript 结合到自定义“组件”中。
 
+组件的标记有几种：像`<img/>`这种jsx语法，大写开头的标记被认为是自定义的标记。
 
+JSX语法比HTML更严格：
+
+1. 返回单个根元素
+2. 关闭所有标签
+   自闭合标签，例如 `<img>` 必须变成 `<img />`，而包装标签，例如 `<li>oranges` 必须写成 `<li>oranges</li>`。
+3. 驼峰式命名
+   JSX 会转换成 JavaScript，在 JSX 中编写的属性会成为 JavaScript 对象的键，但是 JavaScript 对变量名有限制。
+4. JSX 类似于 HTML，但也有一些不同之处。如果需要，可以使用 [转换器](https://transform.tools/html-to-jsx)。
 
 
 

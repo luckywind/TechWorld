@@ -105,6 +105,45 @@ schedulerDelay =  math.max(0,
 
 [各种时间含义](https://blog.csdn.net/wankunde/article/details/121403842)
 
+
+
+## spark UI中的duration是如何计算的
+
+```sql
+spark.sql("use tpcds100gdv") spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 2) spark.sql(""" select i_item_sk, sum(ss_coupon_amt) amt   from store_sales a  join item b on a.ss_item_sk =b.i_item_sk where i_category in ('Sports', 'Books', 'Home') group by  i_item_sk – i_item_sk limit 100   """).collect       spark.sql("use tpcds100gdv") spark.conf.set("spark.sql.autoBroadcastJoinThreshold", 2) spark.sql(""" select ss_store_sk, sum(ss_coupon_amt) amt   from store_sales a  join item b on a.ss_item_sk =b.i_item_sk where i_category in ('Sports', 'Books', 'Home') group by  ss_store_sk – i_item_sk limit 100   """).collect
+```
+
+1. **WSCG时间如何计算的？** WSCG duration是相关所有task从开始计算一直到WSCG计算结束这段时间的时间差（具体，就是所有task的 FinishedTime-LaunchedTime之和）， 包括了自己的逻辑和child的逻辑，以Job 0 为例， WSCG(1) 的时间包括了WSCG本身和它的child 即scan的时间。
+2. **WSCG时间什么时候开始计时？为什么Job 1的duration为1.3min, 而其Stage/WSCG只有264ms?** 从task开始执行时开始计时，而非stage提交时。 本例子中，Job 0 和Job 1分别只有一个Stage, 同时提交，但Job 0的stage先获得了资源，由于只有一个线程的资源，Job 0执行完，Job 1的task才真正开始，因此在UI上我们看到Job 1 的duration是1.3min, 但 WSCG(2)却只有264ms 
+
+## BUG:duration为零 
+
+WholeStageCodegenExec的doExecute函数执行过程中累加duration的方式是迭代到当前分区最后一条时才累加duration。 假如我们的Sql带limit子句，那么可能没有迭代完一个分区，导致这个duration不会被累加，从而为0
+
+```scala
+mapPartitionsWithIndex { (index, zippedIter) =>
+        val (leftIter, rightIter) = zippedIter.next()
+        val (clazz, _) = CodeGenerator.compile(cleanedSource)
+        val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
+        buffer.init(index, Array(leftIter, rightIter))
+        new Iterator[InternalRow] {
+          override def hasNext: Boolean = {
+            val v = buffer.hasNext
+            if (!v) durationMs += buffer.durationMs()
+            v
+          }
+          override def next: InternalRow = buffer.next()
+        }
+      }
+```
+
+
+
+
+
+
+
+
 # Spark SQL
 
 ## [通过UI高效定位问题](https://learn.lianglianglee.com/%E4%B8%93%E6%A0%8F/%E9%9B%B6%E5%9F%BA%E7%A1%80%E5%85%A5%E9%97%A8Spark/22%20Spark%20UI%EF%BC%88%E4%B8%8B%EF%BC%89%EF%BC%9A%E5%A6%82%E4%BD%95%E9%AB%98%E6%95%88%E5%9C%B0%E5%AE%9A%E4%BD%8D%E6%80%A7%E8%83%BD%E9%97%AE%E9%A2%98%EF%BC%9F.md)

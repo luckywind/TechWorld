@@ -35,11 +35,12 @@
 
  合并程序本身效率低，且有一天的延迟
 
-### 优化
+### 优化原理
 
-合并写入变为并行写入，通过修改目录名称实现数据替换，去掉了回写步骤
+1. 合并写入变为并行写入
+2. 通过修改目录名称实现数据替换，去掉了回写步骤
 
-使用coalesce代替repartition，这俩函数用于改变分区数，但coalesce跨分区移动的数据会比repartition少。
+3. 使用coalesce代替repartition，这俩函数用于改变分区数，但coalesce跨分区移动的数据会比repartition少。
 
 ## 小表
 
@@ -158,8 +159,12 @@ GC优化前，最好是把gc日志打出来，便于我们进行调试。
 
 
 
- 通过看gc日志，我们发现一个case，特定时间段内，堆内存其实很闲，堆内存使用率也就5%左右，长时间不进行full gc，导致Direct Memory一直不进行回收，一直在飙升。所以，我们的目标是让full gc更频繁些，多触发一些Direct Memory回收。 第一，可以减少整个堆内存的大小，当然也不能太小，否则堆内存也会报OOM。这里，我配置了1G的最大堆内存。 第二，可以让年轻代的对象尽快进入年老代，增加年老代的内存。这里我使用了-Xmn100m，将年轻代大小设置为100M。另外，年轻代的对象默认会在young gc 15次后进入年老代，这会造成年轻代使用率比较大，young gc比较多，但是年老代使用率低，full gc比较少，通过配置-XX:MaxTenuringThreshold=1，年轻代的对象经过一次young gc后就进入年老代，加快年老代full gc的频率。 第三，可以让年老代更频繁的进行full gc。一般年老代gc策略我们主要有-XX:+UseParallelOldGC和-XX:+UseConcMarkSweepGC这两种，ParallelOldGC吞吐率较大，ConcMarkSweepGC延迟较低。我们希望full gc频繁些，对吞吐率要求较低，而且ConcMarkSweepGC可以设置-XX:CMSInitiatingOccupancyFraction，即年老代内存使用率达到什么比例时触发CMS。我们决定使用CMS，并设置-XX:CMSInitiatingOccupancyFraction=10，即年老代使用率10%时触发父gc。 
-通过对GC策略的配置，我们发现父gc进行的频率加快了，带来好处就是Direct Memory能够尽快进行回收，当然也有坏处，就是gc时间增加了，cpu使用率也有所增加。 最终我们对executor的配置如下： 
+ 通过看gc日志，我们发现一个case，特定时间段内，堆内存其实很闲，堆内存使用率也就5%左右，长时间不进行full gc，导致Direct Memory一直不进行回收，一直在飙升。所以，我们的目标是**让full gc更频繁些**，多触发一些Direct Memory回收。 
+
+1. 第一，可以减少整个堆内存的大小，当然也不能太小，否则堆内存也会报OOM。这里，我配置了1G的最大堆内存。 
+2. 第二，**可以让年轻代的对象尽快进入年老代**，增加年老代的内存。这里我使用了-Xmn100m，将年轻代大小设置为100M。另外，年轻代的对象默认会在young gc 15次后进入年老代，这会造成年轻代使用率比较大，young gc比较多，但是年老代使用率低，full gc比较少，通过配置-XX:MaxTenuringThreshold=1，年轻代的对象经过一次young gc后就进入年老代，**加快年老代full gc的频率**。 
+3. 第三，可以让年老代更频繁的进行full gc。一般年老代gc策略我们主要有-XX:+UseParallelOldGC和-XX:+UseConcMarkSweepGC这两种，ParallelOldGC吞吐率较大，ConcMarkSweepGC延迟较低。我们希望full gc频繁些，对吞吐率要求较低，而且ConcMarkSweepGC可以设置-XX:CMSInitiatingOccupancyFraction，即年老代内存使用率达到什么比例时触发CMS。我们决定使用CMS，并设置-XX:CMSInitiatingOccupancyFraction=10，即年老代使用率10%时触发父gc。 
+   通过对GC策略的配置，我们发现父gc进行的频率加快了，带来好处就是Direct Memory能够尽快进行回收，当然也有坏处，就是gc时间增加了，cpu使用率也有所增加。 最终我们对executor的配置如下： 
 
 ```shell
 --executor-memory1G --num-executors 160 --executor-cores 1 --conf spark.yarn.executor.memoryOverhead=2048 --conf spark.executor.extraJavaOptions="

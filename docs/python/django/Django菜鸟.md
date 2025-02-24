@@ -603,9 +603,11 @@ admin.site.register(Test)
 
 用户加入组后就自动拥有组的权限。
 
+### 权限的验证
 
+#### 在视图中检查权限
 
-### 在视图中检查权限
+**方法一**： 使用user.has_perm
 
 [参考](https://keepsimple.dev/p/django-permissions.html)
 
@@ -626,6 +628,18 @@ def add_book(request):
 ```
 
 有个问题，这种权限粒度太粗，用户要么对所有Book都有新增权限，要么都没有新增权限。这也是Django权限系统的缺陷，后续介绍基于规则的对象级别的权限控制。
+
+**方法二**：使用@permission_required装饰器
+
+这种方法要求先登录
+
+```python
+@permission_required('app01.add_book')
+def add_book(request):
+    print(request.user)
+```
+
+
 
 ### note
 
@@ -648,6 +662,54 @@ class ContactAdmin(admin.ModelAdmin):
 admin.site.register(Contact, ContactAdmin)
 admin.site.register([Test, Tag])
 ```
+
+### 登录登出
+
+#### login
+
+[参考](https://developer.mozilla.org/zh-CN/docs/Learn_web_development/Extensions/Server-side/Django/Authentication) Django 提供了创建身份验证页面所需的几乎所有功能，让处理登录，注销和密码管理等工作，都能“开箱即用”。这些相关功能包括了 url 映射器，视图和表单，但它不包括模板 。
+
+[How to log a user in](https://docs.djangoproject.com/en/5.1/topics/auth/default/#top):  login方法把用户ID保存到Django的Session框架中的session中。
+
+```python
+from django.contrib.auth import authenticate, login
+
+def my_view(request):
+    username = request.POST['username']
+    password = request.POST['password']
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        login(request, user)
+        # Redirect to a success page.
+        ...
+    else:
+        # Return an 'invalid login' error message.
+        ...
+```
+
+
+
+#### logout
+
+```python
+from django.contrib.auth import logout
+
+def logout_view(request):
+    logout(request)
+    # Redirect to a success page.
+```
+
+#### note
+
+[Create a react login page that authenticates with Django auth token](https://medium.com/@preciousimoniakemu/create-a-react-login-page-that-authenticates-with-django-auth-token-8de489d2f751)
+
+[LDAP Authentication with Django](https://medium.com/@itsayushbansal/ldap-authentication-with-django-a2b4f00c9a04)
+
+> create a login/logout REST API in django-rest-framework using the rest framework’s SessionAuthentication to authenticate users with LDAP server.
+
+[Combine LDAP and classical authentication in django](https://fle.github.io/combine-ldap-and-classical-authentication-in-django.html)
+
+
 
 ## [rules](https://github.com/dfunckt/django-rules?tab=readme-ov-file#creating-predicates)
 
@@ -768,7 +830,7 @@ add_perm用于向权限ruleSet添加规则
 False
 ```
 
-#### model中使用
+#### model中设置权限规则
 
 **model改为继承RulesModel，新增一个Meta**，  [也可参考这里](https://keepsimple.dev/p/django-permissions.html)
 
@@ -1435,7 +1497,32 @@ $django-admin help
 1. 通过继承关系实现
 2. 通过yaml配置文件实现
 
+## 自定义装饰器
 
+[How to Create Decorators in Django](https://dev.to/pymeister/how-to-create-decorators-in-django-2f8d)
+
+1. 创建一个包装视图函数的函数
+
+   ```python
+   def my_decorator(view_func):
+       def wrapper(request, *args, **kwargs):
+           # code to be executed before the view
+           response = view_func(request, *args, **kwargs)
+           # code to be executed after the view
+           return response
+       return wrapper
+   ```
+
+2. 使用装饰器
+
+   ```python
+   @my_decorator
+   def my_view(request):
+       # code for the view
+       return HttpResponse("Hello, World!")
+   ```
+
+   可以写多个装饰器，会按顺序执行
 
 
 

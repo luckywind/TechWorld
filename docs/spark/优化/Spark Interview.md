@@ -1,4 +1,4 @@
-# spark3有哪些优化？
+# spark3
 
 主要有四个方面的优化：
 
@@ -13,7 +13,9 @@
    1. 也是优化join策略的手段
 4. 查询编译加速
 
-# 有哪几种join?
+# join
+
+## 5中join策略
 
 一共五种Join策略：
 
@@ -63,9 +65,68 @@
 
    
 
+## 棘手问题处理
+
+1. 图计算作业报数组越界
+   根因：计算节点故障导致Task的状态丢失，且无法重算，因此RDD容错机制无法处理。
+
+   解决：使用定期checkpoint机制保存状态，Pregel算法框架提供了自动定期checkpoint机制。
+
+# RDMA
+
+## Spark  UCX项目
+
+1. CPU资源： jUCX调用RDMA read 吞吐接近硬件(CX5)极限(100Gbps)时，CPU占用为0，而使用TCP接口时，server端CPU占用100%，client端占用68%。
+2. 加速原理: **减少了fetch wait time** 
+
+<font color=red>由于shuffle read的网络传输部分是Async的，一个BlockingQueue被用来连接Async的网络传输与后续的compute逻辑</font>
+
+具体来说shuffle read不断从网络拉取数，并且将准备就绪的数据放入BlockingQueue里，而后续compute逻辑从BlockingQueue里读取这些数据用于计算。若BlockingQueue里没有数据，则compute逻辑会被阻塞，直到有数据准备就绪。
+
+![fetchWaitTime](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/fetchWaitTime.png)
 
 
-# OOM如何解决的？
+
+- 在Shuffle read过程中，如上图红色部分所示，原生方案是使用java的NIO channel从磁盘读取数据，然后调用Netty库通过TCP拉取数据
+- 使用Sparkucx这个插件后，如下图红色部分所示，shuffle read逻辑变为用UCX提供的Java接口调用RDMA read，直接从数据源拉取数据
+
+由于RDMA的网络传输优于TCP，红色的部分将被加速
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20240814113344342.png" alt="image-20240814113344342" style="zoom: 67%;" />
+
+   
+
+## RDMA
+
+RDMA可以简单理解为利用相关的硬件和网络技术，服务器1的网卡可以直接读写服务器2的内存，最终达到高带宽、低延迟和低资源利用率的效果。RDMA 具有零拷贝、协议栈卸载的特点。RDMA 将协议栈的实现下沉至 RDMA 网卡 (RNIC)，绕过内核直接访问远程内存中的数据。由于不经过系统内核协议栈，RDMA 与传统 TCP/IP 实现相比不仅节省了协议处理和数据拷贝所需的 CPU 资源，同时也提高了网络吞吐量、降低了网络通信时延。
+
+对比传统网络协议，RDMA 网络协议具有以下三个特点：
+
+- 旁路软件协议栈
+
+RDMA 网络依赖 RNIC 在网卡内部完成数据包封装与解析，旁路了网络传输相关的软件协议栈。对于用户态应用程序，RDMA 网络的数据路径旁路了整个内核；对于内核应用程序，则旁路了内核中的部分协议栈。由于旁路了软件协议栈，将数据处理工作卸载到了硬件设备，因而 RDMA 能够有效降低网络时延。
+
+- CPU 卸载
+
+RDMA 网络中，CPU 仅负责控制面工作。数据路径上，有效负载由 RNIC 的 DMA 模块在应用缓冲区和网卡缓冲区中拷贝 (应用缓冲区提前注册，授权网卡访问的前提下)，不再需要 CPU 参与数据搬运，因此可以降低网络传输中的 CPU 占用率。
+
+- 内存直接访问
+
+RDMA 网络中，RNIC 一旦获得远程内存的访问权限，即可直接向远程内存中写入或从远程内存中读出数据，不需要远程节点参与，非常适合大块数据传输。
+
+## k8s存储卸载
+
+通过硬件模拟向宿主机提供标准的nvme/virtio块设备，对网络存储协议的处理都卸载到DPU，提供硬件加速的NVME over RDMA能力。
+
+
+
+# 向社区提交的BUG
+
+## duration 为0
+
+WholeStageCodegenExec的doExecute函数执行过程中累加duration的方式是迭代到当前分区最后一条时才累加duration。 假如我们的Sql带limit子句，那么可能没有迭代完一个分区，导致这个duration不会被累加，从而为0
+
+# OOM
 
 [参考1](https://blog.csdn.net/yhb315279058/article/details/51035631)
 
@@ -135,7 +196,5 @@ spark1.6之后，Excution和Storage可互相借用，且加入了堆外内存，
 
 # groupbykey实现细节
 
-# sparkonyarn执行流程
 
-# sparkSqlJoin原理
 

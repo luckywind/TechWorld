@@ -70,7 +70,7 @@ Reducer 0 读取 Partition 0，Reducer 1 读取 Partition 1、2、3，Reducer 2 
 
 ## 原理
 
-思路：将部分倾斜的分区用多个task处理。
+<font color=red>思路：将部分倾斜的分区用多个task处理，输入分区数据以上游stage的task为划分边界， 非倾斜的另一边的多个task重复拉取即可。</font>
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_ae_skew_join.png" alt="Spark SQL resolve joinm skew" style="zoom:50%;" />
 

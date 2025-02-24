@@ -74,7 +74,7 @@ Executor 的内存管理建立在 JVM 的内存管理之上，Spark 对 JVM 的�
 
 <img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_on_heap_memory_iteblog.png" alt="Spark 内存管理" style="zoom: 50%;" />
 
-1. `systemMemory = Runtime.getRuntime.maxMemory`，其实就是通过参数 `spark.executor.memory` 或 `--executor-memory` 配置的。
+1. `systemMemory = Runtime.getRuntime.maxMemory`，<font color=red>其实就是通过参数 `spark.executor.memory` 或 `--executor-memory` 配置的。</font>
 
 2. reservedMemory 在 Spark 2.2.1 中是写死的，其值等于 300MB，这个值是不能修改的（如果在测试环境下，我们可以通过 `spark.testing.reservedMemory` 参数进行修改）；
 

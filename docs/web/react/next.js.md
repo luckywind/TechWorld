@@ -18,7 +18,7 @@ Next.js 使用基于文件系统的路由器，其中：
 
 # **布局**
 
-用于显示在多个路由之间共享的UI.在导航时，布局会保持状态，保持交互性，并且不会重新渲染。布局也可以 [嵌套](https://nextjscn.org/docs/app/building-your-application/routing/layouts-and-templates#nesting-layouts)。Next.js 会自动应用与页面路径匹配的布局文件。
+**用于显示在多个路由之间共享的UI.在导航时，布局会保持状态，保持交互性，并且不会重新渲染。**布局也可以 [嵌套](https://nextjscn.org/docs/app/building-your-application/routing/layouts-and-templates#nesting-layouts)。Next.js 会自动应用与页面路径匹配的布局文件。
 
 特殊文件 [layout.js](https://nextjscn.org/docs/app/building-your-application/routing/layouts-and-templates#layouts) 和 [template.js](https://nextjscn.org/docs/app/building-your-application/routing/layouts-and-templates#templates) 允许你创建在多个 [路由](https://nextjscn.org/docs/app/building-your-application/routing/defining-routes#creating-routes) 之间共享的 UI
 
@@ -185,6 +185,8 @@ export function Posts() {
 
 处理表单提交和数据修改
 
+[服务器操作](https://react.dev/reference/rsc/server-actions)是在服务器上执行的**异步函数**。它们可以在服务器组件和客户端组件中调用，用于处理 Next.js 应用程序中的表单提交和数据修改。
+
 约定： 服务器操作可以通过 React 的 [`"use server"`](https://react.dev/reference/react/use-server) 指令定义。你可以将该指令放在 `async` 函数体的顶部以将该函数标记为服务器操作，或者放在单独文件的顶部以将该文件的所有导出标记为服务器操作。
 
 1. 服务器组件
@@ -244,7 +246,7 @@ export function Button() {
 
 React 继承了 HTML的`<form>`元素允许通过action prop调用Server端操作。
 
-当在表单中调用时，操作会自动接收 [`FormData`](https://developer.mozilla.org/docs/Web/API/FormData/FormData) 对象。你不需要使用 React `useState` 来管理字段，而是可以使用原生的 [`FormData` 方法](https://developer.mozilla.org/en-US/docs/Web/API/FormData#instance_methods)来提取数据：
+- 当在表单中调用时，操作会自动接收 [`FormData`](https://developer.mozilla.org/docs/Web/API/FormData/FormData) 对象。你不需要使用 React `useState` 来管理字段，而是可以使用原生的 [`FormData` 方法](https://developer.mozilla.org/en-US/docs/Web/API/FormData#instance_methods)来提取数据：
 
 ```jsx
 export default function Page() {
@@ -264,6 +266,40 @@ export default function Page() {
   return <form action={createInvoice}>...</form>
 }
 ```
+
+[React Form](https://react.dev/reference/react-dom/components/form#handling-multiple-submission-types) 可以处理多个提交动作，一个表单里的每个按钮可以通过formAction属性关联不同的操作。
+
+```js
+export default function Search() {
+  function publish(formData) {
+    const content = formData.get("content");
+    const button = formData.get("button");
+    alert(`'${content}' was published with the '${button}' button`);
+  }
+
+  function save(formData) {
+    const content = formData.get("content");
+    alert(`Your draft of '${content}' has been saved!`);
+  }
+
+  return (
+    <form action={publish}>
+      <textarea name="content" rows={4} cols={40} />
+      <br />
+      <button type="submit" name="button" value="submit">Publish</button>
+      <button formAction={save}>Save draft</button>
+    </form>
+  );
+}
+```
+
+
+
+
+
+
+
+
 
 # rest 请求
 
@@ -315,6 +351,20 @@ async function getBuildArtifacts(build_num) {
 ```
 
 
+
+
+
+
+
+# 登录登出
+
+[参考](https://medium.com/@dorinelrushi8/how-to-create-a-login-page-in-next-js-f4c57b8b387d)
+
+```shell
+npx create-next-app@latest login-page
+cd login-page
+npm install bcryptjs jsonwebtoken next-auth axios
+```
 
 
 
