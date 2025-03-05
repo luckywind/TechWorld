@@ -366,7 +366,42 @@ cd login-page
 npm install bcryptjs jsonwebtoken next-auth axios
 ```
 
+## middleware
 
+middleware [matcher](https://medium.com/@turingvang/how-to-use-matcher-in-next-js-middleware-cf18f441d52a)
+
+定义了哪些路由触发中间件，使用config对象配置，是一个路由/路由模式数组。特点：
+
+1. 静态路由
+
+2. 动态路由
+
+   - `:path*`代表所有子路由
+
+   - 排除路由： 可以直接在中间件逻辑里处理
+
+     ```js
+     export function middleware(req) {
+       if (req.nextUrl.pathname.startsWith('/login') || req.nextUrl.pathname.startsWith('/signup')) {
+         return NextResponse.next(); // Skip middleware for /login and /signup
+       }
+     
+       // Apply middleware to all other routes
+       return NextResponse.next();
+     }
+     
+     export const config = {
+       matcher: ['/:path*'], // Applies to all routes
+     };
+     ```
+
+     
+
+
+
+
+
+重定向循环
 
 
 
@@ -375,4 +410,6 @@ npm install bcryptjs jsonwebtoken next-auth axios
 [NEXT.js中文文档](https://nextjscn.org/docs/getting-started/installation)
 
 [blog教程](https://nextjs.org/learn-pages-router/basics/create-nextjs-app)
+
+[NextJS（8部曲）](https://dev.to/skipperhoa/create-a-middleware-in-nextjs-13-17oh)
 

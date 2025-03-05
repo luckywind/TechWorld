@@ -113,7 +113,7 @@ Storage多占用的内存可被淘汰，但是Execution多占的内存只能等�
 
 1. Reserved Memory(保留内存)，系统默认值为300M，一般无需改动，不用关心此部分内存。 但如果Executor分配的内存小于 1.5 * 300 = 450M时，Executor将无法执行。
 2. Storage Memory(存储内存) 
-    用于存放广播数据及RDD缓存数据。由上图可知，Spark 2+中，初始状态下，Storage及Execution Memory均约占系统总内存的30%（1 * 0.6 * 0.5 = 0.3）。在UnifiedMemory管理中，这两部分内存可以相互借用，为了方便描述,我们使用storageRegionSize来表示“spark.storage.storageFraction”。当计算内存不足时，可以改造storageRegionSize中未使用部分，且StorageMemory需要存储内存时也不可被抢占； 若实际StorageMemory使用量超过storageRegionSize，那么当计算内存不足时，可以改造(StorageMemory – storageRegionSize)部分，而storageRegionSize部分不可被抢占。
+    用于存放广播数据及RDD缓存数据。由上图可知，Spark 2+中，初始状态下，Storage及Execution Memory均约占系统总内存的30%（1 * 0.6 * 0.5 = 0.3）。在UnifiedMemory管理中，这两部分内存可以相互借用，为了方便描述,我们使用storageRegionSize来表示“spark.storage.storageFraction”。<u>当计算内存不足时，可以改造storageRegionSize中未使用部分，且StorageMemory需要存储内存时也不可被抢占； 若实际StorageMemory使用量超过storageRegionSize，那么当计算内存不足时，可以改造(StorageMemory – storageRegionSize)部分，而storageRegionSize部分不可被抢占。</u>
 
 > Unified Memory中，spark.shuffle.memoryFraction, spark.storage.unrollFraction等参数无需在指定。
 
@@ -324,13 +324,13 @@ spark.memory.offHeap.size：
 
 memoryOverhead: jvm 本身维持运行所需要的的额外内存, 
 
-Direct Buffer: NIO 使用的channel 缓冲区, 在 memoryOverHead 内存中分配direct buffer.
+<font color=red>Direct Buffer: NIO 使用的channel 缓冲区, 在 memoryOverHead 内存中分配direct buffer. 因避免了 Java 堆和 Native 堆（native heap）中来回复制数据，所以在一些场景中显著提高了性能；</font>
 
 spark.executor.extraJavaOptions = -XX:MaxDirectMemorySize=xxxm
 
 ![image-20211123175623588](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211123175623588.png)
 
-![image-20220416162818460](Spark统一内存管理/image-20220416162818460.png)
+![image-20220416162818460](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220416162818460.png)
 
 executor进程内存计算：
 计算公式：

@@ -57,7 +57,7 @@ rdd1和rdd2分别包含10个分区，所以各产生10个task，但实际上并�
 
 ## Join结果的分区方式
 
-两个RDD join时，结果RDD(以下记为RDDX)的分区器，分区数，以及与两个父RDD的依赖是如何确定的？ 
+<font color=red>两个RDD join时，结果RDD(以下记为RDDX)的分区器，分区数，以及与两个父RDD的依赖是如何确定的？ </font>
 
 1. 当两个RDD都没有分区器时，RDDX使用默认的HashPartitioner,分区数取最大值，且与父RDD是shuffleDependency
 2. 当两个RDD其中有一个有分区器时，RDDX的分区方式与它保持一致(分区器和分区数都一样)，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency

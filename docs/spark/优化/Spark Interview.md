@@ -56,21 +56,26 @@
 ​		目前有几个大的应用： 
 
 1. 统一ID的应用。 采用联通分量算法实现，保持ID的统一和稳定不变； 实践过程中遇到的问题就是，发现有些数据合并错误了，也就是说多个实体，我们错误识别成一个，而分配了一个ID，我们设计了拆分逻辑， 其中有一个非常极端的案例，就是该ID下的id数据太庞大，尝试过直接丢弃掉，优化逻辑后让算法重新合并，但是这时算法的迭代次数会远超平时。这是因为这个巨型的图内部不停的在发送消息。目前的解决办法是找到这种巨型图的业务原因，过滤异常数据，且线上不丢弃它。
-
 2. 大数据平台。数据血缘项目有个需求，数据血缘是一个有向图，顶点是HIve/talos/hdfs/doris等等不同种类的数据，边是数据之间的依赖关系；需求是计算每个数据表处在数据血缘中的第几层，上游不同种类的数据分别有多少。
 
    1. 数据上游层级这个解决起来比较简单， 核心思想就是下游数据层级=其所有上游数据层级的最大值+1，初始化时，所有数据表的上游层级都是0 ，然后上游向下游发送一个消息，该消息就是上游表的层级+1。 数据表把收到的消息取最大就是其上游数据的层级
    2. 需求二是计算上游不同种类数据源数量，这里需要注意去重，也就是说当前数据表的上游表是其所有父级表的所有上游数据再加上父级表构成，但在统计时需要注意去重。我在实现时采用了Set集合保存当前上游表id自动实现去重
    3. 上述两个需求最复杂的就是图中出现环的情况，开始我是设置了一个最大迭代次数强制结束算法。这会导致上游层数不对。发送消息时判断目的顶点是否在自己的上游集合中，如果在则不再发送。这样就解决了环的问题。
 
-   
 
-## 棘手问题处理
+## oneid
 
-1. 图计算作业报数组越界
-   根因：计算节点故障导致Task的状态丢失，且无法重算，因此RDD容错机制无法处理。
+1. 统计
+2. 风控领域
+   1. 垃圾注册、薅羊毛、刷单，app恶意刷下载量
+3. 设备画像
+4. 广告归因：例如，app的下载链接点击下载，判断两个渠道ID是否相同从而判断是否因为该链接而下载
+5. 广告主进行广告投放计算，如果没有oneid,一个设备会被当成多个
+6. 黑产识别： 风险评分，TZFID相对imei更难改写，通过TZFID对应的imei个数评级，判断风险系数，当前5%属于中风险
+7. 做法： 维护设备ID倒排表，每来一批数据，按优先级逐一查倒排表，且总是基于更稳定的ID生成设备ID
+8. 指标： 膨胀率4%，一致率99.6%
 
-   解决：使用定期checkpoint机制保存状态，Pregel算法框架提供了自动定期checkpoint机制。
+
 
 # RDMA
 
@@ -128,9 +133,13 @@ WholeStageCodegenExec的doExecute函数执行过程中累加duration的方式是
 
 # OOM
 
+## 常见场景
+
 [参考1](https://blog.csdn.net/yhb315279058/article/details/51035631)
 
 [参考2](https://blog.51cto.com/wang/4634620)
+
+[Spark调优 | Spark OOM问题常见解决方式](https://cloud.tencent.com/developer/article/1904928)
 
 Spark中的OOM问题不外乎以下三种情况：
 
@@ -146,7 +155,7 @@ Spark中的OOM问题不外乎以下三种情况：
 
 Spark内存模型，一个Executor中的内存主要分为Excution内存和Storage内存和other内存
 
-1. Excution内存是执行内存，join、聚合、shuffle等操作都会用到这个内存，默认占比0.2，是OOM高发区
+1. Excution内存是执行内存，join、聚合、shuffle等操作都会用到这个内存，默认占比0.2，是**OOM高发区**
 2. Storage内存是存储broadcast\cache\persist数据的地方，默认占比0.6
 3. other是程序预留内存，占比较少
 
@@ -174,6 +183,75 @@ spark1.6之后，Excution和Storage可互相借用，且加入了堆外内存，
 
 
 
+## 内存问题定位
+
+用哪些方法、工具
+
+- OneID项目中，GraphX代码执行很慢。UI上看到stage retry， 
+- 
+
+## 内存管理
+
+内存的分布
+
+执行内存对存储内存的借用过程，存储内存中的数据落盘过程。
+
+![image-20220416162818460](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220416162818460.png)
+
+> 1. 下面两块内存都是堆外内存,spark2.4.5以前有一些区别，就是Overhead包含下面的offHeap内存
+>
+> 2. 第一块和第三块内存是Spark Core使用的
+>
+> 3. Spark内存设计不合理的地方： 如果不配置MaxDirectMemorySize，那么netty就认为executory内存就是可用的最大堆外内存。executor申请的内存未必会全用完，剩余的空间会被netty当作Direct Memory使用，所以executor的内存就被netty认为是可以申请的最大内存(不管spark已经使用多少了)，所以就会可劲儿使用。一旦使用超过Executor申请的总量，就会OOM。
+
+1. **统一内存**
+
+执行内存和存储内存可互相借用，执行内存可借用未使用的存储内存，可强制归还被借用的执行内存，但不能强制非借用的已被使用的存储内存。
+
+2. **Task内存**
+
+为了更好地使用使用内存，Executor 内运行的 Task 之间共享着 Execution 内存，因此，可能会出现这样的情况：先到达的任务可能占用较大的内存，而后到的任务因得不到足够的内存而挂起。具体的，Spark 内部维护了一个 HashMap 用于记录每个 Task 占用的内存。
+
+源代码中申请过程是一个while循环，退出条件是申请到最小内存，每个 Task 可以使用 Execution 内存大小范围为 1/2N ~ 1/N，其中 N 为当前 Executor 内正在运行的 Task 个数。
+
+3. **堆外内存**
+
+spark.memory.offHeap.size是spark Core(memory manager)使用的，spark.executor.memoryOverhead是资源管理器使用的，例如YARN，可以理解为jvm本身维持运行所需要的额外内存。
+
+4. 内存调优
+   - 通过控制Executor的核数限制并行度，从而控制Task分配的内存
+   - 调整应用的并行度，从而从总体上限制task数量
+   - UI上算子会给出内存峰值和数据溢写情况
+
+
+
+## 遇到过的问题分析过程
+
+1. <font color=red>图计算作业异常慢</font>
+   **根因**：节点故障导致分区重算，而重算用到了Task的状态，由于是迭代计算，重算的数据链路特别长，导致重试要非常长时间。
+   **解决**：首先想到使用checkpoint斩断DAG图，但是Pregel算法是迭代计算，并没有给用户留下可以手动做checkpoint的地方，查文档发现GraphX提供了一个定期checkpoint的参数。
+
+2. <font color=red>SparkStreaming作业持续延迟</font>
+   现象：从UI上看每个作业都使用了4s，超过batch间隔2s。
+
+   分析过程： 
+
+   - **部分task启动晚了**：通过查看每个batch的执行时间，发现每个都用了4s，再进入stage里面发现每个task的执行时间只有20ms左右，但是部分task的发起时间比其他task晚了4s，导致整个stage晚4s完成。
+   - 再分析**启动慢的task的本地化级别**，发现都是RACK_LOCAL。 
+   - 作业分配的executor数少于集群的数量，导致**有些机器上没有executor**，出现数据和代码不在同一个节点上的task，等待3s才退而求其次采用RACK_LOCAL的办法启动。
+   - spark.locality.wait默认值就是3s 佐证了分析
+
+   解决办法： 调整作业的executor数量和集群节点数量一致
+
+3. <font color=red>Spark Netty内存泄露问题</font>
+   现象：同一个SQL执行多次，机器内存占用阶梯上涨，且不释放。最终导致netty OutOfDirectMemoryError
+   分析过程：netty是spark shuffle read过程使用的通信框架，猜想到shuffle read的代码，TableReader的输入流没有准确释放，输入流读取完成时、异常时都没有释放。
+
+4. Spark其他内存释放问题
+   steam表和build表都是分批次的，join过程是两个批次流的两两join。stream batch在以此和所有build batch     join时，要等到最后一个build batch完成join才能释放。
+
+
+
 # 参数哪些调优？
 
 1. driver内存
@@ -182,17 +260,11 @@ spark1.6之后，Excution和Storage可互相借用，且加入了堆外内存，
 4. 增加本地执行等待时间
 5. 推测执行
 
-
-
-
-
-
-
 # SparkSQL调优的场景？问题定位？调优方法？效果？更好的方案？
 
-到底有没有做过？有多深的理解？
 
-指定shuffle分区数, 增加repartition提示
+
+
 
 # groupbykey实现细节
 
