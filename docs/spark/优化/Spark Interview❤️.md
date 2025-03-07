@@ -206,20 +206,24 @@ spark1.6之后，Excution和Storage可互相借用，且加入了堆外内存，
 
 1. **统一内存**
 
-执行内存和存储内存可互相借用，执行内存可借用未使用的存储内存，可强制归还被借用的执行内存，但不能强制非借用的已被使用的存储内存。
+执行内存和存储内存可互相借用，执行内存可借用未使用的存储内存，可强制归还被借用的执行内存，但不能强制非借用的已被使用的存储内存落盘。
 
 2. **Task内存**
 
-为了更好地使用使用内存，Executor 内运行的 Task 之间共享着 Execution 内存，因此，可能会出现这样的情况：先到达的任务可能占用较大的内存，而后到的任务因得不到足够的内存而挂起。具体的，Spark 内部维护了一个 HashMap 用于记录每个 Task 占用的内存。
+为了更好地使用内存，Executor 内运行的 Task 之间共享着 Execution 内存，因此，可能会出现这样的情况：先到达的任务可能占用较大的内存，而后到的任务因得不到足够的内存而挂起。具体的，Spark 内部维护了一个 HashMap 用于记录每个 Task 占用的内存。
 
 源代码中申请过程是一个while循环，退出条件是申请到最小内存，每个 Task 可以使用 Execution 内存大小范围为 1/2N ~ 1/N，其中 N 为当前 Executor 内正在运行的 Task 个数。
+
+> - 在 MemoryConsumer 中有 Spill 方法，当 MemoryConsumer 申请不到足够的内存时，可以 Spill 当前内存到磁盘，从而避免无节制的使用内存。但是，对于堆内内存的申请和释放实际是由 JVM 来管理的。因此，在统计堆内内存具体使用量时，考虑性能等各方面原因，Spark 目前采用的是抽样统计的方式来计算 MemoryConsumer 已经使用的内存，从而造成堆内内存的实际使用量不是特别准确。从而有可能因为不能及时 Spill 而导致 OOM。
+>
+> - 在 Reduce 获取数据时，由于数据倾斜，有可能造成**单个 Block(注意，不是分区)** 的数据非常的大，默认情况下是<font color=red>需要有足够的内存来保存单个 Block 的数据</font>。因此，此时极有可能因为数据倾斜造成 OOM。 **可以设置 spark.maxRemoteBlockSizeFetchToMem 参数，设置这个参数以后，超过一定的阈值，会自动将数据 Spill 到磁盘，此时便可以避免因为数据倾斜造成 OOM 的情况**。
 
 3. **堆外内存**
 
 spark.memory.offHeap.size是spark Core(memory manager)使用的，spark.executor.memoryOverhead是资源管理器使用的，例如YARN，可以理解为jvm本身维持运行所需要的额外内存。
 
 4. 内存调优
-   - 通过控制Executor的核数限制并行度，从而控制Task分配的内存
+   - 通过控制Executor的核数和task的cpu数控制并行度，从而控制Task分配的内存
    - 调整应用的并行度，从而从总体上限制task数量
    - UI上算子会给出内存峰值和数据溢写情况
 
@@ -259,6 +263,23 @@ spark.memory.offHeap.size是spark Core(memory manager)使用的，spark.executor
 3. 使用KryoSerializer序列化器
 4. 增加本地执行等待时间
 5. 推测执行
+
+
+
+1. 并行度优化
+   1. 增加executor个数提升并行能力
+   2. 增加分区数
+2. Join优化
+   1. **采用广播器进行Join代替shuffle Join**
+   2. **让两个RDD共享分区器避免shuffle Join**
+3. 缓存优化
+   1. **公用RDD进行缓存**
+   2. **checkpoint的使用**
+4. 算子优化
+   1. **reduceByKey代替groupByKey**
+5. **调节数据本地性等待时长**
+
+
 
 # SparkSQL调优的场景？问题定位？调优方法？效果？更好的方案？
 

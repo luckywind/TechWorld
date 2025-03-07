@@ -24,7 +24,7 @@ Next.js 使用基于文件系统的路由器，其中：
 
 layout里的children相当于挖了一个坑，同级的page.js的内容会填进去。
 
-- 每个页面都会嵌入到同级或最近的上级目录中的layout布局文件中。所以一个layout布局文件同级目录及子目录下的页面都会在访问时自动嵌入进来。
+- **每个页面都会嵌入到同级或最近的上级目录中的layout布局文件中。所以一个layout布局文件同级目录及子目录下的页面都会在访问时自动嵌入进来。**
 - 布局文件中适合放一些多个页面共享的组件
 
 - 根布局是必须的，必须包含html和body标签
@@ -368,6 +368,10 @@ npm install bcryptjs jsonwebtoken next-auth axios
 
 ## middleware
 
+### 拦截请求
+
+middleware.js，Next.js 会自动识别并在匹配的 API 路由（`matcher` 里定义的路径）执行这个中间件。
+
 middleware [matcher](https://medium.com/@turingvang/how-to-use-matcher-in-next-js-middleware-cf18f441d52a)
 
 定义了哪些路由触发中间件，使用config对象配置，是一个路由/路由模式数组。特点：
@@ -401,7 +405,73 @@ middleware [matcher](https://medium.com/@turingvang/how-to-use-matcher-in-next-j
 
 
 
-重定向循环
+### [请求头添加token](https://nextjs.org/docs/app/building-your-application/routing/middleware#using-cookies)
+
+**Token 存储在 Cookie 中**，自动在请求时附带 `Authorization` 头。
+
+```js
+import { NextResponse } from "next/server";
+
+export function middleware(req) {
+    const token = req.cookies.get("token")?.value; // 从 Cookie 获取 Token
+
+    if (!token) {
+        return NextResponse.redirect(new URL("/login", req.url)); // 没有 Token，重定向到登录页
+    }
+
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("Authorization", `Bearer ${token}`); // 添加 Token 到请求头
+
+    return NextResponse.next({
+        request: {
+            headers: requestHeaders,
+        },
+    });
+}
+
+export const config = {
+    matcher: ["/api/:path*", "/protected/:path*"], // 只对 API 或受保护路由生效
+};
+
+```
+
+这里的 **`Bearer` 表示 "持有者令牌"（Bearer Token）**，服务器通过它来识别用户身份。
+
+
+
+
+
+### fetch添加token
+
+1. 前端设置credentials
+
+   ```js
+       const response = await fetch(ApiHost + "/pipeline/list?type=2", {
+         method: "GET",
+         credentials: "include",  // 允许携带 Cookie
+         headers: {
+             "Content-Type": "application/json"
+         },
+       });
+   ```
+
+2. 请求后端使用域名，而非IP地址
+   ApiHost使用域名, 相应的Django的ALLOWED_HOSTS也要把这个域名加上
+
+3. 后端允许Cookie
+
+Django后端允许跨域请求携带Cookie,否则浏览器不会发送Cookie。
+
+```python
+CORS_ALLOWED_ORIGINS = ["http://vmp-dev.yusur.tech","http://vmp-build.yusur.tech"]
+CORS_ALLOW_CREDENTIALS = True  # 允许跨域携带 Cookie
+```
+
+
+
+
+
+
 
 
 
@@ -412,4 +482,8 @@ middleware [matcher](https://medium.com/@turingvang/how-to-use-matcher-in-next-j
 [blog教程](https://nextjs.org/learn-pages-router/basics/create-nextjs-app)
 
 [NextJS（8部曲）](https://dev.to/skipperhoa/create-a-middleware-in-nextjs-13-17oh)
+
+[youtube next.js简介](https://www.youtube.com/watch?v=703cQNdRNPU)
+
+
 

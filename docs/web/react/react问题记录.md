@@ -33,3 +33,17 @@ useEffect(() => {
 </Button>
 ```
 
+# import问题
+
+## is not a function
+
+```js
+import { verifyBkToken } from './app/page';
+```
+
+这个导入没有写文件后缀，而代码中存在同名但不同后缀的文件，导致调用verifyBkToken时提示TypeError: (0 , v.verifyBkToken) is not a function
+
+解决： 
+
+导入语句写明确后缀page.jsx
+

@@ -280,6 +280,12 @@ exec "$PYENV_COMMAND_PATH" "$@"   # 执行命令
 
 
 
+## 多用户共享
+
+[pyenv-multiuser](https://github.com/macdub/pyenv-multiuser)插件可以完成，但未尝试。
+
+
+
 # 软件包管理
 
 默认虚拟环境使用全局安装的系统包。 但也可以通过`--no-site-packages`选项安装独立的包。
