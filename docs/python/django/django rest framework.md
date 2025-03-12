@@ -119,6 +119,10 @@ class SnippetSerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'code', 'linenos', 'language', 'style')
 ```
 
+fields定义了get请求返回的字段，不在这里出现的字段会被忽略。
+
+
+
 # 视图
 
 ## 函数视图
@@ -229,8 +233,24 @@ class SnippetList(APIView):
 注意：
 
 1. APIView类继承了Django自带的View类，它不仅支持更多请求方法，而且对Django的request对象进行了封装，可以使用request.data获取用户通过POST, PUT和PATCH方法发过来的数据，而且支持插拔式地配置认证、权限和限流类。
+
 2. 不同的HTTP方法由不同的函数来实现，逻辑上更清晰
+
 3. url里对类调用as_view()函数，从而在视图中实现查找指定方法
+
+4. Response可以直接返回json, 例如：
+
+   ```python
+   # 返回普通JSON
+   return Response({'some': 'data'})
+   # 自定义返回格式
+   return Response({
+               'data':serializer.data,
+               'status':"SUCCESS"
+           })
+   ```
+
+   
 
 ### 用Mixin类和GenericAPI类混配
 

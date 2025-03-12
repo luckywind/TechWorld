@@ -1412,10 +1412,10 @@ nohup python manage.py runserver 0.0.0.0:8000 &
 4. 根据表自动生成models类
 
 ```shell
-python manage.py inspectdb 表名 
+python manage.py inspectdb 表名 --settings=hados_vmp.settings.dev  
 ```
 
-
+自增id列不会生成，
 
 ## django-admin
 
@@ -1575,7 +1575,9 @@ CORS_ALLOWED_ORIGINS = [
 
 ### [ModuleNotFoundError: No module named 'corsheaders](https://www.cnblogs.com/jingzaixin/p/13575231.html)
 
+## 后端重定向遇到cors错误
 
+Access to fetch at 'http://devhub.yusur.tech/login?c_url=http%3a%2f%2fvmp-dev.yusur.tech%3a3000' (redirected from 'http://vmp-dev.yusur.tech:8000/pipeline/list?type=1') from origin 'http://vmp-dev.yusur.tech:3000' has been blocked by CORS policy: Response to preflight request doesn't pass access control check: No 'Access-Control-Allow-Origin' header is present on the requested resource. If an opaque response serves your needs, set the request's mode to 'no-cors' to fetch the resource with CORS disabled.
 
 
 
@@ -1588,6 +1590,16 @@ CORS_ALLOWED_ORIGINS = [
 [参考](https://stackoverflow.com/questions/70319606/importerror-cannot-import-name-url-from-django-conf-urls-after-upgrading-to)
 
 ## django.contrib.auth.middleware.AuthenticationMiddleware' must be in MIDDLEWARE in order to use the admin application
+
+
+
+
+
+
+
+
+
+
 
 ## Watching for file changes with StatReloade
 

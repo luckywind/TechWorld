@@ -172,7 +172,28 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 激活码：3VV2VF-HQZ01U-MZ5ZU9-ZVEH45-H6CFE4
 
+## 开机自启动
+
+[参考](https://www.cnblogs.com/x-kq/p/17952462)
+
 # 休眠命令
+
+## 合盖不休眠
+
+```shell
+# 禁止合盖休眠
+alias dislid='sudo pmset -b sleep 0; sudo pmset -b displaysleep 0; sudo pmset -b disablesleep 1'
+# 启动合盖休眠
+alias enlid='sudo pmset -b sleep 15; sudo pmset -b displaysleep 10; sudo pmset -b disablesleep 0'
+```
+
+最近遇到一个问题：
+
+mac在不接电源时，如果合盖则会自动进入休眠模式，外接屏同时黑屏。再次敲击键盘恢复时可能要几十秒，太耽误事儿。
+
+解决：就是执行上面那个禁止合盖休眠的命令，然后合盖状态即使断点外接屏也不会黑屏。这个命令可以放到开机自动执行任务里，完美。
+
+
 
 ## 命令说明
 

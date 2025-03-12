@@ -441,7 +441,7 @@ export const config = {
 
 
 
-### fetch添加token
+## fetch添加token
 
 1. 前端设置credentials
 
@@ -456,7 +456,7 @@ export const config = {
    ```
 
 2. 请求后端使用域名，而非IP地址
-   ApiHost使用域名, 相应的Django的ALLOWED_HOSTS也要把这个域名加上
+   ApiHost使用域名, 相应的Django的ALLOWED_HOSTS也要把这个域名加上，否则会报400 BadRequest。
 
 3. 后端允许Cookie
 
@@ -469,7 +469,7 @@ CORS_ALLOW_CREDENTIALS = True  # 允许跨域携带 Cookie
 
 
 
-
+![image-20250310093614610](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250310093614610.png)
 
 
 
