@@ -2,12 +2,7 @@
 
 ## raw
 
-```python
-lname = "Doe"
-Person.objects.raw("SELECT * FROM myapp_person WHERE last_name = %s", [lname])
-```
-
-它会将查询语句中的字段映射至模型中的字段，但如果有多的字段，也会加到对象上去
+它会将查询语句中的字段映射至模型中的字段，但如果有多的字段，也会加到对象上去:
 
 ```python
 import os
@@ -24,11 +19,23 @@ if __name__ == '__main__':
         print(b.__dict__)
 ```
 
-1. 可以查询指定字段，但必须包含查询对象第一个主键，示例中是PipelineRelease，二非build_history表
-2. 可以返回新字段
+1. 可以查询指定字段，但必须包含**查询对象(未必是表)第一个主键**，示例中是PipelineRelease的pipeline_id，而不是build_history表
+
+2. 可以返回新字段，例如newfield并不是查询对象PipelineRelease的属性
+
 3. 可以传递变量，注意用中括号包起来
 
+4. 在导入模型前一定要设置`os.environ['DJANGO_SETTINGS_MODULE'] = 'hados_vmp.settings.dev'`
 
+5. 查询结果直接转list(效果类似cusor.fetchall())
+
+   ```python
+   # Using a RawQuerySet that returns model instances
+   raw_qs = MyModel.objects.raw("SELECT id, field1, field2 FROM my_app_mymodel")
+   tuple_list = [(obj.id, obj.field1, obj.field2) for obj in raw_qs]
+   ```
+
+   
 
 
 
@@ -66,6 +73,32 @@ cursor.fetchone()  取一条
 cursor.fetchall()  取所有
 cursor.fetchmany(size=5) 取多条    
 ```
+
+
+
+获取数据量
+
+```python
+#  方式一：
+count_query = 'SELECT COUNT(*) FROM your_app_yourmodel'
+with connection.cursor() as cursor:
+    cursor.execute(count_query)
+    # Fetch the result of the query
+    result = cursor.fetchone()
+    # The result of COUNT(*) is a single value in the first element of the tuple
+    count = result[0]
+    print(f"The number of records in the table is: {count}")
+# 方式二    
+select_query = 'SELECT * FROM your_app_yourmodel WHERE some_column = %s'
+condition_value = 'some_value'
+with connection.cursor() as cursor:
+    cursor.execute(select_query, [condition_value])
+    # Fetch all the results
+    results = cursor.fetchall()
+    count = len(results)    
+```
+
+
 
 
 
