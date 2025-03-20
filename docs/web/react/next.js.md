@@ -481,7 +481,57 @@ CORS_ALLOW_CREDENTIALS = True  # 允许跨域携带 Cookie
 
 [blog教程](https://nextjs.org/learn-pages-router/basics/create-nextjs-app)
 
-[NextJS（8部曲）](https://dev.to/skipperhoa/create-a-middleware-in-nextjs-13-17oh)
+## [NextJS（8部曲）](https://dev.to/skipperhoa/create-a-middleware-in-nextjs-13-17oh)
+
+1. swr( Stale-While-Revalidate ）库方便请求API
+   `npm i swr`   安装swr
+
+```js
+import useSWR from 'swr'
+const fetcher = (url:string) => fetch(url).then(res => res.json())
+export default function Post() {
+    const { data: posts, error, isLoading } = useSWR('/api/posts', fetcher)
+  if (error) return <div>Failed to load</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (!data) return null;
+  return (
+    < 组件数据/>
+  )
+```
+
+2. generateStaticParams函数会在应用运行时首先调用，可用于获取数据
+
+3. Middleware
+
+4. form 表单
+
+   ```js
+   export default function PostEdit({params} :{params:{id:number}}) {
+     const router = useRouter()
+     const {data : post,isLoading, error} = useSWR(`/api/posts/${params.id}`,fetcher)
+     const [title, setTitle] =useState<string>('');
+     const [body, setBody] = useState<string>('');
+     useEffect(()=>{
+        if(post){
+            setTitle(post.result.title)
+            setBody(post.result.content)
+        }
+     },[post, isLoading])
+     const updatePost = async (e: any) => {
+     };
+     if(isLoading) return <div><span>Loading...</span></div>
+     if (!post) return null;
+     return (
+       <form className='w-full' onSubmit={updatePost}>
+           <div className='w-full py-2'>
+             <button className="w-20 p-2 text-white border-gray-200 border-[1px] rounded-sm bg-green-400">Submit</button>
+           </div>
+       </form>
+     )
+   }
+   ```
+
+   
 
 [youtube next.js简介](https://www.youtube.com/watch?v=703cQNdRNPU)
 
