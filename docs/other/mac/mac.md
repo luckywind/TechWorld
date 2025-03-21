@@ -124,7 +124,9 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 # vpn
 
-## 设置
+## clashX设置
+
+[clashX](https://clashx.org/clashx-node/)
 
 #### 忽略某些网站的代理
 
@@ -156,11 +158,25 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 关闭：unproxy
 
+## anyConnect
+
+129.146.138.229:1443
+
+sthoffer/2022  缺点是连接后无法访问内网
+
+
+
+
+
+
+
+
+
 ## [greenHub](chrome-extension://knmhokeiipedacnhpjklbjmfgedfohco/options.html)
 
 每天60分钟
 
-## [clashX](https://clashx.org/clashx-node/)
+
 
 # 效率
 
