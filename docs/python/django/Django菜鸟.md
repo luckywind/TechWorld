@@ -255,6 +255,19 @@ def testdb(request):
     return HttpResponse("<p>删除成功</p>")
 ```
 
+## 新增数据
+
+```python
+Membership.objects.create(
+...     person=paul,
+...     group=beatles,
+...     date_joined=date(1960, 8, 1),
+...     invite_reason="Wanted to form a band.",
+... )
+```
+
+
+
 # 表单
 
 HTML表单是网站交互性的经典方式。
@@ -1362,7 +1375,7 @@ MIDDLEWARE = [
 
 # 常用命令
 
-1. 新增app
+1. **新增app**
 
    ```python
    django-admin startapp app名称
@@ -1378,7 +1391,7 @@ MIDDLEWARE = [
    $ python3 manage.py migrate app名称   # 创建表结构
    ```
 
-3. 启动项目
+3. **启动项目**
 
    ```shell
    python3 manage.py runserver 0.0.0.0:8000
@@ -1409,7 +1422,7 @@ nohup python manage.py runserver 0.0.0.0:8000 &
 
 
 
-4. 根据表自动生成models类
+4. **根据表自动生成models类**
 
 ```shell
 python manage.py inspectdb 表名 --settings=hados_vmp.settings.dev  

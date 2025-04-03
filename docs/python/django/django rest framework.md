@@ -22,6 +22,9 @@ INSTALLED_APPS = [
 
 # 序列化器
 
+**Serializer 与 Model 的区别：**
+ Serializer 是数据验证、序列化和反序列化的工具，而 Model 类关注数据持久化。Serializer 提供了一层抽象，让你可以灵活控制 API 数据的输入输出，而不直接操作数据库模型。
+
 ## Django自带的序列化器
 
 
@@ -117,11 +120,22 @@ class SnippetSerializer(serializers.ModelSerializer):
     class Meta:
         model = Snippet
         fields = ('id', 'title', 'code', 'linenos', 'language', 'style')
+        #fields = '__all__'  所有字段
+        # 自定义验证器，检查 age 字段
+        def validate_age(self, value):
+            if value < 1 or value > 120:
+                raise serializers.ValidationError("年龄必须在 1 到 120 之间。")
+            return value
 ```
 
 fields定义了get请求返回的字段，不在这里出现的字段会被忽略。
 
+它负责：
 
+- 将 JSON 输入数据反序列化为 Python 数据类型
+- 自动检查字段类型和必填项
+- 执行自定义验证逻辑（例如验证年龄范围）
+- 最终通过 `serializer.save()` 创建模型实例
 
 # 视图
 
@@ -137,7 +151,7 @@ request.data  # 处理任意数据  适用于'POST'，'PUT'和'PATCH'方法
 ```
 
 - **RDF还引入了一个`Response`对象**
-  我们不再显式地将请求或响应绑定到给定的内容类型比如HttpResponse和JSONResponse，我们统一使用Response方法返回响应，该方法支持内容协商，可根据客户端请求的内容类型返回不同的响应数据。`request.data`可以处理传入的`json`请求。
+  我们不再显式地将请求或响应绑定到给定的内容类型比如HttpResponse和JSONResponse，我们统一使用Response方法返回响应，该方法支持内容协商，可根据客户端请求的内容类型返回不同的响应数据。
 
 ```python
 from rest_framework.response import Response
