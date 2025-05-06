@@ -99,8 +99,9 @@ React 组件的好处在于它们只是 JavaScript
 
 <font color=red>在 React 中，组件是返回一个 UI 元素(也就是标记)的**Js函数**，在函数的 return 语句中，您可以编写 JSX。</font>
 
-1. <u>组件需要大写开头</u>
+1. <u>组件需要大写开头</u>， 这是与普通HTML标签最大的区别。
 2. 组件的使用方式与HTML标签相同，使用尖括号<>。 且只能返回一个JSX标签，如果需要返回多个，必须包装到一个共享的父级中，例如`<div>...<div>`或者一个空的`<>...</>`包装器。
+2. 返回值开头必须紧跟 return后头，除非用括号，否则下一行会被忽略。
 3. export default关键字指定文件中的主组件
 
 ```html
@@ -153,7 +154,15 @@ function HomePage() {
 <img className="avatar" />
 ```
 
+在单独的css文件中编写css规则
 
+```css
+.avatar {
+  border-radius: 50%;
+}
+```
+
+添加css文件最基本的方式是使用`<Link>`标签，具体参考使用的框架。
 
 ## 使用Props显示数据
 
@@ -217,13 +226,99 @@ function HomePage() {
 
 
 
+解构：用花括号声明Props:
+
+```jsx
+function Avatar({ person, size }) {
+  // 在这里 person 和 size 是可访问的
+}
+```
+
+
+
+4. 传递css对象
+   可以使用花括号表示对象`{ }` , 对象也可以在JSX中传递
+
+   ```jsx
+   export default function TodoList() {
+     return (
+       <ul style={
+                   {
+                 backgroundColor: 'black',
+                 color: 'pink'
+               }
+         }>
+         <li>Improve the videophone</li>
+         <li>Prepare aeronautics lectures</li>
+         <li>Work on the alcohol-fuelled engine</li>
+       </ul>
+     );
+   }
+   ```
+
+   
+
+1. `baseUrl + person.imageId + person.imageSize + '.jpg'` 会生成正确的 URL 字符串
+
+
+
+### 条件渲染
+
+1. 利用if
+
+```jsx
+let content;
+if (isLoggedIn) {
+  content = <AdminPanel />;
+} else {
+  content = <LoginForm />;
+}
+return (
+  <div>
+    {content}
+  </div>
+);
+```
+
+2. 利用&&
+
+```tsx
+function Item({ name, isPacked }) {
+  return (
+    <li className="item">
+      {name} {isPacked && '✅'}
+    </li>
+  );
+}
+
+export default function PackingList() {
+  return (
+    <section>
+      <h1>Sally Ride's Packing List</h1>
+      <ul>
+        <Item
+          isPacked={true}
+          name="Space suit"
+        />
+        <Item
+          isPacked={true}
+          name="Helmet with a golden leaf"
+        />
+        <Item
+          isPacked={false}
+          name="Photo of Tam"
+        />
+      </ul>
+    </section>
+  );
+}
+```
 
 
 
 
 
-
-### 遍历列表
+### 渲染列表
 
 ```html
 function HomePage() {
@@ -291,7 +386,7 @@ function HomePage() {
 
 以 `use` 开头的函数称为 *Hook*。 `useState` 是 React 提供的内置 Hook。您可以在 [API 参考](https://reactjs.ac.cn/reference/react) 中找到其他内置 Hook。您还可以通过组合现有的 Hook 来编写自己的 Hook。
 
-Hook 比其他函数更严格。您只能在组件（或其他 Hook）的 *顶部* 调用 Hook。如果您想在条件或循环中使用 `useState`，请提取一个新组件并将其放在那里。
+**Hook 比其他函数更严格。您只能在组件（或其他 Hook）的 *顶部* 调用 Hook。如果您想在条件或循环中使用 `useState`，请提取一个新组件并将其放在那里。**
 
 
 
@@ -538,65 +633,11 @@ export default function HomePage() {
 
 # [React官方快速入门](https://reactjs.ac.cn/learn)
 
-## 基础
-
-### 条件渲染
-
-1. 利用if
-
-```jsx
-let content;
-if (isLoggedIn) {
-  content = <AdminPanel />;
-} else {
-  content = <LoginForm />;
-}
-return (
-  <div>
-    {content}
-  </div>
-);
-```
-
-2. 利用&&
-
-```tsx
-function Item({ name, isPacked }) {
-  return (
-    <li className="item">
-      {name} {isPacked && '✅'}
-    </li>
-  );
-}
-
-export default function PackingList() {
-  return (
-    <section>
-      <h1>Sally Ride's Packing List</h1>
-      <ul>
-        <Item
-          isPacked={true}
-          name="Space suit"
-        />
-        <Item
-          isPacked={true}
-          name="Helmet with a golden leaf"
-        />
-        <Item
-          isPacked={false}
-          name="Photo of Tam"
-        />
-      </ul>
-    </section>
-  );
-}
-```
+## 快速入门
 
 
 
-
-
-## 井字棋
+### 井字棋
 
 ```js
 // 父组件向子组件传递状态和函数
@@ -618,7 +659,7 @@ DOM `<button>` 元素的 `onClick` props 对 React 有特殊意义，因为它�
 
 
 
-### 不变性很重要
+#### 不变性很重要
 
 更改状态会导致重新渲染，如果很多组件共用一个数组，更新数组中的一个元素，会导致所有组件都重新渲染，但是实际只需要一个组件重新渲染时，最好是复制该数组，并修改指定位置，以避免重新渲染所有组件。
 
@@ -638,6 +679,210 @@ DOM `<button>` 元素的 `onClick` props 对 React 有特殊意义，因为它�
   }
 ```
 
+### React思考方式
+
+使用React构建用户界面时，你首先会将其分解成称为*组件*的片段。然后，你将描述每个组件的不同视觉状态。最后，你将组件连接在一起，以便数据流经它们。
+
+**步骤一**：将UI分解成组件层次结构
+一个组件理想情况下只做一件事情
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/s_thinking-in-react_ui_outline.png)
+
+这五个组件的层次结构如下：
+
+```markdown
+FilterableProductTable
+  SearchBar
+  ProductTable
+    ProductCategoryRow
+    ProductRow
+```
+
+**步骤二**：构建静态版本
+先不考虑交互性，把组件自上而下或者自下而上地逐个构建：
+
+```jsx
+function ProductCategoryRow({ category }) {
+  return (
+    <tr>
+      <th colSpan="2">
+        {category}
+      </th>
+    </tr>
+  );
+}
+
+function ProductRow({ product }) {
+  const name = product.stocked ? product.name :
+    <span style={{ color: 'red' }}>
+      {product.name}
+    </span>;
+
+  return (
+    <tr>
+      <td>{name}</td>
+      <td>{product.price}</td>
+    </tr>
+  );
+}
+
+function ProductTable({ products }) {
+  const rows = [];
+  let lastCategory = null;
+
+  products.forEach((product) => {
+    if (product.category !== lastCategory) {
+      rows.push(
+        <ProductCategoryRow
+          category={product.category}
+          key={product.category} />
+      );
+    }
+    rows.push(
+      <ProductRow
+        product={product}
+        key={product.name} />
+    );
+    lastCategory = product.category;
+  });
+
+  return (
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Price</th>
+        </tr>
+      </thead>
+      <tbody>{rows}</tbody>
+    </table>
+  );
+}
+
+function SearchBar() {
+  return (
+    <form>
+      <input type="text" placeholder="Search..." />
+      <label>
+        <input type="checkbox" />
+        {' '}
+        Only show products in stock
+      </label>
+    </form>
+  );
+}
+
+function FilterableProductTable({ products }) {
+  return (
+    <div>
+      <SearchBar />
+      <ProductTable products={products} />
+    </div>
+  );
+}
+
+const PRODUCTS = [
+  {category: "Fruits", price: "$1", stocked: true, name: "Apple"},
+  {category: "Fruits", price: "$1", stocked: true, name: "Dragonfruit"},
+  {category: "Fruits", price: "$2", stocked: false, name: "Passionfruit"},
+  {category: "Vegetables", price: "$2", stocked: true, name: "Spinach"},
+  {category: "Vegetables", price: "$4", stocked: false, name: "Pumpkin"},
+  {category: "Vegetables", price: "$1", stocked: true, name: "Peas"}
+];
+
+export default function App() {
+  return <FilterableProductTable products={PRODUCTS} />;
+}
+```
+
+**步骤三**：最小状态
+
+将状态视为应用程序需要记住的最小变化数据集合。
+
+如何区分是否为状态？
+
+- 它是否**随时间保持不变**？如果是，则它不是状态。
+- 它是否**通过 props 从父组件传递**？如果是，则它不是状态。
+- 您可以**根据组件中现有的状态或 props 计算它**吗？如果是，则它*绝对*不是状态！
+
+1. 原始产品列表**作为 props 传递，因此它不是状态。**
+2. 搜索文本似乎是状态，因为它会随时间变化，并且无法从任何地方计算出来。
+3. 复选框的值似乎是状态，因为它会随时间变化，并且无法从任何地方计算出来。
+4. 过滤后的产品列表**不是状态，因为它可以通过**获取原始产品列表并根据搜索文本和复选框的值对其进行过滤来计算。
+
+这意味着只有搜索文本和复选框的值是状态！做得好！
+
+
+
+**步骤四**：确定状态应该存在的位置
+
+确定应用程序的最小状态数据后，您需要确定哪个组件负责更改此状态，或*拥有*该状态。
+
+React 使用单向数据流，将数据从父组件向下传递到组件层次结构中的子组件，因此需要找到依赖这些状态的所有组件，然后找到这些组件的公共父组件，如果不存在则新建一个公共父组件，这个公共父组件就是要保存状态的组件！
+
+```jsx
+import { useState } from 'react';
+
+function FilterableProductTable({ products }) {
+  const [filterText, setFilterText] = useState('');
+  const [inStockOnly, setInStockOnly] = useState(false);
+
+  return (
+    <div>
+     ❤️ 将filterText和inStockOnly作为 props 传递给ProductTable和SearchBar
+      <SearchBar 
+        filterText={filterText} 
+        inStockOnly={inStockOnly} />
+      <ProductTable 
+        products={products}
+        filterText={filterText}
+        inStockOnly={inStockOnly} />
+    </div>
+  );
+}
+```
+
+**步骤五**：添加逆向数据流
+
+为了根据用户输入更改状态，您需要支持反向数据流：层次结构中深层的表单组件需要更新 `FilterableProductTable` 中的状态。状态由 `FilterableProductTable` 拥有，因此只有它才能调用 `setFilterText` 和 `setInStockOnly`。为了让 `SearchBar` 更新 `FilterableProductTable` 的状态，您需要将这些函数传递给 `SearchBar`。这样下游组件SearchBar就可以更改上游组件的状态了。
+
+```jsx
+function FilterableProductTable({ products }) {
+  const [filterText, setFilterText] = useState('');
+  const [inStockOnly, setInStockOnly] = useState(false);
+
+  return (
+    <div>
+      <SearchBar 
+        filterText={filterText} 
+        inStockOnly={inStockOnly}
+        onFilterTextChange={setFilterText}
+        onInStockOnlyChange={setInStockOnly} />
+      
+      
+function SearchBar({
+  filterText,
+  inStockOnly,
+  onFilterTextChange,
+  onInStockOnlyChange
+}) {
+  return (
+    <form>
+      <input
+        type="text"
+        value={filterText}
+        placeholder="Search..." 
+        onChange={(e) => onFilterTextChange(e.target.value)}
+      />
+      <label>
+        <input
+          type="checkbox"
+          checked={inStockOnly}
+          onChange={(e) => onInStockOnlyChange(e.target.checked)}      
+```
+
+
+
 ## 描述UI
 
 [组件](https://reactjs.ac.cn/learn/your-first-component)：UI构建块，React 允许你将你的标记、CSS 和 JavaScript 结合到自定义“组件”中。
@@ -654,6 +899,40 @@ JSX语法比HTML更严格：
 4. JSX 类似于 HTML，但也有一些不同之处。如果需要，可以使用 [转换器](https://transform.tools/html-to-jsx)。
 
 
+
+### 组件
+
+是js函数，建议组件函数都在文件顶层定义，当子组件需要来自父组件的一些数据时，[通过 props 传递它](https://reactjs.ac.cn/learn/passing-props-to-a-component)，而不是嵌套定义。
+
+#### 导入导出
+
+| 语法 | 导出语句                              | 导入语句                                |
+| ---- | ------------------------------------- | --------------------------------------- |
+| 默认 | `export default function Button() {}` | `import Button from './Button.js';`     |
+| 具名 | `export function Button() {}`         | `import { Button } from './Button.js';` |
+
+1. **一个文件里有且仅有一个默认 导出，但是可以有任意多个具名 导出。**
+
+2. **具名导入一定带花括号{}**
+3. 当使用默认导入时，你可以在 `import` 语句后面进行任意命名。比如 `import Banana from './Button.js'`，如此你能获得与默认导出一致的内容。相反，对于具名导入，导入和导出的名字必须一致。这也是称其为 **具名** 导入的原因！
+
+### JSX书写标签语言
+
+JSX规则：
+
+1. 只能 返回一个根元素
+   如果想要在一个组件中包含多个元素，**需要用一个父标签把它们包裹起来**。例如<>` 和 `</>
+
+   > JSX 虽然看起来很像 HTML，但在底层其实被转化为了 JavaScript 对象
+
+2. 标签必须闭合
+
+3. 使用驼峰命名属性
+   而 JSX 中的属性也会变成 JavaScript 对象中的键值对，但 JavaScript 对变量的命名有限制。例如，变量名称不能包含 `-` 符号或者像 `class` 这样的保留字
+
+## 添加交互性
+
+## 管理状态
 
 
 
@@ -774,6 +1053,76 @@ function App() {
           </PopoverContent>
 ```
 
+CommandItem：
+
+- key:`key` 仅在 React 内部使用，不会作为属性传递给组件本身
+- value:`value` 属性代表 `CommandItem` 的值，这个值会在用户选择该项时传递给 `onSelect` 回调函数。你可以将它看作是该项的 “数据标识”，用于在用户交互时获取与该项相关的数据。 `value` 被设置为 `module.pipeline_id`，这样当用户选择某个 `CommandItem` 时，就可以获取到对应的 `pipeline_id`。
+- onSelect: `onSelect` 是一个回调函数，当用户选择某个 `CommandItem` 时会触发该函数。它接收一个参数 `value`，这个参数就是 `CommandItem` 的 `value` 属性值。
+
+
+
+一个Demo：
+
+```jsx
+function selectorForPipelineId(open, setOpen, pipelineId, products, setpipelineId) {
+    return <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+            <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={open}
+                className="border border-gray-300 p-2 w-full mb-2"
+            >
+                {pipelineId
+                    ? products.find(
+                        (module) => module.pipeline_id === pipelineId
+                    )?.pipeline_name
+                    : "选择流水线"}
+                <ChevronsUpDown className="opacity-50" />
+            </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[250px] p-0">
+            <Command>
+                <CommandInput placeholder="选择流水线" />
+                <CommandList>
+                    <CommandEmpty>未选择</CommandEmpty>
+                    <CommandGroup>
+                        {products.map((module) => (
+                            <CommandItem 
+                                // 这个key是React自己用的，不会传递
+                                key={module.pipeline_id}
+                                // 这个value即使传递module,onSelect中接收的value依然是pipeline_name，原                                   因未知
+                                value={module}
+                                onSelect={(value) => {
+                                    let selectedPipelineId=products.find(
+                                        (module) => module.pipeline_name === value
+                                    )?.pipeline_id
+                                    setpipelineId( selectedPipelineId === pipelineId ? "" : selectedPipelineId);
+                                    setOpen(false);
+                                } }
+                            >
+                                {module.pipeline_name}
+                                <Check
+                                    className={cn(
+                                        "ml-auto",
+                                        pipelineId === module.pipeline_id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                    )} />
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                </CommandList>
+            </Command>
+        </PopoverContent>
+    </Popover>;
+}
+```
+
+
+
+
+
 
 
 ## 下拉选
@@ -869,6 +1218,53 @@ function App() {
                   })}
                 </div>
 ```
+
+### 可新增的下拉选
+
+`npm i react-select --legacy-peer-deps`
+
+```jsx
+<CreatableSelect isClearable options={['2200E','2200R','2200T','2200P'].map(value => ({ value, label: value }))}
+                          value={productName}
+                          onChange={setProductName}
+                          placeholder="选择产品名称"
+                         />
+```
+
+- `react-select` 的 `CreatableSelect` 要求 `options` 必须是 **包含 `value` 和 `label` 的对象数组**
+
+- 这里onChange直接把选项对象set给了productName，父组件通过value告诉子组件显示当前选项对象。
+
+  因此productName实际是{value:'2200E', label:'2200E'}
+
+能否只接收其value呢？
+
+```jsx
+                         <CreatableSelect isClearable options={['2200E','2200R','2200T','2200P'].map(value => ({ value, label: value }))}
+                            // 若productName非空，则创建一个选项对象，控制子组件显示
+                            value={productName ? { value: productName, label: productName } : null}
+                            // 当选择选项时，修改状态
+                            onChange={option => setProductName(option ? option.value : null)}
+                          placeholder="选择产品名称"
+                         />
+```
+
+
+
+#### 受控组件的核心公式
+
+父组件状态（state） → value prop → 子组件显示（View）   子组件交互（User Action） → onChange 回调 → 父组件更新状态（setState）
+
+- **`value` 是 “单向输入”**：父组件告诉子组件 “你现在应该是什么样子”。声明当前状态，该状态只能是选项对象(或null),即使底层状态是字符串，也需要先转为选项。
+  子组件自身没有独立状态，完全由父组件的 `value` 控制显示，这就是 **受控组件的本质**。
+- **`onChange` 是 “单向输出”**：子组件告诉父组件 “用户让我变成了什么样子”。
+- **合起来实现 “双向绑定”**：通过这两个 prop，父组件完全控制子组件的状态，同时子组件实时反馈用户操作，形成闭环。
+
+
+
+
+
+
 
 ## Dialog
 
@@ -1012,7 +1408,7 @@ const element = <h1 className="app">Hello, { name }</h1>;
 
 # 参考
 
-[参考React基础](https://nextjs.org/learn/react-foundations)，[对应中文版](https://nextjs.net.cn/learn/react-foundations)
+[参考React基础](https://nextjs.org/learn/react-foundations)，[对应中文版](https://nextjs.net.cn/learn/react-foundations), [新官网](https://zh-hans.react.dev/learn/your-first-component)
 
 [React官方快速入门](https://reactjs.ac.cn/learn)
 

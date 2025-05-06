@@ -121,11 +121,11 @@ joined分区数4
 
 Stage：包含数据读取、数据处理、数据写出
 
-Description列显示的是stage最后一个tranformation的名字，<font color=red>stage内task个数只跟该stage要处理的RDD的分区数一致</font>
+Description列显示的是stage最后一个tranformation的名字，<font color=red>stage内task个数只跟该stage要产生的RDD的分区数一致</font>
 
 1. **重分区操作决定了待生成的RDD的分区数，也决定了该操作所在Stage的Task数。**
-   **partitionBy产生的RDD的分区数由用户指定，由于需要Shuffle操作，partitionBy算子被划到下一个Stage, 该Stage包含的task个数就是重分区后的分区数。** <u>这些task各自负责当前RDD一个分区后续的处理：计算以及分区。</u>
-1. stage里如果只有一个算子，那一定是shuffle类算子，该stage的task个数就是这个shuffle算子指定的分区数(就是说该shuffle算子要求产生的RDD的分区数，也是当前stage reader的个数)。
+   **partitionBy产生的RDD的分区数由用户指定，由于需要Shuffle操作，partitionBy算子需要产生一个stage，被划到下一个Stage, 该Stage包含的task个数就是重分区后的分区数。** <u>~~这些task各自负责当前RDD一个分区后续的处理：计算以及分区。~~</u>
+1. stage里如果只有一个算子，那一定是shuffle类算子(前提是该stage是中间的stage)，该stage的task个数就是这个shuffle算子指定的分区数(就是说该shuffle算子要求产生的RDD的分区数，也是当前stage reader的个数)。
 2. 如果stage里有多个算子，则除了第一个算子是shuffle类算子(除开读文件的情况)外，后续都是transformation，那么该stage的task个数就是第一个算子的并行度，也就是该Stage处理的第一个RDD的分区数
 
 
