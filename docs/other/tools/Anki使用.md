@@ -114,7 +114,8 @@
 2. 父子牌组 ok
    双冒号分割标题
 
-3. 断点生成
+3. 断点生成 ok
+   译文和例句保存到一行中
 4. 无界面生成 ok
 5. 加密
 
@@ -136,9 +137,25 @@ Reverse Card
 
 行前如果有`^REV^` 代表正面英文，背面中文
 
+牌组包的重命名可以利用Anki来完成：先导入，然后重命名后再导出。
+
+## 脚本化
+
+```shell
+python bin/create.py 输入路径 english 牌组名称 rev  --output 输出路径
+```
+
+rev意味着正面是英语，背面是汉语，reg反之。
+
+## 模板定制
+
+这个文件lib/language_card_templates.py包含卡片的模板，目前是写死的，可以修改为可参数化。
+
+
+
 ## 加密
 
-[一个加密思路](https://zhuanlan.zhihu.com/p/673033848)
+[一个加密思路](https://zhuanlan.zhihu.com/p/673033848)，[视频](https://www.bilibili.com/video/BV1pe411r7qA?spm_id_from=333.788.recommend_more_video.0&vd_source=fa2aaef8ece31d2c310d46092c301b46)
 
 ## 问题记录
 

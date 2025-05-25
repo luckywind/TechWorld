@@ -259,9 +259,11 @@ https://sysin.org/blog/macos-if-crashes-when-opening/
 第一次打印时，打印页数选择：仅奇数页
 第二次打印机，将纸张平移到纸中后，打印页数选择：仅偶数页，页面顺序改为：倒序。
 
-# 国家地区
+# 切换地区
 
 ## iphone修改地区
+
+- 切换AppleID地区
 
 1. 打开“设置”App。
 2. 轻点你的姓名，然后轻点“媒体与购买项目”。
@@ -281,4 +283,19 @@ https://sysin.org/blog/macos-if-crashes-when-opening/
 
 [数据来源](https://blog9go.com/learning/article/374)
 
+- 切换系统地区
+
 查看地区： 设置->通用->语言与地区
+
+这里切换地区需要重启手机
+
+
+
+apple Music添加支付方式，需要两者都切换会中国大陆
+
+- 取消支付宝免密支付项目
+
+在支付宝-我的-设置-支付设置-免密支付/自动扣款-找到不想续费的关掉就可以啦
+
+apple Music取消： 点击头像->管理订阅。
+

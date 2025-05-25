@@ -37,6 +37,8 @@
 
 6. poetry
 
+6. uv 据说更好用，还没试过
+
 
 
 # pyenv 
@@ -283,6 +285,31 @@ exec "$PYENV_COMMAND_PATH" "$@"   # 执行命令
 ## 多用户共享
 
 [pyenv-multiuser](https://github.com/macdub/pyenv-multiuser)插件可以完成，但未尝试。
+
+# pycharm切换python环境
+
+## 切换
+
+[参考官方文档](https://www.jetbrains.com/help/pycharm/configuring-python-interpreter.html#widget)
+
+方法一：从状态拦切换
+
+![image-20250415175354504](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250415175354504.png)
+
+方法二：IDE设置
+![image-20250415175522930](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250415175522930.png)
+
+## 新建
+
+### 从已有环境新建解释器
+
+![image-20250415180655115](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250415180655115.png)
+
+`venv/bin/python`
+
+## 执行器的修改和删除
+
+![image-20250415175927824](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250415175927824.png)
 
 
 

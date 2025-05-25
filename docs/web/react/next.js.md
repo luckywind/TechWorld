@@ -7,7 +7,7 @@ Next.js 使用基于文件系统的路由器，其中：
 
 - 在嵌套路由中，段的组件将嵌套在其父段的组件**内部**。
 
-# **页面**
+## **页面**
 
 页面是对应特定路由的**唯一** UI。你可以通过在 `page.js` 文件中默认导出一个组件来定义页面。
 
@@ -16,7 +16,91 @@ Next.js 使用基于文件系统的路由器，其中：
 - 主页
   是应用的默认入口页面，通常对应app/page.js文件，它的内容会被渲染在根布局中的{children}占位符处。只负责主页特定的内容，不包含全局共享的部分。
 
-# **布局**
+
+
+## 元数据
+
+通过元数据修改`<head>` HTML元素，入titile和meta
+
+```js
+export const metadata = {
+  title: '页面标题',
+}
+export default xxx;
+```
+
+## 错误处理
+
+错误可以分为两类：**预期错误**和**未捕获的异常**：
+
+- **将预期错误建模为返回值**：在 Server Actions 中避免使用 `try`/`catch` 来处理预期错误。使用 [`useActionState`](https://react.dev/reference/react/useActionState) 来管理这些错误并将其返回给客户端。
+- **对于意外错误使用错误边界**：使用 `error.tsx` 和 `global-error.tsx` 文件实现错误边界，以处理意外错误并提供备用 UI
+
+## 路由组
+
+用途： 将路由段和项目文件组织成逻辑组，而不会影响URL路径结构。
+
+给文件夹添加圆括号变为路由组，不会出现在URL路径中。
+
+- 不同路由组中可以有自己的布局文件
+
+- 同组页面共享组内布局
+  有了组内布局，甚至可以不要顶层布局，从而实现多个根布局，只是每个根布局需要有`<html>,<body>`标签
+
+  ```shell
+  app
+  - layout.ts
+  - - (marketing)
+  - - - layout.js
+  - - (shop) //该组内的多个页面共享一个布局
+  - - - account
+  - - - - page.js
+  - - - cart
+  - - - - page.js
+  - - - layout.js
+  ```
+
+## 动态路由
+
+用途：从动态数据中创建路由段。动态段可以在请求时填充或在构建时渲染。
+
+将文件夹名称用方括号括起来可以创建动态段：`[folderName]`。例如，`[id]` 或 `[slug]`
+
+动态段会作为 `params` 属性传递给 [`layout`](https://nextjscn.org/docs/app/api-reference/file-conventions/layout)、[`page`](https://nextjscn.org/docs/app/api-reference/file-conventions/page)、[`route`](https://nextjscn.org/docs/app/building-your-application/routing/route-handlers) 和 [`generateMetadata`](https://nextjscn.org/docs/app/api-reference/functions/generate-metadata#generatemetadata-function) 函数。
+
+- 捕获所有段
+  动态段可以通过在方括号中添加省略号来扩展为**捕获所有**后续段：`[...folderName]`
+- 可选捕获所有段
+  将捕获所有段设为**可选**：`[[...folderName]]`， 区别在于，可选模式下也会匹配不带参数的路由
+
+## 并行路由
+
+用途： 在同一个布局中同时或者有条件地渲染一个或多个页面，对于高度动态的部分非常有用。
+
+插槽：@开头的目录， 它并非路由段，不影响URL结构。
+
+- 同一个插槽可以有多个子页面
+- 插槽也可以有自己的布局，子页面共享
+
+例如，同时渲染"team"和"analytics"页面：
+
+![image-20250421160943015](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250421160943015.png)
+
+
+
+## Middleware
+
+Middleware 允许你在请求完成前运行代码。然后，基于传入的请求，你可以通过重写、重定向、修改请求或响应头，或直接响应来修改响应。
+
+
+
+
+
+
+
+# 布局和模板
+
+## **布局**
 
 **用于显示在多个路由之间共享的UI.在导航时，布局会保持状态，保持交互性，并且不会重新渲染。**布局也可以 [嵌套](https://nextjscn.org/docs/app/building-your-application/routing/layouts-and-templates#nesting-layouts)。Next.js 会自动应用与页面路径匹配的布局文件。
 
@@ -24,7 +108,10 @@ Next.js 使用基于文件系统的路由器，其中：
 
 layout里的children相当于挖了一个坑，同级的page.js的内容会填进去。
 
+- 通过在 `layout.js` 文件中默认导出一个 React 组件来定义布局。该组件应**接受一个 `children` 属性**，在渲染期间将填充子布局（如果存在）或页面
+
 - **每个页面都会嵌入到同级或最近的上级目录中的layout布局文件中。所以一个layout布局文件同级目录及子目录下的页面都会在访问时自动嵌入进来。**
+
 - 布局文件中适合放一些多个页面共享的组件
 
 - 根布局是必须的，必须包含html和body标签
@@ -43,15 +130,20 @@ layout里的children相当于挖了一个坑，同级的page.js的内容会填�
 
   
 
-- 嵌套布局：文件夹层次结构中的布局是**嵌套的**，这意味着它们通过 `children` 属性包裹子布局。文件夹下创建layout.js
+- 嵌套布局：文件夹层次结构中的布局是**嵌套的**，这意味着它们通过 `children` 属性包裹子布局。在路由段文件夹下创建layout.js来创建嵌套布局。
 
   
 
 
 
-# 模板
+## 模板
 
 模板与布局类似，都是包裹子布局或页面。但与在路由间保持状态的布局不同，模板在导航时会为其每个子组件创建一个新实例。这意味着当用户在共享模板的路由之间导航时，会挂载子组件的新实例，重新创建 DOM 元素，客户端组件中的状态**不会**保留，并且会重新同步 effects。
+
+模板使用场景：
+
+- 在导航时重新同步 `useEffect`。
+- 在导航时重置子 Client Components 的状态。
 
 可以通过从 `template.js` 文件中导出一个默认的 React 组件来定义模板。该组件应接受一个 `children` 属性。
 
@@ -145,6 +237,8 @@ export function Links() {
    ...
    redirect('/login')
    ```
+
+- `redirect` 也接受绝对 URL，可用于重定向到外部链接。
 
 
 
