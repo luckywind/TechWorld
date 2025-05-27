@@ -74,9 +74,45 @@ pyenv shell 3.8.2 # 在当前 shell 中临时使用 Python 3.8.2
 
 - [`pyenv shell `](https://github.com/pyenv/pyenv/blob/master/COMMANDS.md#pyenv-shell) -- 当前会话有效的版本
 - [`pyenv local `](https://github.com/pyenv/pyenv/blob/master/COMMANDS.md#pyenv-local) -- 当前目录及子目录下生效的版本
+  pyenv local --unset 撤销
 - [`pyenv global `](https://github.com/pyenv/pyenv/blob/master/COMMANDS.md#pyenv-shell) -- 全局有效
 
 优先级为：pyenv shell > pyenv local > pyenv global > system。即优先使用 pyenv shell 设置的版本，三种级别都没设置时才使用系统安装的版本。[安装与卸载](https://github.com/pyenv/pyenv-installer),但国内网络不行， [参考这里安装](https://blog.51cto.com/u_14320361/2488888)
+
+
+
+```shell
+# Load pyenv automatically by appending
+# the following to
+# ~/.bash_profile if it exists, otherwise ~/.profile (for login shells)
+# and ~/.bashrc (for interactive shells) :
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init - bash)"
+
+# Restart your shell for the changes to take effect.
+
+# Load pyenv-virtualenv automatically by adding
+# the following to ~/.bashrc:
+
+eval "$(pyenv virtualenv-init -)"
+```
+
+但是测试发现pyenv local可以完成虚拟环境的切换，但是python总是指向`/Users/chengxingfu/.pyenv/shims/python`,  改用下面的配置就可以了：
+
+```shell
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+if command -v pyenv 1>/dev/null 2>&1; then
+ eval "$(pyenv init -)"
+fi
+eval "$(pyenv virtualenv-init -)"
+```
+
+
+
+
 
 #### 可能出现的问题
 
@@ -315,7 +351,341 @@ exec "$PYENV_COMMAND_PATH" "$@"   # 执行命令
 
 # 软件包管理
 
+## pip命令
+
+| 命令      | 命令解释                                         | 功能描述                                                   |
+| --------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| install   | Install packages                                 | 在线或离线安装依赖包                                       |
+| download  | Download packages                                | 下载离线依赖包                                             |
+| uninstall | Uninstall packages                               | 卸载依赖包                                                 |
+| freeze    | Output installed packages in requirements format | 将已经安装的依赖包输出到文件                               |
+| list      | List installed packages                          | 显示当前环境已经安装的依赖包                               |
+| show      | Show information about installed packages        | 显示已经安装的依赖包的详细信息，如版本、依赖库、被依赖库等 |
+| wheel     | Build wheels from your requirements              | 构建适配当前环境的离线依赖包                               |
+
+```shell
+# install 离线安装包
+$python -m pip install --no-index --find-links=".\packages" requests
+$python -m pip install --no-index --find-links=".\packages" -r requirements.txt
+# show 显示已经安装的包的相关信息及其依赖包
+$python -m pip show Django  
+Name: Django
+Version: 3.2.25
+Summary: A high-level Python Web framework that encourages rapid development and clean, pragmatic design.
+Home-page: https://www.djangoproject.com/
+Author: Django Software Foundation
+Author-email: foundation@djangoproject.com
+License: BSD-3-Clause
+Location: /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-hardci/lib/python3.9/site-packages
+Requires: sqlparse, pytz, asgiref
+Required-by: djangorestframework
+# 导出whl文件
+$python -m pip wheel requests
+# 下载指定whl包 
+$pip download --only-binary=:all: --platform=win_amd64 --python-version=2.7 -d pk requests -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 默认虚拟环境使用全局安装的系统包。 但也可以通过`--no-site-packages`选项安装独立的包。
 
 > 1.7 使用--no-site-packages参数使用系统包
+
+## pip切换源
+
+```shell
+# 增加参数
+-i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+也可以永久配置
+
+```shell
+vim ~/.pip/pip.conf
+  
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+
+
+
+
+## 离线环境迁移
+
+### 离线python和pip
+
+#### 下载
+
+[参考](https://developer.aliyun.com/article/1248300)
+
+1. 下载python源码包
+
+```shell
+wget  https://www.python.org/downloads/release/python-397/
+wget https://www.python.org/ftp/python/3.9.7/Python-3.9.7.tgz
+```
+
+2. 下载pip及其依赖
+
+   ```shell
+   wget https://bootstrap.pypa.io/get-pip.py
+   mkdir pip-offline
+   cd pip-offline
+   python -m pip download pip setuptools wheel
+   ```
+
+[pip的官网](https://pip.pypa.io/en/stable/installation/)说pip是跟随python自动安装的：
+![image-20250520141342486](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250520141342486.png)
+
+只需要建立链接就行
+```shell
+ln -s /usr/local/python3.9/bin/pip3.9 /usr/bin/pip3
+```
+
+
+
+##### Ubuntu下载依赖
+
+方法一：
+
+```shell
+# 在有网络的 Ubuntu 机器上执行
+mkdir debs
+cd debs
+# 安装 apt-rdepends 工具
+sudo apt install apt-rdepends
+# 生成 Python 编译依赖列表
+apt-get download $(apt-rdepends python3.9 build-essential libssl-dev zlib1g-dev libncurses5-dev libsqlite3-dev libreadline-dev libtk8.6 libgdm-dev libdb4o-cil-dev libpcap-dev | grep -v "^ ")
+
+```
+
+方法二：[需要先安装好依赖库](https://blog.csdn.net/ChaimMacTavish/article/details/140389651), 安装一个库build-essential 及其依赖库
+
+```shell
+# 安装“apt-rdepends”工具
+sudo apt-get install apt-rdepends
+
+# 下载build-essential的依赖包
+apt-rdepends build-essential | grep "^\w" > build-essential-deps.txt
+
+# 建立并进入安装包的缓存目录
+mkdir build-essential-deps
+cd build-essential-deps
+
+# 下载所有依赖包
+for pkg in $(cat ../build-essential-deps.txt); do apt-get download $pkg; done
+```
+
+
+
+
+
+##### Centos下载依赖
+
+[Centos 7离线安装Python3](https://blog.csdn.net/weixin_43807520/article/details/128662769) 这里提供了一个百度网盘
+
+[Linux离线安装Python](https://www.cnblogs.com/LittleMaster/p/16469534.html)
+
+cat /etc/redhat-release  查看系统版本
+
+```shell
+> download.sh 文件内容
+
+# 基础编译工具
+dependencies=(
+zlib zlib-devel bzip2-devel epel-release ncurses-devel mpfr libmpc kernel-headers glibc glibc-common glibc-headers glibc-devel cpp gcc libffi-devel libgcc libgomp libstdc++ libstdc++-devel gcc-c++
+)
+# 创建下载目录
+mkdir -p ~/yum-packages
+# 下载依赖包（含所有子依赖）
+yum reinstall -y --downloadonly --downloaddir=/home/hados/yum-packages ${dependencies[@]}
+```
+
+
+
+
+
+安装依赖
+
+```shell
+方法1
+rpm -Uvh --force --nodeps *rpm
+方法2
+cd /path/to/yum-packages
+yum localinstall -y *.rpm
+```
+
+
+
+#### 安装
+
+##### Ubuntu离线安装python
+
+事先下载好： zlib1g-dev libbz2-dev libssl-dev libncurses5-dev  libsqlite3-dev libreadline-dev tk-dev libgdbm-dev libdb-dev libpcap-dev xz-utils libexpat1-dev   liblzma-dev libffi-dev  libc6-dev
+
+```shell
+sudo tar -zxvf Python-3.9.7.tgz -C ~
+cd Python-3.9.7
+# 在线命令sudo apt-get install zlib1g-dev libbz2-dev libssl-dev libncurses5-dev  libsqlite3-dev libreadline-dev tk-dev libgdbm-dev libdb-dev libpcap-dev xz-utils libexpat1-dev   liblzma-dev libffi-dev  libc6-dev
+# 离线安装，需要先下载好
+sudo dpkg -i *.deb
+sudo ./configure --prefix=/usr/local/python3
+sudo make
+sudo make test
+sudo make install
+PATH=$PATH:$HOME/bin:/usr/local/python3/bin
+ln -s /usr/local/python3/bin/python3.9 /usr/bin/python3
+ln -s /usr/local/python3/bin/pip3.9 /usr/bin/pip3
+# 校验是否安装成功
+python3 --version
+
+```
+
+
+
+##### Centos离线安装Python
+
+
+
+
+
+### pip迁移离线包
+
+示例
+
+```shell
+# 下载requirements.txt所有包到packages目录
+$ python -m pip download --only-binary=:all: --platform=manylinux2014_x86_64 --python-version=3.9.7 -d ./packages -r requirements.txt -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+
+
+# 从packages目录安装
+$ python -m pip install --no-index --find-links=".\packages" -r requirements.txt
+
+```
+
+`--only-binary=:all:`: 强制下载 `.whl` 二进制文件，而不下载源代码
+
+`--python-version 38`: 表示目标平台上使用 Python 3.8
+
+
+
+
+
+常见平台标识对照表：
+
+
+| 平台        | 架构                  | `--platform` 值                              |
+| ----------- | --------------------- | -------------------------------------------- |
+| **Linux**   | x86 (32-bit)          | `manylinux1_i686`, `manylinux2014_i686`      |
+| **Linux**   | x86_64 (64-bit)       | `manylinux1_x86_64`, `manylinux2014_x86_64`  |
+| **Linux**   | ARM (32-bit)          | `manylinux2014_armv7l`                       |
+| **Linux**   | ARM (64-bit)          | `manylinux2014_aarch64`                      |
+| **Linux**   | PowerPC (64-bit)      | `manylinux2014_ppc64le`                      |
+| **Linux**   | IBM Z (s390x)         | `manylinux2014_s390x`                        |
+| **Windows** | x86 (32-bit)          | `win32`                                      |
+| **Windows** | x86_64 (64-bit)       | `win_amd64`                                  |
+| **macOS**   | x86_64 (64-bit)       | `macosx_10_9_x86_64`, `macosx_11_0_x86_64`   |
+| **macOS**   | ARM64 (Apple Silicon) | `macosx_11_0_arm64`, `macosx_12_0_arm64`     |
+| **Linux**   | RISC-V (64-bit)       | `manylinux2014_riscv64`                      |
+| **FreeBSD** | x86_64 (64-bit)       | `freebsd_11_0_x86_64`, `freebsd_12_0_x86_64` |
+| **Solaris** | SPARC (64-bit)        | `solaris_2_11_sparc`                         |
+| **Solaris** | x86_64 (64-bit)       | `solaris_2_11_x86_64`                        |
+| **AIX**     | PowerPC (64-bit)      | `aix_7_2_ppc64`                              |
+
+
+
+
+
+
+
+# uv
+
+[uv使用](https://blog.frognew.com/2025/03/uv-as-python-package-manager.html)
+
+[uv github](https://github.com/astral-sh/uv)
+
+```shell
+# On macOS and Linux.
+法一
+curl -LsSf https://astral.sh/uv/install.sh | sh
+法二
+brew install uv
+
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## 基本使用
+
+### python版本
+
+```shell
+#查看可用的python版本:
+uv python list
+#安装python:
+uv python install 3.9.7  
+```
+
+### 管理项目
+
+uv支持管理Python项目，这些项目在`pyproject.toml`文件中定义了它们的依赖项。
+
+### 全部命令
+
+```shell
+Commands:
+  run      Run a command or script
+  init     初始化项目
+  add      添加依赖
+  remove   删除依赖
+  sync     Update the project's environment
+  				 安装项目依赖
+  lock     Update the project's lockfile
+  		--upgrade-package requests  单独升级依赖requests
+  export   Export the project's lockfile to an alternate format
+  tree     Display the project's dependency tree
+  tool     Run and install commands provided by Python packages， 代替pipx
+			install [toolname]  安装工具
+			list 查看已安装的工具
+  python   Manage Python versions and installations
+  pip      Manage Python packages with a pip-compatible interface
+  venv     创建虚拟环境
+				source .venv/bin/activate  激活环境
+				deactivate 退出虚拟环境
+				--seed  强制安装基础包（如pip, setuptools, wheel）
+  build    Build Python packages into source distributions and wheels
+  publish  Upload distributions to an index
+  cache    管理uv缓存
+  				dir 
+  				clean
+  				purge
+  self     Manage the uv executable
+  version  Read or update the project's version
+  help     Display documentation for a command
+```
+
+虚拟环境中安装软件包
+
+```shell
+uv pip install flask                # Install Flask.
+uv pip install -r requirements.txt  # Install from a requirements.txt file.
+uv pip install -e .                 # Install current project in editable mode.
+uv pip install "package @ ."        # Install current project from disk
+uv pip install "flask[dotenv]"      # Install Flask with "dotenv" extra.
+```
+
+
 
