@@ -124,9 +124,25 @@ sudo dpkg -i package.deb
 仓库没有release文件，
 
 1. 打开终端，进入etc/apt/sources.list.d
-`cd /etc/apt/sources.list.d`
+  `cd /etc/apt/sources.list.d`
 
 2. 删除对应文件
+
+
+
+# 系统信息
+
+```shell
+1. 查看系统版本
+lsb_release -a
+cat /etc/os-release
+
+2. cpu架构
+arch
+cat /proc/cpuinfo | grep "model name"
+```
+
+
 
 # 终端
 

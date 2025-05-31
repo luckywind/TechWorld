@@ -932,7 +932,291 @@ JSX规则：
 
 ## 添加交互性
 
+### 响应事件
+
+可以通过props给自定义组件传递自定义处理函数，但是`<button>`等内置组件只支持内置浏览器事件，如onClick。
+
+**事件处理函数**
+
+1. **定义事件处理函数:**
+
+- 通常在你的组件 **内部** 定义。
+- 名称以 `handle` 开头，后跟事件名称。
+
+或者，你也可以在 JSX 中定义一个**内联**的事件处理函数：
+
+```jsx
+<button onClick={function handleClick() {
+  alert('你点击了我！');
+}}>
+```
+
+或者，直接使用更为简洁箭头函数：
+
+```jsx
+<button onClick={() => {
+  alert('你点击了我！');
+}}>
+```
+
+2. **访问组件的props**
+   由于处理函数定义在组件内部，所以可以访问组的props
+
+3. **通过props传递给子组件**
+   注意，不要调用！！！
+
+   ```jsx
+   function Button({ onClick, children }) {
+     return (
+       <button onClick={onClick}>
+         {children}
+       </button>
+     );
+   }
+   
+   function PlayButton({ movieName }) {
+     //父组件定义一个处理函数
+     function handlePlayClick() {
+       alert(`正在播放 ${movieName}！`);
+     }
+   
+     return (
+       //传递给子组件
+       <Button onClick={handlePlayClick}>
+         播放 "{movieName}"
+       </Button>
+     );
+   }
+   ```
+
+4. 事件传播
+   事件会沿着树向上冒泡或者传播
+
+   ```jsx
+   export default function Toolbar() {
+     return (
+       <div className="Toolbar" onClick={() => {
+         alert('你点击了 toolbar ！');
+       }}>  
+         // button的事件会传播到div
+         <button onClick={() => alert('正在播放！')}>
+           播放电影
+         </button>
+         <button onClick={() => alert('正在上传！')}>
+           上传图片
+         </button>
+       </div>
+     );
+   }
+   
+   ```
+
+5. 阻止传播
+   事件处理函数接收一个 **事件对象** 作为唯一的参数。按照惯例，它通常被称为 `e` ，代表 “event”（事件）。你可以使用此对象来读取有关事件的信息。
+
+   这个事件对象还允许你阻止传播。如果你想阻止一个事件到达父组件，你需要像下面 `Button` 组件那样调用 `e.stopPropagation()` ：
+
+   ```jsx
+   function Button({ onClick, children }) {
+     return (
+       <button onClick={e => {//这是事件处理函数，可以向这里添加更多代码，此模式是事件传播的另一种替代方案
+         // ❤️它让子组件处理事件，同时也让父组件指定一些额外的行为
+   			e.stopPropagation();
+         onClick();
+       }}>
+         {children}
+       </button>
+     );
+   }
+   ```
+
+   
+
+
+
+下面的代码注意：
+
+1. 在 JSX 里，位于组件标签之间的内容会被当作 `children` props 传递给该组件，这是建议的做法
+2. 也可以用空格分割不同的属性
+
+```jsx
+export default function App() {
+  return (
+    <Toolbar
+      onPlayMovie={() => alert('Playing!')}
+      onUploadImage={() => alert('Uploading!')}
+    />
+  );
+}
+
+function Toolbar({ onPlayMovie, onUploadImage }) {
+  return (
+    <div>
+             // 这里用空格分割不同的属性
+      <Button onClick={onPlayMovie} children='Play Movie'>
+      </Button>
+        		 // Button标签内的“Upload Image” 将作为children props传递给Button组件
+      <Button onClick={onUploadImage}>
+        Upload Image  
+      </Button>
+    </div>
+  );
+}
+
+function Button({ onClick, children }) {
+  return (
+    <button onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+```
+
+
+
+### state组件状态
+
+**state 完全私有于声明它的组件**。父组件无法更改它。这使你可以向任何组件添加或删除 state，而不会影响其他组件。
+
+1. state声明必须在组件开头
+2. 以相同的顺序调用Hook
+
+```jsx
+import { useState } from 'react';
+export default function FeedbackForm() {
+  const [isSent, setIsSent] = useState(false);
+  const [message, setMessage] = useState('');
+  ...
+}
+```
+
+3. state变量仅用于在组件重渲染时保存信息，在单个函数中，普通变量就足够了
+
+```jsx
+import { useState } from 'react';
+
+export default function FeedbackForm() {
+  const [name, setName] = useState('');
+
+  function handleClick() {
+    setName(prompt('What is your name?'));
+    alert(`Hello, ${name}!`); // 为什么这里不能拿到name的最新值？
+  }
+
+  return (
+    <button onClick={handleClick}>
+      Greet
+    </button>
+  );
+}
+
+```
+
+### state不变快照
+
+1. React调用组件(一个函数)的过程就是渲染的过程，组件返回的JSX就像是一个UI快照，它的props和内部变量都是根据当前渲染时的state计算出来的，而state是位于函数之外的React本身中。
+
+2. **当前UI是根据渲染时的state计算出来的快照，不会变更state的值，**React 会使 state 的值始终“固定”在一次渲染的各个事件处理函数内部**。你无需担心代码运行时 state 是否发生了变化。设置 state 只会为下一次渲染变更 state 的值，并请求一次新的渲染**
+
+3. 批处理：**React 会等到事件处理函数中的** 所有 **代码都运行完毕再处理你的 state 更新。** 
+
+分析下面这段代码会让number变成多少？
+
+```jsx
+import { useState } from 'react';
+
+export default function Counter() {
+  const [number, setNumber] = useState(0);
+
+  return (
+    <>
+      <h1>{number}</h1>
+      <button onClick={() => {
+        setNumber(number + 1);
+        setNumber(number + 1);
+        setNumber(number + 1);
+      }}>+3</button>
+    </>
+  )
+}
+
+```
+
+实际上number 是一个state，第一次渲染时React告诉组件state=0,  于是代码等同于下面
+
+```jsx
+import { useState } from 'react';
+
+export default function Counter() {
+  const [number, setNumber] = useState(0);
+
+  return (
+    <>
+      <h1>{number}</h1>
+      <button onClick={() => {
+        // 这里其实就相当于告诉React下一次渲染时把number改为1，只不过告诉了三次
+        //(渲染了三次？没有，因为React 会等到事件处理函数中的 所有 代码都运行完毕再处理你的 state 更新)
+        setNumber(0 + 1);
+        setNumber(0 + 1);
+        setNumber(0 + 1);
+      }}>+3</button>
+    </>
+  )
+}
+
+```
+
+所以点击按钮后，number实际上变成了1, 而不是3。
+
+### 多次更新同一个state
+
+- 像 `setNumber(n => n + 1)` 这样传入一个根据队列中的前一个 state 计算下一个 state 的 **函数**， 这是一种告诉 React “用 state 值做某事”而不是仅仅替换它的方法。
+
+`n => n + 1` 被称为 **更新函数**。当你将它传递给一个 state 设置函数时：
+
+1. React 会将此函数加入队列，以便在事件处理函数中的所有其他代码运行后进行处理。
+2. 在下一次渲染期间，React 会遍历队列并给你更新之后的最终 state。
+
+- setState(x)实际上会像 setState(n => x) 一样运行，只是没有使用 n， 本质也是一个更新函数
+  ```jsx
+        <button onClick={() => {
+          setNumber(number + 5);
+          setNumber(n => n + 1);
+        }}>增加数字</button>
+  
+  点击按钮后number是6 
+  ```
+
+  
+
+### 更新state中的对象
+
+state 中可以保存任意类型的 JavaScript 值，包括对象。但是，你不应该直接修改存放在 React state 中的对象。相反，当你想要更新一个对象时，你需要创建一个新的对象（或者将其拷贝一份），然后将 state 更新为此对象。
+
+**把所有存放在 state 中的 JavaScript 对象都视为只读的**。
+
+> 原因在于直接修改state中的对象并不会触发重渲染，并会改变前一次渲染“快照”中 state 的值。
+
+使用...对象展开语法复制(浅拷贝，只能一层)对象并更新某个属性：
+
+```jsx
+setPerson({
+  ...person, // 复制上一个 person 中的所有字段
+  firstName: e.target.value // 但是覆盖 firstName 字段 
+});
+```
+
+如果是嵌套对象，考虑使用Immer库
+
+
+
+
+
+
+
 ## 管理状态
+
+### 用State响应输入
 
 
 

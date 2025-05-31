@@ -34,6 +34,95 @@ Including another URLconf
 # 模板
 
 
+```python
+def handle_var(request):
+    num = 10
+    name = "伟大的意大利左后卫"
+    students = [10,20,30,40,50]
+    student = {'name':'马尔蒂尼','age':30}
+    return render(request,"变量.html",locals())
+```
+
+模版包括
+
+- 变量： 模版执行时被替换为值
+- 标签：控制模版的逻辑
+
+```python
+{% extends "base_generic.html" %}
+
+{% block title %}{{ section.title }}{% endblock %}
+
+{% block content %}
+<h1>{{ section.title }}</h1>
+
+{% for story in story_list %}
+<h2>
+  <a href="{{ story.get_absolute_url }}">
+    {{ story.headline|upper }}
+  </a>
+</h2>
+<p>{{ story.tease|truncatewords:"100" }}</p>
+{% endfor %}
+{% endblock %}
+```
+
+注释语法
+
+**{#** **#}**
+
+
+
+## 标签
+
+功能：
+
+1. 创建文本
+2. 控制流程
+3. 加载外部信息
+
+形式：
+
+`{% tag %}` 
+
+ `{% tag %} ... tag contents ... {% endtag %}`
+
+
+
+示例：
+block : 定义一个可以被子模板覆盖的块
+
+comment: 注释块
+
+```python
+{% if athlete_list and coach_list %}
+    Both athletes and coaches are available.
+{% endif %}
+
+{% if not athlete_list %}
+    There are no athletes.
+{% endif %}
+
+{% if athlete_list or coach_list %}
+    There are some athletes or some coaches.
+{% endif %}
+
+{% if not athlete_list or coach_list %}
+    There are no athletes or there are some coaches.
+{% endif %}
+
+{% if athlete_list and not coach_list %}
+    There are some athletes and absolutely no coaches.
+{% endif %}
+```
+
+
+
+
+
+
+
+
 
 ## 变量
 
@@ -95,6 +184,19 @@ default值
 {% endfor %}
 </ul>
 
+
+
+{% for record in build_records %}
+    <tr>
+        <td>{{ record.project_path }}</td>
+        ...
+    </tr>
+{% empty %}  # 是用于处理可迭代对象（如列表、字典等）为空的情况
+    <tr>
+        <td colspan="8" class="empty-row">暂无构建记录</td>
+    </tr>
+{% endfor %}
+
 ```
 
 ## include标签
@@ -114,6 +216,8 @@ default值
 ## 配置静态文件
 
 ## 模板继承
+
+[`block`](https://docs.djangoproject.com/zh-hans/3.2/ref/templates/builtins/#std:templatetag-block) 标签所做的就是告诉模板引擎，子模板可以覆盖模板的这些部分。最好给block块起一个名字，且不重复：
 
 模板可以用继承的方式来实现复用，减少冗余内容。
 
@@ -160,6 +264,30 @@ $ python3 manage.py migrate TestModel   # 创建表结构
 表名组成结构为：应用名_类名（如：TestModel_test）。
 
 **注意：**尽管我们没有在 models 给表设置主键，但是 Django 会自动添加一个 id 作为主键。
+
+## 定义模型
+
+### 字段定义
+
+
+
+1. 空值：
+
+- null=True — 数据库级别属性，告诉 Django 数据库允许该字段为空或缺失值，在数据库中通常表示为 NULL。
+
+- blank=True — 验证级别属性，blank 是一个验证级别的属性，主要影响表单和模型表单的验证。 表示提交表单时该字段不是必填字段，用户可以将其留空而不会触发验证错误。
+
+- **同时使用 null=True 和 blank=True**
+
+2. ID：
+
+生成的表结构中会有一个 `id` 字段，类型为 `INTEGER PRIMARY KEY AUTOINCREMENT`（SQLite 中）。
+
+3. 默认值
+   **db_default**
+   models.DateTimeField(db_default=Now())
+4. 注释
+   db_comment="Date and time when the article was published",
 
 ## 获取数据
 
@@ -588,6 +716,22 @@ urlpatterns = [
 
 原因是$意味着结尾，但是我们需要在正则的url后面追加included的url。
 
+### 初始化密码
+
+```shell
+python manage.py createsuperuser
+
+```
+
+### 创建数据表
+
+```shell
+python manage.py makemigrations
+python manage.py migrate
+```
+
+
+
 ## 注册模型到admin
 
 app/admin.py里进行注册,例如注册TestModel这个app的Test模型：
@@ -599,6 +743,8 @@ from TestModel.models import Test
 # Register your models here.
 admin.site.register(Test)
 ```
+
+
 
 ## 权限
 
@@ -1316,6 +1462,122 @@ def research(request):
     return HttpResponse(sql)
 ```
 
+## dbshell
+
+```bash
+python manage.py dbshell
+```
+
+
+
+## django shell
+
+`python manage.py shell`
+
+## sqlite
+
+```shell
+COMMANDS
+       .open [DATABASE]
+           打开或创建数据库。
+           - 若 DATABASE 存在则打开；不存在则创建新数据库。
+           - 无参数时打开内存数据库（:memory:）。
+           示例：.open test.db   # 打开/创建 test.db
+
+
+       .quit | .exit
+           退出 SQLite 命令行工具。
+
+
+       .tables [PATTERN]
+           列出当前数据库的所有表和视图。
+           - PATTERN 支持通配符（如 * 匹配任意字符，? 匹配单个字符）。
+           示例：.tables user*   # 列出所有以 "user" 开头的表
+
+
+       .schema [TABLE]
+           显示表或索引的创建 SQL 语句。
+           - 无 TABLE 参数时显示所有表和索引的创建语句。
+           示例：.schema user   # 显示 user 表的建表语句
+
+
+       .indexes [TABLE]
+           列出指定表的所有索引。
+           - 无 TABLE 参数时显示所有索引。
+           示例：.indexes user   # 显示 user 表的索引
+
+
+       .import [OPTIONS] FILENAME TABLE
+           从文件导入数据到表（支持 CSV/TSV）。
+           - 需先创建目标表，文件内容需与表结构匹配。
+           - 常用 OPTIONS：
+               -csv：指定文件为 CSV 格式（默认）
+               -tsv：指定文件为 TSV（制表符分隔）格式
+           示例：.import data.csv user   # 将 CSV 文件导入 user 表
+
+
+       .dump [TABLE]
+           导出表的 SQL 脚本（包含建表和插入语句）。
+           - 无 TABLE 参数时导出整个数据库的 SQL 脚本。
+           示例：.dump user   # 导出 user 表的 SQL 脚本
+
+
+       .mode FORMAT
+           设置查询结果的输出格式。
+           - FORMAT 可选值：
+               csv：逗号分隔（适合导出）
+               column：列对齐（默认，自动调整列宽）
+               line：每行一个字段（字段名: 值）
+               tabs：制表符分隔
+               list：使用 .separator 设置的分隔符（默认 |）
+           示例：.mode csv   # 输出为 CSV 格式
+
+
+       .header [on|off]
+           启用或禁用查询结果的列名头。
+           示例：.header on   # 显示列名
+
+
+       .width [COL1_WIDTH COL2_WIDTH ...]
+           手动设置列对齐模式下的列宽度（仅对 .mode column 有效）。
+           示例：.width 10 20   # 前两列宽度分别为 10 和 20 字符
+
+
+       .separator [SEPARATOR]
+           设置 .mode list 格式的字段分隔符（默认 |）。
+           示例：.separator ,   # 分隔符设为逗号
+
+
+       .output FILENAME | .output stdout
+           将查询结果输出到文件或恢复到标准输出。
+           示例：.output result.txt   # 后续查询结果写入 result.txt
+
+
+       .help [COMMAND]
+           显示命令帮助信息。
+           - 无 COMMAND 参数时列出所有管理命令。
+           示例：.help .tables   # 显示 .tables 命令的详细说明
+
+
+       .timeout MS
+           设置数据库加锁时的等待超时时间（毫秒）。
+           示例：.timeout 5000   # 等待 5 秒后放弃加锁
+
+
+       .echo [on|off]
+           启用或禁用命令回显（调试用，输出执行的每条命令）。
+
+
+       .show
+           显示当前命令行工具的配置（包括 .mode、.header、.separator 等）。
+```
+
+
+
+
+
+
+
 # session
 
 [用户模块与权限系统](https://ebook-django-study.readthedocs.io/zh-cn/latest/django%E5%85%A5%E9%97%A8%E8%BF%9B%E9%98%B607%E7%94%A8%E6%88%B7%E6%A8%A1%E5%9D%97%E4%B8%8E%E6%9D%83%E9%99%90%E7%B3%BB%E7%BB%9F.html)
@@ -1375,7 +1637,15 @@ MIDDLEWARE = [
 
 # 常用命令
 
-1. **新增app**
+1. 创建项目
+
+   ```shell
+   django-admin startproject HelloWorld
+   ```
+
+   
+
+2. **新增app**
 
    ```python
    django-admin startapp app名称
@@ -1383,7 +1653,7 @@ MIDDLEWARE = [
 
    修改settings文件的INSTALLED_APPS
 
-2. 创建模型
+3. 创建模型
    在app的models.py里新增模型后，建表：
 
    ```python
@@ -1391,7 +1661,7 @@ MIDDLEWARE = [
    $ python3 manage.py migrate app名称   # 创建表结构
    ```
 
-3. **启动项目**
+4. **启动项目**
 
    ```shell
    python3 manage.py runserver 0.0.0.0:8000
@@ -1539,6 +1809,11 @@ $django-admin help
 
 
 
+
+
+# django模板语言
+
+## 模板
 
 
 

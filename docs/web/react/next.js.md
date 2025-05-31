@@ -569,11 +569,21 @@ CORS_ALLOW_CREDENTIALS = True  # 允许跨域携带 Cookie
 
 
 
+# 其他
+
+1. 从 5.2 版本开始，Node.js 捆绑了 [`npx`命令](https://flaviocopes.com/npx/)。这个方便的工具可以让我们下载并执行一个 JavaScript 命令，
+
+`npx create-next-app` 该命令询问应用程序的名称
+
+
+
 # 参考
 
 [NEXT.js中文文档](https://nextjscn.org/docs/getting-started/installation)
 
 [blog教程](https://nextjs.org/learn-pages-router/basics/create-nextjs-app)
+
+[next完全手册](https://www.freecodecamp.org/chinese/news/the-next-js-handbook/)
 
 ## [NextJS（8部曲）](https://dev.to/skipperhoa/create-a-middleware-in-nextjs-13-17oh)
 
