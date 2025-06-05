@@ -744,6 +744,12 @@ from TestModel.models import Test
 admin.site.register(Test)
 ```
 
+模型的toString方法会显示在admin上，最好自定义`__str__`方法
+
+
+
+
+
 
 
 ## 权限
