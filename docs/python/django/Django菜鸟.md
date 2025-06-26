@@ -1,34 +1,3 @@
-# URL 
-
-## path() 函数
-
-Django path() 可以接收四个参数，分别是两个必选参数：route、view 和两个可选参数：kwargs、name。
-
-语法格式：
-
-```
-path(route, view, kwargs=None, name=None)
-```
-
-- **route：** 字符串，定义 URL 的路径部分。可以包含变量，例如 `<int:my_variable>`，以从 URL 中捕获参数并将其传递给视图函数。
-- **view：** 视图函数，处理与给定路由匹配的请求。可以是一个函数或一个基于类的视图。
-- **kwargs（可选）：** 一个字典，包含传递给视图函数的额外关键字参数。
-- **name（可选）：** 为 URL 路由指定一个唯一的名称，以便在代码的其他地方引用它。这对于在模板中生成 URL 或在代码中进行重定向等操作非常有用。
-
-## 示例
-
-```python
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-```
-
 
 
 # 模板
@@ -509,7 +478,32 @@ Django 路由在 urls.py 配置，urls.py 中的每一条配置对应相应的�
 
 url后面的$一定要加，否则可能会匹配到更长的url
 
+## path
 
+Django path() 可以接收四个参数，分别是两个必选参数：route、view 和两个可选参数：kwargs、name。
+
+语法格式：
+
+```
+path(route, view, kwargs=None, name=None)
+```
+
+- **route：** 字符串，定义 URL 的路径部分。可以包含变量，例如 `<int:my_variable>`，以**从 URL 中捕获参数并将其传递给视图函数**。
+- **view：** 视图函数，处理与给定路由匹配的请求。可以是一个函数或一个基于类的视图。
+- **kwargs（可选）：** 一个字典，包含传递给视图函数的额外关键字参数。
+- **name（可选）：** 为 URL 路由指定一个唯一的名称，以便在代码的其他地方引用它。这对于在模板中生成 URL 或在代码中进行重定向等操作非常有用。
+
+```python
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+```
 
 ## 正则路径中的分组
 
@@ -1780,11 +1774,103 @@ $django-admin help
 
 1. 通过`logging.getLogger(name)`来获取logger对象
 2. loggers对象是有父子关系的，`logging.getLogger("abc.xyz")` 会创建两个logger对象，一个是abc父对象，一个是xyz子对象。子对象会复用父对象的日志配置
+3. Handlers 将logger发过来的信息进行准确地分配，送往正确的地方。每个Handler同样有一个日志级别，一个logger可以拥有多个handler也就是说logger可以根据不同的日志级别将日志传递给不同的handler。
 
 多模块项目有两种方式配置logging:
 
 1. 通过继承关系实现
 2. 通过yaml配置文件实现
+
+```yaml
+version: 1
+disable_existing_loggers: False
+formatters:
+        simple:
+            format: '%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(lineno)d - %(message)s'
+handlers:
+    console:
+            class: logging.StreamHandler
+            level: DEBUG
+            formatter: simple
+            stream: ext://sys.stdout
+    info_file_handler:
+            class: logging.handlers.RotatingFileHandler
+            level: INFO
+            formatter: simple
+            filename: logs/info.logs
+            maxBytes: 10485760
+            backupCount: 20
+            encoding: utf8
+    error_file_handler:
+            class: logging.handlers.RotatingFileHandler
+            level: ERROR
+            formatter: simple
+            #这里filename最好写绝对路径，否则会在当前执行目录下新建logs目录，当然也可以在执行脚本前先执行os.chdir来手动切换
+            #也可以在代码中动态替换为绝对路径
+            filename: logs/errors.logs
+            maxBytes: 10485760
+            backupCount: 20
+            encoding: utf8
+loggers:
+    my_module:
+            level: ERROR
+            handlers: [error_file_handler]
+            propagate: no
+root:
+    level: INFO
+    handlers: [console,info_file_handler,error_file_handler]
+```
+
+- root: 这是全局根日志记录器（root logger）
+
+```python
+# 获取默认的 root 日志记录器
+logger = logging.getLogger(__name__)
+```
+
+- my_module: 这是一个自定义的日志记录器,把ERROR日志记录到error_file_handler
+  	在代码中通过`logger = logging.getLogger('my_module')`获取该日志记录器
+  propagate: no表示禁止将日志传播给父级（即 root logger）
+
+## yaml配置处理
+
+```python
+LOG_FILE="pipeline.logs"
+FORMATTER='%(asctime)s - %(levelname)s - %(name)s - %(caller_funcName)s - %(caller_lineno)s - %(message)s'
+# 获取项目根目录
+LOG_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+class Logger:
+    def setup_logging(default_path="hados_vmp/logging.yaml", default_level=logging.INFO, env_key="LOG_CFG"):
+        path = default_path
+        value = os.getenv(env_key, None)
+        print(os.system("pwd"))
+        if value:
+            path = value
+        print(f"LOG_CFG: {path}")
+        if os.path.exists(path):
+            print("path exists")
+            with open(path, "r") as f:
+                config = yaml.load(f, Loader=yaml.FullLoader)
+                
+                # 替换所有日志文件路径为绝对路径
+                for handler in config.get('handlers', {}):
+                    if 'filename' in config['handlers'][handler]:
+                        filename = config['handlers'][handler]['filename']
+                        abs_path = os.path.join(LOG_DIR, filename)
+                        config['handlers'][handler]['filename'] = abs_path
+                logging.config.dictConfig(config)
+        else:
+            print(f"{default_path} does not exists")
+            logging.basicConfig(level=default_level)
+```
+
+
+
+
+
+
+
+
 
 ## 自定义装饰器
 
@@ -1898,6 +1984,10 @@ Access to fetch at 'http://devhub.yusur.tech/login?c_url=http%3a%2f%2fvmp-dev.yu
 ## Watching for file changes with StatReloade
 
 虚拟环境缺少依赖包
+
+## 响应中文乱码
+
+
 
 
 
