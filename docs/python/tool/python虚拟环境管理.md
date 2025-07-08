@@ -641,7 +641,7 @@ uv python install 3.9.7
 
 ### 管理项目
 
-uv支持管理Python项目，这些项目在`pyproject.toml`文件中定义了它们的依赖项。
+[uv](https://github.com/astral-sh/uv)支持管理Python项目，这些项目在`pyproject.toml`文件中定义了它们的依赖项。
 
 ### 全部命令
 

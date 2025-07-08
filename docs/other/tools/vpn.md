@@ -40,3 +40,20 @@ OpenAI's services are not available in your country.
 
 [clash使用](https://xtrojan.org/client/clashx-for-macos-agent-tutorial.html)
 
+
+
+
+
+gpt:
+
+注册用海外手机号，注册后可以换成自己的手机号
+
+
+
+
+
+[数字严选](https://fakeai.vip/?code=YT0yJmI9Mg%3D%3D) 购买账号
+
+
+
+[cloude注册](https://zhuanlan.zhihu.com/p/19297294850)->[早发卡](https://www.zaofaka.com/liebiao/103986719FA8F793)

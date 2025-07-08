@@ -32,7 +32,7 @@ void traverse(TreeNode root, int k) {
         return;
     }
     traverse(root.left, k);
-    /* 中序遍历代码位置 */
+    /* 中序遍历代码位置 做两件事：增rank、比大小 */
     rank++;
     if (k == rank) {
         // 找到第 k 小的元素
@@ -61,7 +61,7 @@ public class ConvertBST {
   TreeNode convertBST(TreeNode root){
      if(root ==null) return null;
     convertBST(root.right);
-    //中序位置更新当前节点的值
+    //中序位置更新当前节点的值 为右子树的累加结果
     nval+=root.val;
     root.val=nval;
     convertBST(root.left);

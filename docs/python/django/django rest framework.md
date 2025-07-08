@@ -258,6 +258,129 @@ fields定义了get请求返回的字段，不在这里出现的字段会被忽�
 
 对数据做增删改查需要**两个路由5个函数**, 因此我们可以将视图类分为 列表视图 和 详情视图两个视图类（其实也可以放到一个类里），**不过我们可以利用 视图集 将视图类变为一个**
 
+```mermaid
+classDiagram
+    direction BT
+    
+    %% Django 基础类
+    class View
+    class TemplateView
+    class RedirectView
+    
+    %% DRF 核心视图类
+    class APIView {
+        + as_view()
+        + dispatch()
+        + get_authenticators()
+        + get_permissions()
+        + get_throttles()
+        + initial()
+    }
+    
+    class GenericAPIView {
+        + get_queryset()
+        + get_serializer()
+        + get_object()
+        + filter_queryset()
+        + paginate_queryset()
+    }
+    
+    class ViewSetMixin {
+        + as_view()
+        + initialize_request()
+        + reverse_action()
+    }
+    
+    class ViewSet
+    class GenericViewSet
+    class ReadOnlyModelViewSet
+    class ModelViewSet
+    
+    %% 混入类 (Mixins)
+    class CreateModelMixin {
+        + create()
+        + perform_create()
+    }
+    
+    class ListModelMixin {
+        + list()
+    }
+    
+    class RetrieveModelMixin {
+        + retrieve()
+    }
+    
+    class UpdateModelMixin {
+        + update()
+        + partial_update()
+        + perform_update()
+    }
+    
+    class DestroyModelMixin {
+        + destroy()
+        + perform_destroy()
+    }
+    
+    %% 继承关系
+    View <|-- APIView
+    APIView <|-- GenericAPIView
+    
+    %% 视图集继承链
+    ViewSetMixin <|-- ViewSet
+    APIView <|-- ViewSet
+    
+    ViewSetMixin <|-- GenericViewSet
+    GenericAPIView <|-- GenericViewSet
+    
+    GenericViewSet <|-- ReadOnlyModelViewSet
+    RetrieveModelMixin <|-- ReadOnlyModelViewSet
+    ListModelMixin <|-- ReadOnlyModelViewSet
+    
+    GenericViewSet <|-- ModelViewSet
+    CreateModelMixin <|-- ModelViewSet
+    RetrieveModelMixin <|-- ModelViewSet
+    UpdateModelMixin <|-- ModelViewSet
+    DestroyModelMixin <|-- ModelViewSet
+    ListModelMixin <|-- ModelViewSet
+    
+    %% 功能视图继承链
+    GenericAPIView <|-- CreateAPIView
+    CreateModelMixin <|-- CreateAPIView
+    
+    GenericAPIView <|-- ListAPIView
+    ListModelMixin <|-- ListAPIView
+    
+    GenericAPIView <|-- RetrieveAPIView
+    RetrieveModelMixin <|-- RetrieveAPIView
+    
+    GenericAPIView <|-- DestroyAPIView
+    DestroyModelMixin <|-- DestroyAPIView
+    
+    GenericAPIView <|-- UpdateAPIView
+    UpdateModelMixin <|-- UpdateAPIView
+    
+    GenericAPIView <|-- ListCreateAPIView
+    ListModelMixin <|-- ListCreateAPIView
+    CreateModelMixin <|-- ListCreateAPIView
+    
+    GenericAPIView <|-- RetrieveUpdateAPIView
+    RetrieveModelMixin <|-- RetrieveUpdateAPIView
+    UpdateModelMixin <|-- RetrieveUpdateAPIView
+    
+    GenericAPIView <|-- RetrieveDestroyAPIView
+    RetrieveModelMixin <|-- RetrieveDestroyAPIView
+    DestroyModelMixin <|-- RetrieveDestroyAPIView
+    
+    GenericAPIView <|-- RetrieveUpdateDestroyAPIView
+    RetrieveModelMixin <|-- RetrieveUpdateDestroyAPIView
+    UpdateModelMixin <|-- RetrieveUpdateDestroyAPIView
+    DestroyModelMixin <|-- RetrieveUpdateDestroyAPIView
+```
+
+
+
+
+
 
 
 ## 函数视图
@@ -633,6 +756,7 @@ from rest_framewk.serializers import SnippetSerializer
 
 
 class SnippetList(generics.ListCreateAPIView):
+    # 只需要定义属性，无需定义方法
     queryset = Snippet.objects.all()
     serializer_class = SnippetSerializer
 
@@ -747,7 +871,7 @@ urlpatterns = [
 如: `path("authors/", views.AuthorViewSet.as_view({"get": "list", "post": "create"}))`
 意为：`authors/`的`get`方法去`list`函数那里处理，而`post`方法去`create`函数那里处理
 
-#### GenericViewSet
+#### GenericViewSet(灵活好用且可自动分页)
 
 集成了4大属性，方法里省略更多代码
 
@@ -798,7 +922,7 @@ class AuthorViewSet(GenericViewSet):
 
 #### ReadOnlyModelViewSet
 
-#### ModelViewSet（推荐）
+#### ModelViewSet（简洁但不灵活）
 
 模型字符集，把列表视图和详情视图已经集成在一起了
 
@@ -1049,8 +1173,6 @@ REST_FRAMEWORK = {
 # 分页
 
 **APIView是不直接支持自动分页的，只有 GenericAPIView 及其子类才内置了对分页的支持**，但可以手动分页
-
-
 
 
 
