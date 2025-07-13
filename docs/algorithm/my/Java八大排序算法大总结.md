@@ -41,7 +41,7 @@ Java中常见的排序算法有以下八个：
             while (j >= 0 && a[j] > insertNum) {//当前面的元素a[j]大于插入元素时，需要互换
                 a[j + 1] = a[j];    //把大元素往后移动
                 j--;
-            } //至此,a[j]不满足a[j]>insertNum,也就是说a[j+1]是第一个大于insertNum的数
+            } //至此,a[j]不满足a[j]>insertNum,也就是说a[j+1]是第一个大于insertNum的数， 最后执行j--
             a[j + 1] = insertNum;//把新插入元素放到所有不大于插入元素的最右边
         }
     }

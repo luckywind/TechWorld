@@ -35,6 +35,55 @@ driver.find_element(By.CSS_SELECTOR, "input#username")
 driver.find_element(By.XPATH, "//input[@id='username']") #通过XPath表达式定位
 ```
 
+![image-20250603111730450](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250603111730450.png)
+
+```python
+1. 类选择器
+<input class="login-input username" placeholder="请输入账号">
+
+# 用类名定位（支持链式选择）
+username = driver.find_element(By.CSS_SELECTOR, ".login-input.username")
+
+2. ID选择器
+<button id="submit-order">立即支付</button>
+# 用ID定位（速度快且精准）
+pay_btn = driver.find_element(By.CSS_SELECTOR, "#submit-order")
+
+3. 属性选择器
+<a href="javascript:;" data-sku="1001">加入购物车</a>
+# 用自定义属性定位（比 XPath 清爽多了）
+add_cart = driver.find_element(By.CSS_SELECTOR, "a[data-sku='1001']")
+
+4.组合选择器
+<ul class="user-list">
+  <li>
+    <span class="name">张三</span>
+    <button class="edit-btn">编辑</button>
+  </li>
+</ul>
+
+# 父子级+类名联合定位
+edit_zhangsan = driver.find_element(By.CSS_SELECTOR, ".user-list li .edit-btn")
+```
+
+
+
+高级技巧
+
+1. 等待机制
+
+2. 动态类名处理，*=可实现模糊匹配
+   ```python
+   # 用属性包含符定位（模糊匹配）
+   dynamic_btn = driver.find_element(By.CSS_SELECTOR, "[class*='btn']")
+   ```
+
+3. Selenium默认只返回第一个匹配，如果要都返回，用find_elements
+
+
+
+
+
 ### XPath表达式
 
 XPath 使用路径表达式在 XML 文档中进行导航
@@ -95,6 +144,12 @@ driver.implicitly_wait(10)
 element = WebDriverWait(driver, 10).until(
     EC.presence_of_element_located((By.ID, "element_id"))
 )
+
+
+# 等待所有 class 为 "def" 的 span 元素加载完成
+    elements = WebDriverWait(driver, 10).until(
+        EC.presence_of_all_elements_located((By.CSS_SELECTOR, 'span.def'))
+    )
 ```
 
 ## 无头模式

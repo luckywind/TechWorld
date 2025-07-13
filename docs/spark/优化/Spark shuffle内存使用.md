@@ -22,7 +22,11 @@ MemoryManager，TaskMemoryManager 和 MemoryConsumer 之前的对应关系，如
 
 整体上 Spark Shuffle 具体过程如下图，主要分为两个阶段：Shuffle Write 和 Shuffle Read。
 
-Write 阶段大体经历排序（最低要求是需要按照分区进行排序），可能的聚合 (combine) 和归并（有多个文件 spill 磁盘的情况 ），最终每个写 Task 会产生数据和索引两个文件。其中，数据文件会按照分区进行存储，即**相同分区的数据在文件中是连续的，而索引文件记录了每个分区在文件中的起始和结束位置**。
+Write 阶段大体经历
+
+1. 排序（最低要求是需要按照分区进行排序），
+2. 可能的聚合 (combine) 和
+3. 归并（有多个文件 spill 磁盘的情况 ），最终每个写 Task 会产生数据和索引两个文件。其中，数据文件会按照分区进行存储，即**相同分区的数据在文件中是连续的，而索引文件记录了每个分区在文件中的起始和结束位置**。
 
 **而对于 Shuffle Read， 首先可能需要通过网络从各个 Write 任务节点获取给定分区的数据，即数据文件中某一段连续的区域，然后经过排序，归并等过程，最终形成计算结果。**![sparkShuffle](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/spark_shuffle.jpeg)对于 Shuffle Write，Spark 当前有三种实现，具体分别为 BypassMergeSortShuffleWriter, UnsafeShuffleWriter 和 SortShuffleWriter （具体使用哪一个实现有一个判断条件，此处不表)。而 Shuffle Read 只有一种实现。
 
@@ -36,7 +40,7 @@ Write 阶段大体经历排序（最低要求是需要按照分区进行排序�
 
 SortShuffleWriter 是最一般的实现，也是日常使用最频繁的。SortShuffleWriter 主要委托 ExternalSorter 做数据插入，排序，归并 （Merge），聚合 (Combine) 以及最终写数据和索引文件的工作。ExternalSorter 实现了之前提到的 MemoryConsumer 接口。下面分析一下各个过程使用内存的情况：
 
-1，对于数据写入，根据是否需要做 Combine，数据会被插入到 PartitionedAppendOnlyMap 这个 Map （需要Combine）或者 PartitionedPairBuffer 这个数组中。每隔一段时间，当向 MemoryManager 申请不到足够的内存时，或者数据量超过 spark.shuffle.spill.numElementsForceSpillThreshold 这个阈值时 （默认是 Long 的最大值，不起作用），就会进行 Spill 内存数据到文件。假设可以源源不断的申请到内存，那么 Write 阶段的所有数据将一直保存在内存中，由此可见，PartitionedAppendOnlyMap 或者 PartitionedPairBuffer 是比较吃内存的。
+1，对于数据写入，根据是否需要做 Combine，数据会被插入到 PartitionedAppendOnlyMap 这个 Map （需要Combine）或者 PartitionedPairBuffer 这个数组中。每隔一段时间，当向 MemoryManager 申请不到足够的内存时，或者数据量超过 spark.shuffle.spill.numElementsForceSpillThreshold 这个阈值时 （默认是 Long 的最大值，不起作用），就会进行 Spill 内存数据到文件。<u>假设可以源源不断的申请到内存，那么 Write 阶段的所有数据将一直保存在内存中，由此可见，PartitionedAppendOnlyMap 或者 PartitionedPairBuffer 是比较吃内存的</u>。
 
 2，无论是 PartitionedAppendOnlyMap 还是 PartitionedPairBuffer， 使用的排序算法是 TimSort。在使用该算法是正常情况下使用的临时额外空间是很小，但是最坏情况下是 n / 2，其中 n 表示待排序的数组长度（具体见 TimSort 实现）。
 

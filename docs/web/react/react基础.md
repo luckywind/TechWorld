@@ -1375,7 +1375,8 @@ function selectorForPipelineId(open, setOpen, pipelineId, products, setpipelineI
                             <CommandItem 
                                 // 这个key是React自己用的，不会传递
                                 key={module.pipeline_id}
-                                // 这个value即使传递module,onSelect中接收的value依然是pipeline_name，原                                   因未知
+                                // 这个value即使传递module对象,onSelect中接收的value依然是pipeline_name，原因是
+                                // 显示时使用的是该module的名字字符串，即{module.pipeline_name}
                                 value={module}
                                 onSelect={(value) => {
                                     let selectedPipelineId=products.find(
