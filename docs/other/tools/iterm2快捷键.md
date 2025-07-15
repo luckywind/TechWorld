@@ -36,3 +36,9 @@
 ## 免密登录到指定目录
 
 `/usr/local/bin/sshpass -p hados ssh -t xxx@xxx "cd /opt/hados/workspace; bash -l"`
+
+## 定制title
+
+title分两部分：Name和括号里的Foreground Job
+
+![image-20250711153002083](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250711153002083.png)

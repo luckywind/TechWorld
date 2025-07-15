@@ -132,6 +132,8 @@ keyBy()是聚合前必须要用到的一个算子。keyBy()通过指定键(key)�
 
 Flink 为我们 内置实现了一些最基本、最简单的聚合 API
 
+<font color=red>max/maxBy是什么关系？ </font>
+
 ```scala
     val stream=env.fromElements(
       ("a", 1), ("a", 3), ("b", 3), ("b", 4)
@@ -313,9 +315,9 @@ Session模式是预分配资源的，也就是提前根据指定的资源参数�
 
 对于上面的两种模式，在main()方法开始执行直到env.execute()方法之前，客户端也需要做一些工作，即：
 
-- 获取作业所需的依赖项；
-- 通过执行环境分析并取得逻辑计划，即StreamGraph→JobGraph；
-- 将依赖项和JobGraph上传到集群中。
+- 获取作业所需的**依赖项**；
+- 通过执行环境分析并**取得逻辑计划**，即StreamGraph→JobGraph；
+- 将依赖项和JobGraph**上传**到集群中。
 
 如果所有用户都在同一个客户端节点上提交作业，较大的依赖会消耗更多的带宽，而较复杂的作业逻辑翻译成JobGraph也需要吃掉更多的CPU和内存，客户端的资源反而会成为瓶颈——不管Session还是Per-Job模式都存在此问题。为了解决它，社区在传统部署模式的基础上实现了Application模式。
 
