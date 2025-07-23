@@ -404,11 +404,13 @@ user = 'Alice'")
 谓的时间属性(time attributes)，其实就是每个表模式结构(schema)的一部分。 它可以在创建表的 DDL 里直接定义为一个字段，也可以在流转换成表时定义。一旦定义了时 间属性，它就可以作为一个普通字段引用，并且可以在基于时间的操作中使用。
 
 - 时间属性的数据类型为 TIMESTAMP，它的行为类似于常规时间戳，可以直接访问并且进 行计算。
+
 - 窗口表值函数滚动窗口(TUMBLE)、滑动窗口(HOP)、累积窗口(CUMULATE) 额外返回三个列：
   - window_start
   - window_end
   - window_time=window_end - 1ms :  相当于窗口的最大时间戳
-- 
+  
+  
 
 ### 事件时间
 
@@ -490,7 +492,7 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
 
 有了时间属性，接下来就可以定义窗口进行计算了。我们知道，窗口可以将无界流切割成 大小有限的“桶”(bucket)来做计算，通过截取有限数据集来处理无限的流数据。
 
-1. 分组窗口（老版本）
+1. **分组窗口**（老版本）
 
    > 分组窗口的功能比较有限，只支持窗口聚合，所以目前已经处于弃用(deprecated)的状 态。
 
@@ -517,7 +519,7 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
 
    
 
-2. 窗口表值函数(新版本)
+2. **窗口表值函数(**新版本)
 
 使用窗口表值函数(结果是一个Table)来定义窗口：
 
@@ -542,7 +544,7 @@ CUMULATE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOURS, INTERVAL '1' DAYS
 		 参数依次为：     表、 时间、累积步长、统计周期
 ```
 
-
+上面所有的语句只是定义了窗口，类似于 DataStream API 中的窗口分配器;在 SQL 中窗 口的完整调用，还需要配合聚合操作和其它操作。
 
 例如一个累积窗口：
 
