@@ -42,3 +42,16 @@
 title分两部分：Name和括号里的Foreground Job
 
 ![image-20250711153002083](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250711153002083.png)
+
+## 记录会话日志
+
+Session里对Logging打勾，填上记录的目录和文件名
+
+
+
+控制字符如何处理？ [参考](https://www.reddit.com/r/macsysadmin/comments/pg20ue/weird_character_when_session_logging_in_terminal/?tl=zh-hans)，[这个项目](https://github.com/RadixSeven/typescript2txt)
+
+
+
+# 上传下载
+
