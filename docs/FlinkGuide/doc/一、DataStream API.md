@@ -132,6 +132,8 @@ keyBy()是聚合前必须要用到的一个算子。keyBy()通过指定键(key)�
 
 Flink 为我们 内置实现了一些最基本、最简单的聚合 API
 
+<font color=red>max/maxBy是什么关系？ </font>
+
 ```scala
     val stream=env.fromElements(
       ("a", 1), ("a", 3), ("b", 3), ("b", 4)
@@ -313,9 +315,9 @@ Session模式是预分配资源的，也就是提前根据指定的资源参数�
 
 对于上面的两种模式，在main()方法开始执行直到env.execute()方法之前，客户端也需要做一些工作，即：
 
-- 获取作业所需的依赖项；
-- 通过执行环境分析并取得逻辑计划，即StreamGraph→JobGraph；
-- 将依赖项和JobGraph上传到集群中。
+- 获取作业所需的**依赖项**；
+- 通过执行环境分析并**取得逻辑计划**，即StreamGraph→JobGraph；
+- 将依赖项和JobGraph**上传**到集群中。
 
 如果所有用户都在同一个客户端节点上提交作业，较大的依赖会消耗更多的带宽，而较复杂的作业逻辑翻译成JobGraph也需要吃掉更多的CPU和内存，客户端的资源反而会成为瓶颈——不管Session还是Per-Job模式都存在此问题。为了解决它，社区在传统部署模式的基础上实现了Application模式。
 
@@ -352,7 +354,7 @@ Session模式是预分配资源的，也就是提前根据指定的资源参数�
 
 是处理延迟数据的优化机制
 
-**watermark的定义是**：比如在一个窗口内，当位于窗口最大`watermark`（水位线）的数据达到后，表明（约定）该窗口内的所有数据均已达到，此时不再等待数据，直接触发窗口计算。
+**watermark的定义是**：比如在一个窗口内，当位于窗口最大`watermark`（水位线）的数据达到后，表明（**约定**）该窗口内的所有数据均已达到，此时不再等待数据，直接**触发窗口计算**。
 
 ### 什么是水位线
 
@@ -429,7 +431,7 @@ Session模式是预分配资源的，也就是提前根据指定的资源参数�
 
 1. 有序流
 
-   直接调用WatermarkStrategy.forMonotonousTimestamps()方法就可以实现。简单来说，就是直接拿当前最 大的时间戳作为水位线就可以了。这里需要注意的是，时间戳和水位线的单位，必须都是毫秒。
+   直接调用WatermarkStrategy.forMonotonousTimestamps()方法就可以实现。简单来说，就是**直接拿当前最 大的时间戳作为水位线**就可以了。这里需要注意的是，时间戳和水位线的单位，必须都是毫秒。
 
    ```scala
    stream.assignTimestampsAndWatermarks( WatermarkStrategy.forMonotonousTimestamps[Event]()
@@ -709,9 +711,7 @@ stream.keyBy(<key selector>)
 
       AggregateFunction 接口中有四个方法:
        ⚫ createAccumulator():创建一个累加器，这就是为聚合创建了一个初始状态，每个聚合任务只会调用一次。
-       ⚫ add():将输入的元素添加到累加器中。这就是基于聚合状态，对新来的数据进行进
-
-      一步聚合的过程。方法传入两个参数:当前新到的数据 value，和当前的累加器 accumulator;返回一个新的累加器值，也就是对聚合状态进行更新。每条数据到来之 后都会调用这个方法。
+       ⚫ add():将输入的元素添加到累加器中。这就是基于聚合状态，对新来的数据进行进一步聚合的过程。方法传入两个参数:当前新到的数据 value，和当前的累加器 accumulator;返回一个新的累加器值，也就是对聚合状态进行更新。每条数据到来之 后都会调用这个方法。
 
       ⚫ getResult():从累加器中提取聚合的输出结果。也就是说，我们可以定义多个状态， 然后再基于这些聚合的状态计算出一个结果进行输出。比如之前我们提到的计算平均 值，就可以把 sum 和 count 作为状态放入累加器，而在调用这个方法时相除得到最终 结果。这个方法只在窗口要输出结果时调用。
 
@@ -769,7 +769,7 @@ Window API 中最底层的通用窗口函数接口，最强大，它不仅可以
 
 3. **允许延迟**(Allowed Lateness)
 
-我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口。基于 WindowedStream 调用 allowedLateness()方法，传入一个 Time 类型的延迟时间，就可 以表示允许这段时间内的延迟数据。
+<u>我们可以设定允许延迟一段时间，在这段时 间内，窗口不会销毁，继续到来的数据依然可以进入窗口中并触发计算。直到水位线推进到了 窗口结束时间 + 延迟时间，才真正将窗口的内容清空，正式关闭窗口。基于 WindowedStream 调用 allowedLateness()方法，传入一个 Time 类型的延迟时间，就可 以表示允许这段时间内的延迟数据。</u>
 
 4. **迟到数据放入侧输出流**
 
@@ -790,7 +790,7 @@ Flink 提供了 8 个不同的处理函数:
 (1) ProcessFunction
 最基本的处理函数,基于 DataStream 直接调用 process()时作为参数传入。
 (2) KeyedProcessFunction
-对流按键分区后的处理函数,基于 KeyedStream 调用 process()时作为参数传入。要想使用定时器,必须基于 KeyedStream。
+对流按键分区后的处理函数,基于 KeyedStream 调用 process()时作为参数传入。**要想使用定时器,必须基于 KeyedStream。**
 (3) ProcessWindowFunction
 开窗之后的处理函数,也是全窗口函数的代表。基于 WindowedStream 调用 process()时作为参数传入。
 (4) ProcessAllWindowFunction
@@ -805,15 +805,13 @@ Flink 提供了 8 个不同的处理函数:
 按键分区的广播连接流处理函数,同样是基于 BroadcastConnectedStream 调用 process()时作为参数传入。与 BroadcastProcessFunction 不同的是,这时的广播连接流,是一个 KeyedStream与广播流(BroadcastStream)做连接之后的产物。
 接下来,我们就对 KeyedProcessFunction 和 ProcessWindowFunction 的具体用法展开详细说明。
 
+![image-20250721153255431](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250721153255431.png)
+
 
 ## 迟到数据的处理
 
 1. **设置水位线延迟时间**
-   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。因为水位线的延迟主要是用来对付分布式网络传输导致的数据乱序，而网络传
-
-   输的乱序程度一般并不会很大，大多集中在几毫秒至几百毫秒。所以实际应用中，我们往往会
-
-   给水位线设置一个“能够处理大多数乱序数据的小延迟”，视需求一般设在毫秒~秒级。
+   调整整个应用的全局逻辑时钟，水位线是所有事件时间定时器触发的判断标准，不易设置的过大，否则影响实时性。因为水位线的延迟主要是用来对付分布式网络传输导致的数据乱序，而网络传输的乱序程度一般并不会很大，大多集中在几毫秒至几百毫秒。所以实际应用中，我们往往会给水位线设置一个“能够处理大多数乱序数据的小延迟”，视需求一般设在毫秒~秒级。
 
 2. **允许窗口处理迟到数据**
 
@@ -825,7 +823,7 @@ Flink 提供了 8 个不同的处理函数:
 
 在更底层，我们可以不定义任何具体的算子(比如 map()，filter()，或者 window())，而只 是提炼出一个统一的“处理”(process)操作——它是所有转换算子的一个概括性的表达，可 以自定义处理逻辑，所以这一层接口就被叫作“处理函数”(process function)。
 
-处理函数主要是定义数据流的转换操作，所以也可以把它归到转换算子中。我们知道在 Flink 中几乎所有转换算子都提供了对应的函数类接口，处理函数也不例外;它所对应的函数 类，就叫作 ProcessFunction。
+处理函数主要是定义数据流的转换操作，所以也可以把它归到转换算子中。我们知道在 Flink 中**几乎所有转换算子都提供了对应的函数类接口，处理函数也不例外;它所对应的函数 类，就叫作 ProcessFunction。**
 
 ![image-20220913142358829](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20220913142358829.png)
 
@@ -869,39 +867,6 @@ public abstract <X> void output(OutputTag<X> outputTag, X value);
 2. 非抽象方法 onTimer()
 该方法用于定义定时触发的操作,这是一个非常强大、也非常有趣的功能。这个方法只有在注册好的定时器触发的时候才会调用,而定时器是通过“定时服务” TimerService 来注册的。打个比方,注册定时器(timer)就是设了一个闹钟,到了设定时间就会响;而 onTimer()中定义的,就是闹钟响的时候要做的事。所以它本质上是一个基于时间的“回调”(callback)方法,通过时间的进展来触发;在事件时间语义下就是由水位线(watermark)来触发了。与 processElement()类似,定时方法 onTimer()也有三个参数:时间戳(timestamp),上下文(ctx),以及收集器(out)。这里的 timestamp 是指设定好的触发时间,事件时间语义下当然就是水位线了。另外这里同样有上下文和收集器,所以也可以调用定时服务(TimerService),以及任意输出处理之后的数据。既然有.onTimer()方法做定时触发,我们用 processFunction 也可以自定义数据按照时间分组、定时触发计算输出结果;这其实就实现了窗口(window)的功能。这里需要注意的是,上面的 onTimer()方法只是定时器触发时的操作,而定时器(timer)真正的设置需要用到上下文 ctx 中的定时服务。在 Flink 中,只有“按键分区流”KeyedStream才支持设置定时器的操作,
 所以之前的代码中我们并没有使用定时器。所以基于不同类型的流,可以使用不同的处理函数,它们之间还是有一些微小的区别的。接下来我们就介绍一下处理函数的分类
-
-### 处理函数分类
-
-(1)**ProcessFunction**
-
-最基本的处理函数，基于 DataStream 直接调用 process()时作为参数传入。
-
- (2)**KeyedProcessFunction**
-
-对流按键分区后的处理函数，基于 KeyedStream 调用 process()时作为参数传入。要想使用 定时器，必须基于 KeyedStream。
-
-(3)**ProcessWindowFunction**
-
-开窗之后的处理函数，也是全窗口函数的代表。基于 WindowedStream 调用 process()时作 为参数传入。
-
-(4)ProcessAllWindowFunction
- 同样是开窗之后的处理函数，基于 AllWindowedStream 调用 process()时作为参数传入。
-
-(5)CoProcessFunction
-
-合并(connect)两条流之后的处理函数，基于 ConnectedStreams 调用 process()时作为参 数传入。
-
-(6)ProcessJoinFunction
-
-间隔连接(interval join)两条流之后的处理函数，基于 IntervalJoined 调用 process()时作为 参数传入。
-
-(7)BroadcastProcessFunction
-
-广播连接流处理函数，基于 BroadcastConnectedStream 调用 process()时作为参数传入。这 里的“广播连接流”BroadcastConnectedStream，是一个未 keyBy 的普通 DataStream 与一个广 播流(BroadcastStream)做连接(conncet)之后的产物。
-
-(8)KeyedBroadcastProcessFunction
-
-按键分区的广播连接流处理函数，同样是基于 BroadcastConnectedStream 调用 process()时 作为参数传入。与 BroadcastProcessFunction 不同的是，这时的广播连接流，是一个 KeyedStream 与广播流(BroadcastStream)做连接之后的产物。
 
 ## KeyedProcessFunction
 
@@ -998,7 +963,7 @@ CoProcessFunction 也是“处理函数”家族中的一员，同样可以通�
 2. window: 中间
 3. join算子：最简单
 
-### 窗口join
+### 窗口联结(window join)
 
 1. 接口API
 
@@ -1013,13 +978,15 @@ stream1
 
 
 
-join逻辑
+join逻辑:
 
 ```scala
 public interface JoinFunction<IN1, IN2, OUT> extends Function, Serializable {
    OUT join(IN1 first, IN2 second) throws Exception;
 }
 ```
+
+窗口中每有一对数据成功联结匹配，JoinFunction 的join0方法就会被调用一次，并输出一个结果。
 
 
 
@@ -1067,9 +1034,9 @@ stream1
 
 1. **托管状态**(Managed State)和**原始状态**(Raw State)
 
-推荐托管状态：Flink运行时维护
+推荐托管状态：状态的存储访问、故障恢复和重组等一系列问题都由 Flink 实现
 
-原始状态时自定义的，需要自己实现状态的序列化和故障恢复
+原始状态是自定义的，需要自己实现状态的序列化和故障恢复
 
 
 
@@ -1115,8 +1082,8 @@ public interface ValueState<T> extends State {
 用方式 与一般的 List 非常相似。
 
 3. 映射状态(MapState)
-4. 归约状态(ReducingState)
-5. 聚合状态(AggregatingState)
+4. 归约状态(ReducingState)： 类似于值状态
+5. 聚合状态(AggregatingState)：类似于值状态
 
 在具体使用时，为了让运行时上下文清楚到底是哪个状态，我们还需要创建一个“状态描
 
@@ -1170,11 +1137,11 @@ stateDescriptor.enableTimeToLive(ttlConfig)
 
 - ListState
 
-> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“**大列表**”，然后再均匀地分配给所有并行任务
+> 每个并行子任务只保留一个list来保存当前子任务的状态项；当算子并行度进行缩放调整时，算子的列表状态中的所有元素项会被统一收集起来，相当 于把多个分区的列表合并成了一个“**大列表**”，然后再均匀地分配(轮询)给所有并行任务
 
 - UnionListState 
 
-> 在并行度调整时，常规列表状态是轮询分 配状态项，而联合列表状态的算子则会直接广播状态的完整列表。这样，并行度缩放之后的并 行子任务就获取到了联合后完整的“大列表”
+> 在并行度调整时，常规列表状态是轮询分 配状态项，而联合列表状态的算子则会**直接广播状态的完整列表**。这样，并行度缩放之后的并 行子任务就获取到了联合后完整的“大列表”
 
 -  BroadcastState。
 
@@ -1188,9 +1155,9 @@ Flink提供了管理算子状态的接口，我们根据业务需要自行设计
 
   ```scala
   public interface CheckpointedFunction {
-  // 保存状态快照到检查点时，调用这个方法； 注意这个快照Context可提供检查点相关信息，但无法获取状态
+  //❤️ 保存状态快照到检查点时，调用这个方法； 注意这个快照Context可提供检查点相关信息，但无法获取状态
      void snapshotState(FunctionSnapshotContext context) throws Exception
-  // 初始化状态时调用这个方法，也会在恢复状态时调用；这个函数初始化上下文是真的Context，可以获取到状态内容
+  //❤️ 初始化状态时调用这个方法，也会在恢复状态时调用；这个函数初始化上下文是真的Context，可以获取到状态内容
   void initializeState(FunctionInitializationContext context) throws Exception;
   }
   ```
@@ -1211,8 +1178,8 @@ Flink 对状态进行持久化的方式，就是将当前所 有分布式状态�
 
 状态后端分类：
 
-- ​	哈希表状态后端(HashMapStateBackend)
-  - 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
+- 哈希表状态后端(HashMapStateBackend)
+- 内嵌 RocksDB 状态后端(EmbeddedRocksDBStateBackend)
 
 
 > RocksDB 默认存储在 TaskManager 的本地数据目录里。EmbeddedRocksDBStateBackend 始终执行的是异步快照，也就是不会因为保存检查点而阻 塞数据的处理;而且它还提供了增量式保存检查点的机制，这在很多情况下可以大大提升保存 效率。
@@ -1367,7 +1334,7 @@ a) 当算子的所有输入流中的第一个屏障到达算子的输入缓冲�
 
 b) 由于第一个屏障没有被阻塞，它的步调会比较快，超过一部分缓冲区中的数据。算子会标记两部分数据：一是屏障首先到达的那条流中被超过的数据，二是其他流中位于当前检查点屏障之前的所有数据（当然也包括进入了输入缓冲区的数据），如下图中标黄的部分所示。
 
-![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/format,png.png)
+
 
 c) 将上述两部分数据连同算子的状态一起做异步快照。
 

@@ -231,6 +231,8 @@ $("timestamp").as("ts"),$("url"));
 
 具体的编码规则是:INSERT 插入操作编码为 add 消息;DELETE 删除操作编码为 retract 消息;而 UPDATE 更新操作则编码为被更改行的 retract 消息，和更新后行(新行)的 add 消 息。这样，我们可以通过编码后的消息指明所有的增删改操作，一个动态表就可以转换为撤回 流了。
 
+![image-20250723100947199](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250723100947199.png)
+
 **(3)更新插入(upsert)流**
 
 更新插入流中只包含两种类型的消息:更新插入(upsert)消息和删除(delete)消息。
@@ -243,9 +245,11 @@ $("timestamp").as("ts"),$("url"));
 
 ### 动态表和持续查询
 
-- 动态表： 随着新数据的加入，基于某个sql查询的到的表就会不断变化，称为动态表，是Flink Sql中的核心概念。
-- 思想： 数据库中的表是一系列Insert/update/delete的更新日志流执行的结果，基于某一时刻的快照读取更新日志流就可以得到最终结果。
-- 动态查询： 对动态表定义的查询操作，都是持续查询;而持续查询的结果也会是一个动态表。
+- **动态表**： 随着新数据的加入，基于某个sql查询的到的表就会不断变化，称为动态表，是Flink Sql中的核心概念。
+
+  思想： 数据库中的表是一系列Insert/update/delete的更新日志流执行的结果，基于某一时刻的快照读取更新日志流就可以得到最终结果。
+
+- **持续查询**： 对动态表定义的查询操作，都是持续查询;而持续查询的结果也会是一个动态表。
 
 
 
@@ -315,6 +319,8 @@ EventTable GROUP BY user")
 2. **追加查询**
 
 ​       查询只会追加结果，也就是一个insert流，这种查询称为**追加查询**，转换成 DataStream 调用方法 没有限制，可以直接用 toDataStream()，也可以像更新查询一样调用 toChangelogStream()。
+
+典型的就是窗口聚合，窗口结束时间作为一个聚合维度，那么查询结果就只有追加， 没有更新。
 
 ```scala
 val aliceVisitTable = tableEnv.sqlQuery("SELECT url, user FROM EventTable WHERE
@@ -397,7 +403,14 @@ user = 'Alice'")
 
 谓的时间属性(time attributes)，其实就是每个表模式结构(schema)的一部分。 它可以在创建表的 DDL 里直接定义为一个字段，也可以在流转换成表时定义。一旦定义了时 间属性，它就可以作为一个普通字段引用，并且可以在基于时间的操作中使用。
 
-时间属性的数据类型为 TIMESTAMP，它的行为类似于常规时间戳，可以直接访问并且进 行计算。
+- 时间属性的数据类型为 TIMESTAMP，它的行为类似于常规时间戳，可以直接访问并且进 行计算。
+
+- 窗口表值函数滚动窗口(TUMBLE)、滑动窗口(HOP)、累积窗口(CUMULATE) 额外返回三个列：
+  - window_start
+  - window_end
+  - window_time=window_end - 1ms :  相当于窗口的最大时间戳
+  
+  
 
 ### 事件时间
 
@@ -450,7 +463,7 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").rowtime())
 相比之下处理时间就比较简单了，它就是我们的系统时间，使用时不需要提取时间戳 (timestamp)和生成水位线(watermark)。因此在定义处理时间属性时，必须要额外声明一个 字段，专门用来保存当前的处理时间。
 
 1. 在创建表的DDL中定义
-   通过PROCTIME()函数指定当前的处理时间属性。
+   <font color=red>通过PROCTIME()函数指定当前的处理时间属性。</font>
 
 ```sql
 CREATE TABLE EventTable(
@@ -477,7 +490,9 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
 
 ### 窗口
 
-1. 分组窗口（老版本）
+有了时间属性，接下来就可以定义窗口进行计算了。我们知道，窗口可以将无界流切割成 大小有限的“桶”(bucket)来做计算，通过截取有限数据集来处理无限的流数据。
+
+1. **分组窗口**（老版本）
 
    > 分组窗口的功能比较有限，只支持窗口聚合，所以目前已经处于弃用(deprecated)的状 态。
 
@@ -504,13 +519,16 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
 
    
 
-2. 窗口表值函数(新版本)
+2. **窗口表值函数(**新版本)
 
 使用窗口表值函数(结果是一个Table)来定义窗口：
 
 ⚫ 滚动窗口(Tumbling Windows);
  ⚫ 滑动窗口(Hop Windows，跳跃窗口);
  ⚫ 累积窗口(Cumulate Windows);
+
+> 与滑动窗口不同的是，在一个统计周期内，我们会多次输出统计值，它们应该是不断叠 加累积的。
+
  ⚫ 会话窗口(Session Windows，目前尚未完全支持)。
 
 <font color=red>返回值中，除去原始表中的所有列，还增加了用来描述窗口的额外 3 个列:“窗口起始点”(window_start)、“窗口结束点”(window_end)、“窗口时间”(window_time)</font>
@@ -520,11 +538,29 @@ val table = tEnv.fromDataStream(stream, $("user"), $("url"), $("ts").proctime())
 TUMBLE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOUR)
 -- 滑动窗口
 HOP(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '5' MINUTES, INTERVAL '1' HOURS));
+		 参数依次为：     表、 时间、步长、窗口大小
 -- 累积窗口
 CUMULATE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOURS, INTERVAL '1' DAYS))
+		 参数依次为：     表、 时间、累积步长、统计周期
 ```
 
+上面所有的语句只是定义了窗口，类似于 DataStream API 中的窗口分配器;在 SQL 中窗 口的完整调用，还需要配合聚合操作和其它操作。
 
+例如一个累积窗口：
+
+```sql
+SELECT
+ uid, window_end AS endT, COUNT(url) AS cnt
+FROM TABLE(
+  CUMULATE(
+    TABLE eventTable,
+    DESCRIPTOR(et),
+    INTERVAL '30' MINUTE,
+    INTERVAL '1' HOUR
+  )
+)
+GROUP BY uid, window_start, window_end
+```
 
 
 
@@ -532,7 +568,15 @@ CUMULATE(TABLE EventTable, DESCRIPTOR(ts), INTERVAL '1' HOURS, INTERVAL '1' DAYS
 
 ## 聚合
 
-GROUP BY 后面的则是窗口新增的字段 window_start 和 window_end
+Flink 中的 SQL 是流处理与标准 SQL 结合的产物，所以聚合查询也可以分成两种
+
+### 分组聚合
+
+就是普通的SQL聚合
+
+### 窗口聚合
+
+窗口本身返回的是就是一张表，所以窗口会出现在 FROM 后面，GROUP BY 后面的则是窗口新增的字段 window_start 和 window_end
 
 ```sql
 val result = tableEnv.sqlQuery(

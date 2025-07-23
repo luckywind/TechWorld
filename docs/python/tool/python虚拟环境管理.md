@@ -238,7 +238,8 @@ Some useful pyenv commands are:
    prefix      Display prefixes for Python versions
    rehash      Rehash pyenv shims (run this after installing executables)
    root        Display the root directory where versions and shims are kept
-   shell       #设置当前shell使用的python版本
+   shell       #临时设置当前shell使用的python版本
+ 							 pyenv shell $version && python3
    shims       List existing pyenv shims
    uninstall   #卸载python版本
    version     # Show the current Python version(s) and its origin 包括虚拟环境
@@ -661,6 +662,14 @@ Commands:
 			install [toolname]  安装工具
 			list 查看已安装的工具
   python   Manage Python versions and installations
+    list       列出已安装的和可用的python列表
+    	--all-versions 查看所有版本
+    	--only-installed  只看已安装的
+    install    Download and install Python versions
+    find       Search for a Python installation
+    pin        Pin to a specific Python version
+    dir        Show the uv Python installation directory
+    uninstall  Uninstall Python versions
   pip      Manage Python packages with a pip-compatible interface
   venv     创建虚拟环境
 				source .venv/bin/activate  激活环境
@@ -688,4 +697,102 @@ uv pip install "flask[dotenv]"      # Install Flask with "dotenv" extra.
 ```
 
 
+
+# 我的环境
+
+## uv和pyenv展示的不同
+
+```shell
+$ uv python list
+cpython-3.14.0a6-macos-aarch64-none                 <download available>
+cpython-3.14.0a6+freethreaded-macos-aarch64-none    <download available>
+cpython-3.13.3-macos-aarch64-none                   /opt/homebrew/bin/python3.13 -> ../Cellar/python@3.13/3.13.3/bin/python3.13
+cpython-3.13.3-macos-aarch64-none                   /opt/homebrew/bin/python3 -> ../Cellar/python@3.13/3.13.3/bin/python3
+cpython-3.13.3-macos-aarch64-none                   /Users/chengxingfu/.pyenv/shims/python3
+cpython-3.13.3-macos-aarch64-none                   <download available>
+cpython-3.13.3+freethreaded-macos-aarch64-none      <download available>
+cpython-3.12.10-macos-aarch64-none                  <download available>
+cpython-3.11.12-macos-aarch64-none                  <download available>
+cpython-3.10.17-macos-aarch64-none                  <download available>
+cpython-3.9.22-macos-aarch64-none                   <download available>
+cpython-3.9.6-macos-aarch64-none                    /usr/bin/python3
+cpython-3.8.20-macos-aarch64-none                   <download available>
+pypy-3.11.11-macos-aarch64-none                     <download available>
+pypy-3.10.16-macos-aarch64-none                     <download available>
+pypy-3.9.19-macos-aarch64-none                      <download available>
+pypy-3.8.16-macos-aarch64-none                      <download available>
+
+$ pyenv versions
+  system
+* 3.9.7 (set by /Users/chengxingfu/code/my/MediaCrawler/.python-version)
+  3.9.7/envs/env-ai
+  3.9.7/envs/env-django
+  3.9.7/envs/env-genlingo
+  3.9.7/envs/env-hardci
+  3.9.7/envs/hados-env
+  env-ai --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-ai
+  env-django --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-django
+  env-genlingo --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-genlingo
+  env-hardci --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-hardci
+  hados-env --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/hados-env
+$ pyenv shell system && python3 --version
+Python 3.13.3
+
+```
+
+- **为什么 `uv`列出 `3.13.3`而 `pyenv`没有？**
+
+  Homebrew 安装的 Python (`/opt/homebrew/bin/python3.13`) 被 uv 检测到，但未被 pyenv 管理。
+
+- **为什么系统 Python (`3.9.6`) 只在 `uv`中显示？**
+
+  3.9.6是系统自带的Python，被uv检测到了，但是pyenv是通过$PATH环境变量优先级确定的system，于是先捕获到Homebrew的Python(3.13.3)
+
+**结论**：
+
+1. pyenv只管理pyenv自己安装的版本和system，而且system是通过PATH环境变量优先级确定的
+2. uv python list是广泛扫描所有解释器
+3. pip 与 Python 解释器是 1:1 绑定的 - **每个 Python 安装都有自己独立的 pip 环境**。
+4. 系统 Python 因被 Apple 修改导致 pip 功能残缺。建议不要使用系统Python
+
+```shell
+/Users/chengxingfu/.pyenv/plugins/pyenv-virtualenv/shims
+/Users/chengxingfu/.pyenv/shims
+/Users/chengxingfu/.pyenv/bin
+/usr/local/opt/mysql/bin
+/Users/chengxingfu/code/my/ai_tools
+/Users/chengxingfu/soft/phabricator/arcanist/bin
+/Users/chengxingfu/.gem/ruby/2.6.0/bin
+/usr/local/opt/ruby/bin
+/usr/local/opt/mysql@5.7/bin
+/Users/chengxingfu/soft/anaconda/anaconda2/bin
+/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home/
+/Library/Frameworks/Python.framework/Versions/3.12/bin
+/opt/homebrew/bin  #homebrew在前
+/opt/homebrew/sbin
+/usr/local/bin
+/System/Cryptexes/App/usr/bin
+/usr/bin  #usr/bin在后
+/bin
+/usr/sbin
+/sbin
+/Library/TeX/texbin
+/usr/local/go/bin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin
+/Users/chengxingfu/.cargo/bin
+/Applications/iTerm.app/Contents/Resources/utilities
+/Users/chengxingfu/Library/Application Support/Coursier/bin
+/library/apache-maven/bin
+/usr/local/opt/scala/idea
+/Users/chengxingfu/soft/font
+/Library/apache-tomcat-7.0.96
+/Users/chengxingfu/hadoop/spark/spark-3.4.2-bin-hadoop3/bin
+/Users/chengxingfu/Library/Application Support/Coursier/bin
+/usr/local/mysql/bin/
+/usr/local/gradle-8.11.1/bin/
+/bin/brew
+/Users/chengxingfu/tools/pdf-bookmark-1.0.7/bin/
+```
 

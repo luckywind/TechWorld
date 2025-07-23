@@ -20,3 +20,7 @@
 alt+F1快速插入图表
 
 [需要熟练掌握](https://www.zhihu.com/question/21758700)
+
+## 加双引号
+
+`=CHAR(34)&B1&CHAR(34)`
