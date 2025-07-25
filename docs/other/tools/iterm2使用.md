@@ -47,11 +47,27 @@ title分两部分：Name和括号里的Foreground Job
 
 Session里对Logging打勾，填上记录的目录和文件名
 
+文件名:`\(creationTimeString).\(profileName).\(termid).\(iterm2.pid).\(autoLogId).log`
+
+` 20250724_104050.bptest10.2.20.25hadosbptest20.25.w0t1p0.F621B0F3-780B-4BAA-A0E2-D5741EC278A5.489.3017292438.log) `
 
 
-控制字符如何处理？ [参考](https://www.reddit.com/r/macsysadmin/comments/pg20ue/weird_character_when_session_logging_in_terminal/?tl=zh-hans)，[这个项目](https://github.com/RadixSeven/typescript2txt)
+
+
+
+控制字符如何处理？
+
+- [参考](https://www.reddit.com/r/macsysadmin/comments/pg20ue/weird_character_when_session_logging_in_terminal/?tl=zh-hans)，[这个项目](https://github.com/RadixSeven/typescript2txt)无效
+- `cat output.log | sed -r 's/\x1B\[[0-9;]*[a-zA-Z]//g'`   但是导出到文件还是有部分字符在
+
+
+
+
 
 
 
 # 上传下载
 
+[参考](https://github.com/islishude/blog/issues/249)
+
+但不是很优雅，总有报错
