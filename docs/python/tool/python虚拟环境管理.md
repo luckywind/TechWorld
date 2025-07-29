@@ -234,7 +234,9 @@ Some useful pyenv commands are:
    init        Configure the shell environment for pyenv
    install     Install a Python version using python-build
    latest      Print the latest installed or known version with the given prefix
-   local       #设置当前目录python版本 Set or show the local application-specific Python version(s)
+   local       #设置当前目录python版本 就是创建一个.python-version
+						   #可以手动删除即可撤销，也可以执行pyenv local --unset 
+							
    prefix      Display prefixes for Python versions
    rehash      Rehash pyenv shims (run this after installing executables)
    root        Display the root directory where versions and shims are kept
@@ -615,6 +617,18 @@ $ python -m pip install --no-index --find-links=".\packages" -r requirements.txt
 
 # uv
 
+|        功能        |                  UV                  |         Pyenv         |
+| :----------------: | :----------------------------------: | :-------------------: |
+| **Python版本管理** |               ❌ 不支持               |      ✅ 核心功能       |
+|  **虚拟环境创建**  |             ✅ `uv venv`              |    ❌ 依赖其他工具     |
+|    **依赖安装**    | ✅ `uv pip install` (比pip快10-100倍) |       ❌ 不支持        |
+|    **依赖解析**    | ✅ `uv pip compile` (超快锁文件生成)  |       ❌ 不支持        |
+|     **包构建**     |   ✅ `uv pip build` (快速构建wheel)   |       ❌ 不支持        |
+|   **多版本支持**   |           ❌ 需要配合pyenv            |    ✅ 无缝切换版本     |
+|    **环境隔离**    |            ✅ 自带虚拟环境            | ✅ 通过virtualenv/venv |
+
+## install
+
 [uv使用](https://blog.frognew.com/2025/03/uv-as-python-package-manager.html)
 
 [uv github](https://github.com/astral-sh/uv)
@@ -633,6 +647,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### python版本
 
+建议使用pyenv管理python版本，uv只负责虚拟环境的管理
+
 ```shell
 #查看可用的python版本:
 uv python list
@@ -640,16 +656,50 @@ uv python list
 uv python install 3.9.7  
 ```
 
-### 管理项目
+### 管理项目依赖
 
 [uv](https://github.com/astral-sh/uv)支持管理Python项目，这些项目在`pyproject.toml`文件中定义了它们的依赖项。
 
+
+
+📌新建虚拟环境
+
+pyenv local  3.9.7 #设置python版本，会创建.python-version文件
+
+uv venv  虚拟环境默认名称为项目目录名
+uv venv .my-name
+uv venv --python 3.11
+
+📌使用虚拟环境
+
+source .venv/bin/activate.fish
+deactivate
+
+📌[管理包](https://docs.astral.sh/uv/pip/packages/)和pip兼容
+
+uv pip install 'ruff==0.3.0'
+
+uv pip install -r requirements.txt
+
+📌项目管理
+
+uv init myproject 初始化新项目
+
+uv init 初始化已有项目, 自动创建pyproject.toml， .python-version文件
+
+uv add requests 添加依赖，自动更新pyproject.toml, uv.lock
+
+uv pip compile pyproject.toml -o requirements.lock  生成锁定文件,记录精确版本，依赖树，哈希值
+
+
+
+
+
 ### 全部命令
 
-```shell
 Commands:
   run      Run a command or script
-  init     初始化项目
+  init     初始化项目,自动创建pyproject.toml
   add      添加依赖
   remove   删除依赖
   sync     Update the project's environment
@@ -661,13 +711,13 @@ Commands:
   tool     Run and install commands provided by Python packages， 代替pipx
 			install [toolname]  安装工具
 			list 查看已安装的工具
-  python   Manage Python versions and installations
+  python  管理python 版本和安装
     list       列出已安装的和可用的python列表
     	--all-versions 查看所有版本
     	--only-installed  只看已安装的
     install    Download and install Python versions
     find       Search for a Python installation
-    pin        Pin to a specific Python version
+    pin     设置当前目录的python 版本，也就是.python-version 文件
     dir        Show the uv Python installation directory
     uninstall  Uninstall Python versions
   pip      Manage Python packages with a pip-compatible interface
@@ -684,7 +734,6 @@ Commands:
   self     Manage the uv executable
   version  Read or update the project's version
   help     Display documentation for a command
-```
 
 虚拟环境中安装软件包
 
@@ -695,6 +744,12 @@ uv pip install -e .                 # Install current project in editable mode.
 uv pip install "package @ ."        # Install current project from disk
 uv pip install "flask[dotenv]"      # Install Flask with "dotenv" extra.
 ```
+
+
+
+
+
+
 
 
 
@@ -723,8 +778,10 @@ pypy-3.9.19-macos-aarch64-none                      <download available>
 pypy-3.8.16-macos-aarch64-none                      <download available>
 
 $ pyenv versions
-  system
-* 3.9.7 (set by /Users/chengxingfu/code/my/MediaCrawler/.python-version)
+* system (set by /Users/chengxingfu/.python-version)
+  3.9.6
+  3.9.6/envs/env-crawler
+  3.9.7
   3.9.7/envs/env-ai
   3.9.7/envs/env-django
   3.9.7/envs/env-genlingo
@@ -735,7 +792,7 @@ $ pyenv versions
   env-genlingo --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-genlingo
   env-hardci --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/env-hardci
   hados-env --> /Users/chengxingfu/.pyenv/versions/3.9.7/envs/hados-env
-$ pyenv shell system && python3 --version
+$ pyenv shell system && python3 --version   # pyenv检测到的system 环境是$PATH里第一个python 环境，即Homebrew 的
 Python 3.13.3
 
 ```
@@ -754,6 +811,7 @@ Python 3.13.3
 2. uv python list是广泛扫描所有解释器
 3. pip 与 Python 解释器是 1:1 绑定的 - **每个 Python 安装都有自己独立的 pip 环境**。
 4. 系统 Python 因被 Apple 修改导致 pip 功能残缺。建议不要使用系统Python
+5. 我当前是基于一个python创建了多个环境，多个项目去复用一个环境，其实这种做法并不好。推荐pyenv(管理python 版本)+uv(管理项目依赖)，每个项目一个虚拟环境
 
 ```shell
 /Users/chengxingfu/.pyenv/plugins/pyenv-virtualenv/shims
