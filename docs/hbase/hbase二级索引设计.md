@@ -62,6 +62,50 @@ IndexTable Region的分配控制过程，即是保证IndexTable Region与DataTab
 
 这里只增加对IndexTable Region分配的控制，并不对DataTable Region的分配进行干预，DataTable Region由HBase按照指定的[负载均衡](https://cloud.tencent.com/product/clb?from=10680)策略进行分配，使得对现有HBase运行环境的影响降到最小。
 
+```java
+public class ColocatedRegionAssigner extends BaseRegionPlacementPolicy {
+    @Override
+    public void assignRegions(List<RegionInfo> regions) {
+        Map<byte[], RegionInfo> indexRegions = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+        Map<byte[], RegionInfo> dataRegions = new TreeMap<>(Bytes.BYTES_COMPARATOR);
+        
+        // 分离索引表和数据表Region
+        for (RegionInfo region : regions) {
+            if (region.getTable().equals("IndexTable")) {
+                indexRegions.put(region.getStartKey(), region);
+            } else if (region.getTable().equals("DataTable")) {
+                dataRegions.put(region.getStartKey(), region);
+            }
+        }
+        
+        // 配对相同StartKey的Region
+        for (byte[] startKey : indexRegions.keySet()) {
+            RegionInfo indexRegion = indexRegions.get(startKey);
+            RegionInfo dataRegion = dataRegions.get(startKey);
+            
+            if (dataRegion != null) {
+                // 分配到同一RegionServer
+                ServerName targetServer = selectOptimalServer();
+                assignRegion(indexRegion, targetServer);
+                assignRegion(dataRegion, targetServer);
+            }
+        }
+    }
+}
+```
+
+配置
+
+```xml
+<!-- hbase-site.xml -->
+<property>
+  <name>hbase.master.region.placement.policy</name>
+  <value>com.example.ColocatedRegionAssigner</value>
+</property>
+```
+
+
+
 ## IndexTable Region的分裂过程
 
 <font color=red>关键就是DataTable Region分裂后，会产生一个以splitKey为StartKey的新Region, 那么IndexTable Region如何拆分得到一个新Region和它一一对应呢？答案就是把Rowkey的第一部分(也就是DataTable Region的StartKey大于splitKey的替换成新的StartKey，也就是splitKey)</font>
