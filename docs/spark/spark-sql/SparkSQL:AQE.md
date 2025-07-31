@@ -38,13 +38,15 @@ SparkSQL Adaptive Execution 是 Spark SQL 针对 SQL 查询计划的一种自适
 
 <font color=red>总之，在非AQE的情况下，SparkSQL会转换为DAG图，然后DAGScheduler基于shuffle将其划分为多个stage, 然后再执行stage。在AQE的情况下，首先会将plan树拆分为多个QueryStages, 在执行时先将它的子 QueryStages 被提交。在所有子节点完成后，收集 shuffle 数据大小。根据收集到的 shuffle 数据统计信息，将当前 QueryStage 的执行计划优化为更好的执行计划。然后转换为DAG图再执行Stage。</font>
 
-目前AQE主要有三大特性：
+**目前AQE主要有三大特性**：
 
-1. 自动分区合并：在 Shuffle 过后，Reduce Task 数据分布参差不齐，AQE 将自动合并过小的数据分区。
-2. Join 策略调整：如果某张表在过滤之后，尺寸小于广播变量阈值，这张表参与的数据关联就会从 Shuffle Sort Merge Join 降级（Demote）为执行效率更高的 Broadcast Hash Join。
-3. 自动倾斜处理：结合配置项，AQE 自动拆分 Reduce 阶段过大的数据分区，降低单个 Reduce Task 的工作负载。
+1. **自动分区合并**：在 Shuffle 过后，Reduce Task 数据分布参差不齐，AQE 将自动合并过小的数据分区。**即用一个Reduce Task 处理上游多个分区**
+2. **Join 策略调整**：如果某张表在过滤之后，尺寸小于广播变量阈值，这张表参与的数据关联就会从 Shuffle Sort Merge Join 降级（Demote）为执行效率更高的 Broadcast Hash Join。
+3. **自动倾斜处理**：结合配置项，AQE 自动拆分 Reduce 阶段过大的数据分区，用多个Reduce 来处理(join 另一侧非倾斜的分区直接复制)，降低单个 Reduce Task 的工作负载。
 
 
+
+![image-20250731103023436](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250731103023436.png)
 
 
 

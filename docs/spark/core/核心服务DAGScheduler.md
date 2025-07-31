@@ -52,7 +52,9 @@ DAGScheduler是主要产生各类SparkListenterEvent的源头，它将各种Spar
 
 ### Stage的拆分
 
-​        当一个RDD操作触发计算，向DAGScheduler提交作业时，DAGScheduler从最后一个RDD出发，遍历整个RDD依赖链，以ShuffleDependency为依据，划分stage,即当某个RDD的运算需要进行shuffle操作时，这个包含了shuffle依赖关系的RDD将被用来作为输入信息，构建一个新的stage。
+​       <font color=red> 当一个RDD操作触发计算，向DAGScheduler提交作业时，DAGScheduler从最后一个RDD出发，遍历整个RDD依赖链，以ShuffleDependency为依据，划分stage,即当某个RDD的运算需要进行shuffle操作时，这个包含了shuffle依赖关系的RDD将被用来作为输入信息，构建一个新的stage。</font>
+
+​    <font color=red> RDD 在 物化时会要求所有父RDD 都完成物化，这样递归下去，实现所有RDD 的物化</font>
 
 ​        所有stage的创建都是从finalStage的创建触发的，触发过程是怎样的呢？事件循环再收到JobSubmited事件后，立即创建finalStage：
 

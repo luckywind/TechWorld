@@ -24,7 +24,7 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 8. \underline、\overline
 9. \sqrt 开方  \sqrt[3]开3次方 $\sqrt 5$, $\sqrt[3] {5+3}$, $\sqrt{3}$
 10. \geq >= 、 \leq <=、\neq  $x \neq y$
-11. 集合： in 、notin、subset、cup、cap
+11. **集合**： in 、notin、subset、cup、cap
 
 
 
