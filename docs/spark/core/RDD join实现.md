@@ -14,8 +14,9 @@ join通常需要不同rdd中相应的key分布在同一个分区，以便于本�
 
 注意：
 
-1. <font color=red>两个rdd如果是同一个action算子产生的且分区器一样，则数据一定是在一起的</font>
-2. <font color=red>Core 模块的Join是使用cogroup函数实现的</font>
+1. <font color=red>同一个父 RDD，trasformation 到的两个rdd 是copartitioned</font>
+2. <font color=red>同一个父 RDD，相同分区器shuffle到的两个rdd 是copartitioned</font>
+3. <font color=red>Core 模块的Join是使用cogroup函数实现的</font>
 
 ## 选择join类型
 

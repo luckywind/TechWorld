@@ -29,7 +29,7 @@
 
 ![image-20220503092904653](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220503092904653.png)
 
-reduceByKey是shuffle操作(<font color=red>但未必会发生shuffle</font>)，该操作分别是stage0/1的最后一个操作，但是产生的RDD划分到shuffle操作的下一个stage里了。stage0/1在该shuffle过程中都进行了write操作，写入了480B的数据，Stage2读取它们俩的输出，产生960B的Shuffle Read。
+reduceByKey是shuffle操作(<font color=red>但未必会发生shuffle</font>)，该操作分别是stage0/1的最后一个操作，但是产生的RDD划分到shuffle操作的下一个stage里了。stage0/1在该shuffle过程中都进行了write操作(<font color=red>写入本地文件，且文件分区有序</font>)，写入了480B的数据，Stage2读取它们俩的输出，产生960B的Shuffle Read。
 
 ## task并行度 vs 分区数
 
@@ -119,14 +119,20 @@ joined分区数4
 
 ![image-20221116170905333](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221116170905333.png)
 
-Stage：包含数据读取、数据处理、数据写出
+Description列显示的是代码行，根据其操作类型，可以判断Stage 类型、Task 类型，task 数量。
+|                    **操作类型**                     | **对应 Stage 类型** |   **Task 类型**    |     **Task 数量依据**     |
+| :-------------------------------------------------: | :-----------------: | :----------------: | :-----------------------: |
+| **宽依赖操作前半段** （如 `partitionBy()`的写操作） |   ShuffleMapStage   | **ShuffleMapTask** |      上游 RDD 分区数      |
+|    **宽依赖操作后半段** （如 `join()`的读+计算）    |     ResultStage     |   **ResultTask**   | 生成的 ShuffledRDD 分区数 |
+|    **Action 操作** （如 `collect()`, `save()`）     |     ResultStage     |   **ResultTask**   |     最终 RDD 的分区数     |
 
-Description列显示的是stage最后一个tranformation的名字，<font color=red>stage内task个数只跟该stage要产生的RDD的分区数一致</font>
-
-1. **重分区操作决定了待生成的RDD的分区数，也决定了该操作所在Stage的Task数。**
-   **partitionBy产生的RDD的分区数由用户指定，由于需要Shuffle操作，partitionBy算子需要产生一个stage，被划到下一个Stage, 该Stage包含的task个数就是重分区后的分区数。** <u>~~这些task各自负责当前RDD一个分区后续的处理：计算以及分区。~~</u>
-1. stage里如果只有一个算子，那一定是shuffle类算子(前提是该stage是中间的stage)，该stage的task个数就是这个shuffle算子指定的分区数(就是说该shuffle算子要求产生的RDD的分区数，也是当前stage reader的个数)。
-2. 如果stage里有多个算子，则除了第一个算子是shuffle类算子(除开读文件的情况)外，后续都是transformation，那么该stage的task个数就是第一个算子的并行度，也就是该Stage处理的第一个RDD的分区数
+1. **Spark UI 上的task 具体是map  task 还是 reduce task ?**
+   
+   <font color=red>可以通过Description 这行代码是transformation 操作 还是shuffle 操作，来判断当前Stage 的操作类型，如果是宽依赖前半段，那就是map task，个数与上游RDD 分区数一致；如果是宽依赖后半段，那么就是reduce task, 个数与生成的ShuffledRDD 的分区数一致。</font>
+2. **重分区操作决定了待生成的RDD的分区数，也决定了该操作所在Stage的（reduce） Task数。**
+   partitionBy产生的RDD的分区数由用户指定，由于需要Shuffle操作，partitionBy算子需要产生一个ShuffledRDD，被划到下一个Stage,
+3. stage里如果只有一个算子，那一定是shuffle类算子(前提是该stage是中间的stage)，该stage的task个数就是这个shuffle算子指定的分区数(就是说该shuffle算子要求产生的RDD的分区数，也是当前stage reader的个数)。
+4. 如果stage里有多个算子，则除了第一个算子是shuffle类算子(除开读文件的情况)外，后续都是transformation，那么该stage的task个数就是第一个算子的并行度，也就是该Stage处理的第一个RDD的分区数
 
 
 
@@ -183,7 +189,7 @@ joined分区数3
 5010      
 ```
 
-rdd2的分区器是什么呢？ 答案是没有！因为map操作不保留分区器， 而mapValues操作保留分区器，因为它不会改变key。
+<font color=red>rdd2的分区器是什么呢？ 答案是没有！因为map操作不保留分区器， 而mapValues操作保留分区器，因为它不会改变key。</font>
 
 所以，尽量在重分区前进行map；或者重分区后采用mapValues这样的算子来保留分区器。
 
@@ -197,7 +203,7 @@ rdd2的分区器是什么呢？ 答案是没有！因为map操作不保留分区
 
 在 Spark 中，Shuffle Read 是由 Reduce Task（即 ShuffleMapTask 的后续任务）执行的，而不是 ShuffleMapTask 本身。
 
-1. **ShuffleMapTask（Map 阶段）：** 在 Spark 中，一个 Spark 作业通常由多个阶段组成，其中包括 Map 阶段和 Reduce 阶段。在 Map 阶段，Spark 会将数据按照某个键进行分区，这些分区会被发送到不同的 Executor 上执行。这个过程就是 ShuffleMapTask。
+1. **ShuffleMapTask（Map 阶段）：** 在 Spark 中，一个 Spark 作业通常由多个阶段组成，其中包括 Map 阶段和 Reduce 阶段。在 Map 阶段，Spark 会将数据按照某个键进行分区(这些分区会在reduce 阶段被发送到不同的 Executor 上执行)。这个过程就是 ShuffleMapTask。
 2. **Shuffle Write（Shuffle 阶段）：** Map 阶段执行完毕后，数据需要通过网络进行混洗（Shuffle），以便按照键重新分布到不同的 Executor 上，以供后续的 Reduce 阶段使用
 3. **Shuffle Read（Reduce 阶段）：** Reduce 阶段是 Shuffle 过程的一部分，这时每个 Reduce Task 会通过网络从多个 Map Task 的输出中读取它所需的数据，这个过程就是 Shuffle Read。
 
