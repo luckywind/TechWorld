@@ -60,9 +60,15 @@ rdd1和rdd2分别包含10个分区，所以各产生10个task，但实际上并�
 <font color=red>两个RDD join时，结果RDD(以下记为RDDX)的分区器，分区数，以及与两个父RDD的依赖是如何确定的？ </font>
 
 1. 当两个RDD都没有分区器时，RDDX使用默认的HashPartitioner,分区数取最大值，且与父RDD是shuffleDependency
+
 2. 当两个RDD其中有一个有分区器时，RDDX的分区方式与它保持一致(分区器和分区数都一样)，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
+
 3. 当两个RDD都有分区器，且分区数不一样时，RDDX的分区器与分区数大的那个RDD保持一致，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
+
 4. 当两个RDD都有分区器，且分区数一样，但分区器不一样时， RDDX的分区器优先取HashPartitioner(父RDD有的话)，从而与它是OneToOneDependency，与另一个RDD是shuffleDependency
+
+   > 2025/8/3 号测试发现会与join左边保持一致
+
 5. 当两个RDD都有分区器，都是默认的HashPartitioner且分区数都一样时，RDDX的分区方式与它们保持一致，从而与两个RDD都是OneToOneDependency
 
    > 自定义分区器不能达到这个目的
@@ -119,7 +125,18 @@ joined分区数4
 
 ![image-20221116170905333](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20221116170905333.png)
 
+>stage3: count 触发的join 和stage3 里的partitionBy(4)是窄依赖，需要 4 个ResultTask
+>
+>​	join 和stage1 产生的ShuffledRDD 是shuffle 依赖
+>
+>stage2: 明显是shuffle 的前半段，task 类型是ShuffleMapTask， 数量和第一个RDD(makeRDD)的分区数一致
+>
+>stage1:partitionBy(3)要求产生一个 3 分区的ShuffledRDD, 是shuffle 的后半段，task 类型是ResultTask, 数量和要产生的ShuffledRDD 的分区数一致
+>
+>
+
 Description列显示的是代码行，根据其操作类型，可以判断Stage 类型、Task 类型，task 数量。
+
 |                    **操作类型**                     | **对应 Stage 类型** |   **Task 类型**    |     **Task 数量依据**     |
 | :-------------------------------------------------: | :-----------------: | :----------------: | :-----------------------: |
 | **宽依赖操作前半段** （如 `partitionBy()`的写操作） |   ShuffleMapStage   | **ShuffleMapTask** |      上游 RDD 分区数      |
@@ -127,8 +144,8 @@ Description列显示的是代码行，根据其操作类型，可以判断Stage 
 |    **Action 操作** （如 `collect()`, `save()`）     |     ResultStage     |   **ResultTask**   |     最终 RDD 的分区数     |
 
 1. **Spark UI 上的task 具体是map  task 还是 reduce task ?**
-   
-   <font color=red>可以通过Description 这行代码是transformation 操作 还是shuffle 操作，来判断当前Stage 的操作类型，如果是宽依赖前半段，那就是map task，个数与上游RDD 分区数一致；如果是宽依赖后半段，那么就是reduce task, 个数与生成的ShuffledRDD 的分区数一致。</font>
+  
+   <font color=red>可以通过Description 这行代码是transformation 操作 还是shuffle 操作，来判断当前Stage 的操作类型，如果是宽依赖前半段，那就是map task，个数与上游RDD 分区数一致；如果是宽依赖后半段，那么就是reduce task/result task, 个数与生成的ShuffledRDD 的分区数一致。</font>
 2. **重分区操作决定了待生成的RDD的分区数，也决定了该操作所在Stage的（reduce） Task数。**
    partitionBy产生的RDD的分区数由用户指定，由于需要Shuffle操作，partitionBy算子需要产生一个ShuffledRDD，被划到下一个Stage,
 3. stage里如果只有一个算子，那一定是shuffle类算子(前提是该stage是中间的stage)，该stage的task个数就是这个shuffle算子指定的分区数(就是说该shuffle算子要求产生的RDD的分区数，也是当前stage reader的个数)。
