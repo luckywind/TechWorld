@@ -20,37 +20,122 @@ brew tap用于添加更多仓库到列表，以供brew从其跟踪、更新、�
 
 ## 管理应用
 
-🧰查找
+**🧰查找**
 
 brew search xxx
 
 https://formulae.brew.sh/  网页查找
 
-📌安装
+**📌安装**
 
 brew install xxx
 
 指定版本
 
-✅查看
+**✅查看**
 
 brew list
 
 brew info xxx
 
-🛠️卸载
+brew deps package_name  # 查看依赖关系
+
+brew versions package_name 查看已安装的版本历史
+
+brew ls --full package_name  查看安装路径
+
+```bash
+# 显示 Homebrew 本地的 Git 仓库
+$ brew --repo
+# 显示 Homebrew 安装路径
+$ brew --prefix
+# 显示 Homebrew Cellar 路径
+$ brew --cellar
+# 显示 Homebrew Caskroom 路径
+$ brew --caskroom
+# 缓存路径
+$ brew --cache
+```
+
+**🛠️卸载**
 
 brew uninstall xxx
 
 brew cleanup xxx  清理旧版本
 
-🚀更新
+**🚀更新**
 
 brew outdated
 
 brew upgrade xxx
 
+brew pin [FORMULA ...]      # 锁定某个包
+brew unpin [FORMULA ...]    # 取消锁定
+
+✅清理
+
+brew cleanup # 清理所有包的旧版本
+brew cleanup [FORMULA ...] # 清理指定包的旧版本
+brew cleanup -n # 查看可清理的旧版本包，不执行实际操作
+
+💻核心目录
+
+/opt/homebrew   主安装目录，一般在opt子目录下
+
+/opt/homebrew/bin   可执行文件软链接
+
+/opt/homebrew/Cellar  多版本存储
+
+export PATH="/opt/homebrew/bin:$PATH"   环境变量注入
+
+
+
+
+
+例如apache-flink的安装
+
+1. Cellar目录维护多个版本
+
+```shell
+/opt/homebrew/Cellar/apache-flink/
+├── 1.19.1/               # 具体版本目录
+│   ├── bin/              # 可执行文件
+│   ├── libexec/           # 核心库文件
+│   └── LICENSE            # 许可文件
+└── 1.18.0/               # 另一版本目录
+```
+
+2. 软链接机制：提供**当前激活版本**的统一访问点
+
+/opt/homebrew/opt/apache-flink   指向 /opt/homebrew/Cellar/apache-flink/1.19.1
+
+/opt/homebrew/bin/flink  指向  /opt/homebrew/Cellar/apache-flink/1.19.1/bin/flink
+
+3. 版本切换
+
+brew unlink apache-flink
+brew link apache-flink@1.18
+
+
+
+
+
 ### 指定版本
+
+[参考](https://makeoptim.com/tool/brew-install-specific-version/)到仓库`git clone https://github.com/Homebrew/homebrew-cask.git`,或者`git clone https://github.com/Homebrew/homebrew-core.git`  (执行`brew info xxx` 会列出github地址),  找指定软件的指定commit， 切换到指定commit后，再安装指定.rb文件即可:
+
+```shell
+# cask仓下
+brew install --cask ./Casks/<your-package-name>.rb
+# core仓下, --formula也可以不加
+brew install --formula ./Formula/<your-package-name>.rb
+```
+
+
+
+
+
+
 
 1. 官方多版本 formula
 

@@ -2,27 +2,31 @@
 
 ## 标签
 
-```
 新建标签：command + t
 关闭标签：command + w
-切换标签：command + 数字    或者  command + 左右方向键
-切换全屏：command + enter
+✅切换标签：command + 数字    或者  command + 左右方向键
+✅切换全屏：command + enter
 查找：command + f
-```
 
-## 分屏
+向前^Tab
 
-```
+向后^+shift+Tab
+
+上一个cmd <-   
+
+✅移动command + shift + 方向键
+
 垂直分屏：command + d
 
 水平分屏：command + shift + d
 
-切换屏幕：command + option + 方向键 command + [ 或 command + ]
+✅聚焦窗口：command + **option** + 方向键  / command + [ 或 command + ]
 
-查看历史命令：command + ;
+> 这里上下切换会与分屏软件pane 的快捷键冲突，我取消了pane 的快捷键
 
-查看剪贴板历史：command + shift + h
-```
+✅查看剪贴板历史：command + shift + h
+
+
 
 ## 其他
 
@@ -30,6 +34,10 @@
 粘贴：中键
 ⌘ + shift + h 会列出剪切板历史
 ```
+
+
+
+
 
 # Profile设置
 
