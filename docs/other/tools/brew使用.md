@@ -72,17 +72,17 @@ brew upgrade xxx
 brew pin [FORMULA ...]      # 锁定某个包
 brew unpin [FORMULA ...]    # 取消锁定
 
-✅清理
+✅**清理**
 
 brew cleanup # 清理所有包的旧版本
 brew cleanup [FORMULA ...] # 清理指定包的旧版本
 brew cleanup -n # 查看可清理的旧版本包，不执行实际操作
 
-💻核心目录
+💻**核心目录**
 
-/opt/homebrew   主安装目录，一般在opt子目录下
+/opt/homebrew   主安装目录软链接，链接到Cellar的bin目录
 
-/opt/homebrew/bin   可执行文件软链接
+/opt/homebrew/bin   可执行文件软链接，链接到Cellar的具体版本目录
 
 /opt/homebrew/Cellar  多版本存储
 
@@ -115,6 +115,10 @@ export PATH="/opt/homebrew/bin:$PATH"   环境变量注入
 
 brew unlink apache-flink
 brew link apache-flink@1.18
+
+也可以用switch命令： brew switch apache-flink 1.18.0
+
+
 
 
 
