@@ -1,4 +1,6 @@
-[使用](https://developpaper.com/using-maven-helper-to-resolve-maven-plug-in-conflict/)
+# 解决冲突
+
+[使用](https://developpaper.com/using-maven-helper-to-resolve-maven-plug-in-conflict/), [解决冲突](https://medium.com/@liam.su8/how-to-solve-dependency-conflicts-with-maven-76f3b08f89a2)
 
 1. 点击Dependency Analyzer
 2. 每次exclude之后，要refresh一下才能看到是否解决了！！！
@@ -12,3 +14,4 @@
 ![image-20220505180220726](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20220505180220726.png)
 
 红实线代表冲突，蓝色实线代表正常依赖
+

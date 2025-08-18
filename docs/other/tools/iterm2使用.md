@@ -25,6 +25,11 @@
 > 这里上下切换会与分屏软件pane 的快捷键冲突，我取消了pane 的快捷键
 
 ✅查看剪贴板历史：command + shift + h
+	command+; 查看输入过的命令，ctrl+r 搜索历史命令
+
+✅广播输入： command+alt+i
+
+😀 隐藏窗口，alt+空格 ， 可在`iTerm2`→`Preferences`→`Keys`-> `Hotkey` 中设置快捷键，方便快速打开或隐藏iTerm2窗口。
 
 
 
