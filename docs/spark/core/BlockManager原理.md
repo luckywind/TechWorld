@@ -22,3 +22,73 @@ ConnectionManager：负责创建当前节点BlockManager到远程其他节点的
 
 3.当使用BlockManager执行了数据变更操作，则需要将BlockStatus信息同步到BlockManagerMaster节点上，并在对应的BlockManagerInfo更新BlockStatus对象，实现全局元数据的维护。
 
+
+
+# 基本实现
+
+[Spark Core源码精读计划21 | Spark Block的基本实现](https://cloud.tencent.com/developer/article/1491360?policyId=1004)
+
+## BlockId
+
+```scala
+sealed abstract class BlockId {
+  def name: String
+
+  def asRDDId: Option[RDDBlockId] = if (isRDD) Some(asInstanceOf[RDDBlockId]) else None
+  def isRDD: Boolean = isInstanceOf[RDDBlockId]
+  def isShuffle: Boolean = isInstanceOf[ShuffleBlockId]
+  def isBroadcast: Boolean = isInstanceOf[BroadcastBlockId]
+
+  override def toString: String = name
+}
+```
+
+name方法返回该BlockId的唯一名称,  不同类型的数据块都有自己的BlockId 实现类，只是name 规则不一样
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/n6bqvcws0a.jpeg)
+
+## BlockData
+
+BlockData只是定义了数据转化的规范，并没有涉及具体的存储格式和读写流程，实现起来比较自由。BlockData目前有3个实现类：
+
+1. 基于内存和ChunkedByteBuffer的ByteBufferBlockData
+2. 基于磁盘和File的DiskBlockData，
+3. 加密的EncryptedBlockData
+
+## BlockInfo
+
+```scala
+private[storage] class BlockInfo(
+    val level: StorageLevel,
+    val classTag: ClassTag[_],
+    val tellMaster: Boolean) {
+  def size: Long = _size
+  def size_=(s: Long): Unit = {
+    _size = s
+    checkInvariants()
+  }
+  private[this] var _size: Long = 0
+
+  def readerCount: Int = _readerCount
+  def readerCount_=(c: Int): Unit = {
+    _readerCount = c
+    checkInvariants()
+  }
+  private[this] var _readerCount: Int = 0
+
+  def writerTask: Long = _writerTask
+  def writerTask_=(t: Long): Unit = {
+    _writerTask = t
+    checkInvariants()
+  }
+  private[this] var _writerTask: Long = BlockInfo.NO_WRITER
+
+  private def checkInvariants(): Unit = {
+    assert(_readerCount >= 0)
+    assert(_readerCount == 0 || _writerTask == BlockInfo.NO_WRITER)
+  }
+
+  checkInvariants()
+}
+```
+

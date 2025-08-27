@@ -23,10 +23,10 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 7. \frac{}{}  分数
 8. \underline、\overline
 9. \sqrt 开方  \sqrt[3]开3次方 $\sqrt 5$, $\sqrt[3] {5+3}$, $\sqrt{3}$
-10. \geq >= 、 \leq <=、\neq  $x \neq y$
+10. \geq >= 、 \leq <=、\neq  $x \neq y$,  等价`\iff`:$\iff$
 11. **集合**： in 、notin、subset、cup、cap
 
-
+12. 箭头：`\Rightarrow`$\Rightarrow$, 大写R 代表双箭头，小写代表单箭头，其他方向的用up/down/left 等
 
 关于公式块：
 

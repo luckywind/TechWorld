@@ -123,6 +123,16 @@ Storage部分可以申请Execution部分的所有空闲内存，直到Execution�
 
 #### 申请执行内存
 
+<font color=red>向execution申请内存代码流程</font>：
+
+1. 先获取Task目前已经分配到的内存。
+2. 当numBytes大于execution空闲内存，则会通过maybeGrowPool方法向storage**借内存**。
+3. 能获取的最大内存maxToGrant为numBytes和（maxMemoryPerTask - curMem）的较小值。
+4. 本次循环能获取真正的内存toGrant为maxToGrant和（execution向memory借用后可用的内存）的较小值。
+5. **若最终能申请的内存小于numBytes且申请的内存加上原来有的内存还不足以一个Task最小的使用内存minMemoryPerTask，则会阻塞，直到有足够的内存或者有新的Task进来减小了minMemoryPerTask的值。 否则直接返回本次分配到的内存。**
+
+
+
 ```
 while♻️
 3.1、获取当前活跃Task的数目numActiveTasks；
@@ -223,9 +233,85 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 #### 申请存储内存
 
+为某个blockId申请numBytes大小的内存：
+
+```scala
+override def acquireStorageMemory(
+      blockId: BlockId,
+      numBytes: Long,
+      memoryMode: MemoryMode): Boolean = synchronized {
+    assertInvariants()
+    assert(numBytes >= 0)
+    val (executionPool, storagePool, maxMemory) = memoryMode match {
+      case MemoryMode.ON_HEAP => (
+        onHeapExecutionMemoryPool,
+        onHeapStorageMemoryPool,
+        maxOnHeapStorageMemory)
+      case MemoryMode.OFF_HEAP => (
+        offHeapExecutionMemoryPool,
+        offHeapStorageMemoryPool,
+        maxOffHeapMemory)
+    }
+    //1 申请的内存大于storage和execution内存之和
+    if (numBytes > maxMemory) {
+      // Fail fast if the block simply won't fit
+      logInfo(s"Will not store $blockId as the required space ($numBytes bytes) exceeds our " +
+        s"memory limit ($maxMemory bytes)")
+      return false
+    }
+    // 大于storage空闲内存
+    if (numBytes > storagePool.memoryFree) {
+      //2 ❤️从 execution pool借用内存，不会多借，但也不会超过人家的空余
+      val memoryBorrowedFromExecution = Math.min(executionPool.memoryFree, numBytes)
+      //3 调整执行、存储内存池大小
+      executionPool.decrementPoolSize(memoryBorrowedFromExecution)
+      storagePool.incrementPoolSize(memoryBorrowedFromExecution)
+    }
+    // 4 分配存储内存，不足时会触发存储内存中的cache的释放 
+    storagePool.acquireMemory(blockId, numBytes)
+  }
+
+def acquireMemory(blockId: BlockId, numBytes: Long): Boolean = lock.synchronized {
+    // 计算需要释放的大小
+    val numBytesToFree = math.max(0, numBytes - memoryFree)
+    acquireMemory(blockId, numBytes, numBytesToFree)
+  }
 
 
+def acquireMemory(
+      blockId: BlockId,
+      numBytesToAcquire: Long,
+      numBytesToFree: Long): Boolean = lock.synchronized {
+    assert(numBytesToAcquire >= 0)
+    assert(numBytesToFree >= 0)
+    assert(memoryUsed <= poolSize)
+    if (numBytesToFree > 0) { // 释放存储内存
+      memoryStore.evictBlocksToFreeSpace(Some(blockId), numBytesToFree, memoryMode)
+    }
+    // NOTE: If the memory store evicts blocks, then those evictions will synchronously call
+    // back into this StorageMemoryPool in order to free memory. Therefore, these variables
+    // should have been updated.
+    val enoughMemory = numBytesToAcquire <= memoryFree
+    if (enoughMemory) {
+      _memoryUsed += numBytesToAcquire
+    }
+    enoughMemory
+  }
+```
 
+spark中内存中的block都是通过memoryStore来存储的，用`private val entries = new LinkedHashMap[BlockId, MemoryEntry[_]](32, 0.75f, true)`
+
+来维护了blockId和MemoryEntry（对应value的包装）的关联，另外方法中还定义了两个方法，`blockIsEvictable`方法是判断遍历到的blockId和当前blockId是否属于同一个rdd，因为不能踢出同一个rdd的另外一个block。`dropBlock`方法就是真正执行从内存中移除block的，若StorageLevel包括了使用disk，则会写到磁盘文件。
+
+**整段代码的逻辑简单概述就是**：遍历当前memoryStore中存的每个block（不是和当前请求的block属于同于同一rdd），直到block对应的内存之和大于所需释放的内存才停止遍历，也有可能遍历完了都还不能满足所需的内存。若能释放的内存满足所需的内存，则真正执行移除，否则不移除，因为不可能一个block在内存中一部分，在磁盘一部分，最后返回真正剔除block释放的内存。
+
+<font color=red>总结一下向StorageMemory申请内存的过程（在MemoryMode.ON_HEAP模式下）</font>：
+
+- 若numBytes大于storage和execution内存之和，抛异常。
+- 若numBytes大于storage空闲内存，向execution借用min（executionFree,numBytes）大的内存，并更新各自的poolSize。
+- 若申请完后还不够，则释放storage中的block来补足。 
+  - memoryStore缓存的block大小满足需要补足的大小，则真正执行剔除（遍历block直到内存满足需求对应的block），否则不剔除。
+- 最终若空闲内存满足numBytes则返回true，否则返回false。
 
 
 
@@ -243,6 +329,10 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 
 这段逻辑可直接查看org.apache.spark.memory.ExecutionMemoryPool#acquireMemory源码
 
+### 执行内存的使用
+
+在shuffle write的时候，并不会直接将数据写到磁盘（详情请看[Shuffle Write解析](https://cloud.tencent.com/developer/article/1198463?from_column=20421&from=20421)），而是先写到一个集合中，此集合占用的内存就是execution内存，初始给的大小是5M，可通过`spark.shuffle.spill.initialMemoryThreshold`进行设置，每写一次数据就判断是否需要溢写到磁盘，溢写之前还尝试会向execution申请来避免溢写：当insert&update的次数是32的倍数且当前集合的大小已经大于等于了已经申请到的内存，此时会尝试向execution申请更多的内存来避免spill，申请的大小为2倍当前集合大小减去已经申请到的内存大小
+
 ### tips
 
 1. Spark的Executor拿到的 Eden，Survivor 和 Tenured 三部分空间，而这里面一共包含了两个 Survivor 区域，而这两个 Survivor 区域在任何时候我们只能用到其中一个
@@ -252,6 +342,8 @@ def maybeGrowExecutionPool(extraMemoryNeeded: Long): Unit = {
 ### 对应源码
 
 详细请查看UnifiedMemoryManager.scala，里面有详细注释
+
+[内存存储MemoryStore的具体实现](https://cloud.tencent.com/developer/article/1491372?from=article.detail.1491368)
 
 
 
@@ -533,12 +625,6 @@ StorageMemory = totalOnHeapStorageMemory + totalOffHeapStorageMemory
 
 
 
-# MemoryStore
-
-[内存存储MemoryStore的具体实现](https://cloud.tencent.com/developer/article/1491372?from=article.detail.1491368)
-
-
-
 
 
 # SparkEnv
@@ -689,11 +775,10 @@ Executor堆外内存的配置需要在spark-submit脚本里配置，
 
 调节连接等待时长后，通常可以避免部分的XX文件拉取失败、XX文件lost等报错。
 
-# 参考2
+### **堆内内存优缺点分析**
 
 [](https://blog.csdn.net/pre_tender/article/details/101517789)
 
-**堆内内存优缺点分析**
 我们知道，堆内内存采用JVM来进行管理。而JVM的对象可以以序列化的方式存储，序列化的过程是将对象转换为二进制字节流，本质上可以理解为将非连续空间的链式存储转化为连续空间或块存储，在访问时则需要进行序列化的逆过程——反序列化，将字节流转化为对象，序列化的方式可以节省存储空间，但增加了存储和读取时候的计算开销。
 
 对于Spark中序列化的对象，由于是字节流的形式，其占用的内存大小可直接计算。
