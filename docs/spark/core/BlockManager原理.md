@@ -24,7 +24,7 @@ ConnectionManager：负责创建当前节点BlockManager到远程其他节点的
 
 
 
-# 基本实现
+# Block基本实现
 
 [Spark Core源码精读计划21 | Spark Block的基本实现](https://cloud.tencent.com/developer/article/1491360?policyId=1004)
 
@@ -92,3 +92,54 @@ private[storage] class BlockInfo(
 }
 ```
 
+
+
+# Block 管理
+
+## MemoryStore
+
+它主要用来在内存中存储Block数据，可以避免重复计算同一个RDD的Partition数据。一个Block对应着一个RDD的一个Partition的数据。
+
+MemoryStore也提供了多种存储方式:
+
+- 以序列化格式保存Block数据
+  首先，通过MemoryManager来申请Storage内存，调用putBytes方法，会根据size大小去申请Storage内存，如果申请成功，则会将blockId对应的Block数据保存在内部的LinkedHashMap[BlockId, MemoryEntry[_]]映射表中，然后以SerializedMemoryEntry这种序列化的格式存储，实际SerializedMemoryEntry就是简单指向Buffer中数据的引用对象
+- 基于记录迭代器，以反序列化Java对象形式保存Block数据
+  - 如果内存中能放得下，则返回最终Block数据记录的大小，
+  - 否则返回一个PartiallyUnrolledIterator[T]迭代器.
+- 基于记录迭代器，以序列化二进制格式保存Block数据
+
+## DiskStore
+
+DiskStore提供了将Block数据写入到磁盘的基本操作，它是通过DiskBlockManager来管理逻辑上Block到物理磁盘上Block文件路径的映射关系。
+
+DiskStore中数据的存取本质上就是字节序列与磁盘文件之间的转换，它通过putBytes方法把字节序列存入磁盘文件，再通过getBytes方法将文件内容转换为数据块。
+
+## BlockManager
+
+在Spark集群中，当提交一个Application执行时，该Application对应的Driver以及所有的Executor上，都存在一个BlockManager、BlockManagerMaster，而BlockManagerMaster是负责管理各个BlockManager之间通信，这个BlockManager管理集群
+
+![img](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/40rdwfxyrb.jpeg)
+
+一个RDD的Partition对应一个ShuffleMapTask，一个ShuffleMapTask会在一个Executor上运行，它负责处理RDD的一个Partition对应的数据，基本处理流程，如下所示：
+
+1. 根据该Partition的数据，创建一个RDDBlockId（由RDD ID和Partition Index组成），即得到一个稳定的blockId（如果该Partition数据被处理过，则可能本地或者远程Executor存储了对应的Block数据）。
+2. 先从BlockManager获取该blockId对应的数据是否存在，如果本地存在（已经处理过），则直接返回Block结果（BlockResult）；否则，查询远程的Executor是否已经处理过该Block，处理过则直接通过网络传输到当前Executor本地，并根据StorageLevel设置，保存Block数据到本地MemoryStore或DiskStore，同时通过BlockManagerMaster上报Block数据状态（通知Driver当前的Block状态，亦即，该Block数据存储在哪个BlockManager中）。
+3. 如果本地及远程Executor都没有处理过该Partition对应的Block数据，则调用RDD的compute方法进行计算处理，并将处理的Block数据，根据StorageLevel设置，存储到本地MemoryStore或DiskStore。
+4. 根据ShuffleManager对应的ShuffleWriter，将返回的该Partition的Block数据进行Shuffle写入操作
+
+## BlockInfoManager
+
+用户提交一个Spark Application程序，如果程序对应的DAG图相对复杂，其中很多Task计算的结果Block数据都有可能被重复使用，这种情况下如何去控制某个Executor上的Task线程去读写Block数据呢？其实，BlockInfoManager就是用来控制Block数据读写操作，并且跟踪Task读写了哪些Block数据的映射关系，这样如果两个Task都想去处理同一个RDD的同一个Partition数据，如果没有锁来控制，很可能两个Task都会计算并写同一个Block数据，从而造成混乱。我们分析每种情况下，BlockInfoManager是如何管理Block数据（同一个RDD的同一个Partition）读写的：
+
+- 第一个Task请求写Block数据
+
+这种情况下，没有其他Task写Block数据，第一个Task直接获取到写锁，并启动写Block数据到本地MemoryStore或DiskStore。如果其他写Block数据的Task也请求写锁，则该Task会阻塞，等待第一个获取写锁的Task完成写Block数据，直到第一个Task写完成，并通知其他阻塞的Task，然后其他Task需要再次获取到读锁来读取该Block数据。
+
+- 第一个Task正在写Block数据，其他Task请求读Block数据
+
+这种情况，Block数据没有完成写操作，其他读Block数据的Task只能阻塞，等待写Block的Task完成并通知读Task去读取Block数据。
+
+- Task请求读取Block数据
+
+如果该Block数据不存在，则直接返回空，表示当前RDD的该Partition并没有被处理过。如果当前Block数据存在，并且没有其他Task在写，表示已经完成了些Block数据操作，则该Task直接读取该Block数据。

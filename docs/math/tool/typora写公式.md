@@ -34,3 +34,57 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 2. 公式内换行： `\\`
 
 关于行内公式：`$a<b<c$`
+
+
+
+## **括号**
+
+使用花括号有两种 [环境](https://katex.org/docs/supported.html?spm=a2c6h.12873639.article-detail.4.19a6874a5uWcox#environments) 可以选择：
+
+`cases` 左花括号，内容靠左边对齐;
+
+`rcases` 右花括号，内容靠右边对齐;
+
+```markdown
+$$
+	我是夜阑的狗
+	\begin{cases}
+		角色保底+1 \\
+		武器定轨+1\\
+		七七命座+1\\
+		斩尽牛杂+999
+	\end{cases}
+$$
+```
+
+$$
+我是夜阑的狗
+	\begin{cases}
+		角色保底+1 \\
+		武器定轨+1\\
+		七七命座+1\\
+		斩尽牛杂+999
+	\end{cases}
+$$
+
+```markdown
+$$
+	\begin{rcases}
+		角色保底+1 \\
+		武器定轨+1\\
+		七七命座+1\\
+		斩尽牛杂+999
+	\end{rcases}
+	我是夜阑的狗
+$$
+```
+
+$$
+\begin{rcases}
+		角色保底+1 \\
+		武器定轨+1\\
+		七七命座+1\\
+		斩尽牛杂+999
+	\end{rcases}
+	我是夜阑的狗
+$$

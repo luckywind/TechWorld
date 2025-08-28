@@ -21,6 +21,16 @@ from IPython.core.interactiveshell import InteractiveShell
 InteractiveShell.ast_node_interactivity = "all"
 ```
 
+
+
+https://blog.csdn.net/deephub/article/details/108689139
+
+```shell
+%load_ext nb_black   代码自动格式化
+shift+tab快捷键   查看函数doc
+窗口左边双击可折叠窗口
+```
+
 ## 扩展工具
 
 [添加目录、提示等](https://www.zhihu.com/question/266988943)
@@ -52,10 +62,10 @@ Enter : 转入编辑模式
 Shift-Enter : 运行本单元，选中下个单元
 Ctrl-Enter : 运行本单元
 Alt-Enter : 运行本单元，在其下插入新单元
-Y : 单元转入代码状态
-M :单元转入markdown状态
+**Y : 单元转入代码状态**
+**M :单元转入markdown状态**
 R : 单元转入raw状态
-1 : 设定 1 级标题
+**1 : 设定 1 级标题**
 2 : 设定 2 级标题
 3 : 设定 3 级标题
 4 : 设定 4 级标题
@@ -67,12 +77,12 @@ Down : 选中下方单元
 J : 选中下方单元
 Shift-K : 扩大选中上方单元
 Shift-J : 扩大选中下方单元
-A : 在上方插入新单元
-B : 在下方插入新单元
-X : 剪切选中的单元
-C : 复制选中的单元
+**A : 在上方插入新单元**
+**B : 在下方插入新单元**
+**X : 剪切选中的单元**
+**C : 复制选中的单元**
 Shift-V : 粘贴到上方单元
-V : 粘贴到下方单元
+**V : 粘贴到下方单元**
 Z : 恢复删除的最后一个单元
 D,D : 删除选中的单元
 Shift-M : 合并选中的单元
@@ -109,8 +119,8 @@ Ctrl-Delete : 删除后面一个字
 Esc : 进入命令模式
 Ctrl-M : 进入命令模式
 Shift-Enter : 运行本单元，选中下一单元
-Ctrl-Enter : 运行本单元
-Alt-Enter : 运行本单元，在下面插入一单元
+**Ctrl-Enter : 运行本单元**
+**Alt-Enter : 运行本单元，在下面插入一单元**
 Ctrl-Shift-- : 分割单元
 Ctrl-Shift-Subtract : 分割单元
 Ctrl-S : 文件存盘

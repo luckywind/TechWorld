@@ -389,7 +389,7 @@ $pip download --only-binary=:all: --platform=win_amd64 --python-version=2.7 -d p
 
 ```
 
-
+pip install numpy==1.19.5 --upgrade  升级指定模块为指定版本
 
 
 
