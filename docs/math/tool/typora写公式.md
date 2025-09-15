@@ -15,7 +15,7 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 规律： 
 
 1. {}内的会作为一个整体
-2. \pm  plus与minus   $x \pm y =z$
+2. **\pm**  plus与minus   $x \pm y =z$
 3. \times    $x \times y=z$
 4. \cdot    $x \cdot y=z$，  \cdots    $\cdots$
 5. \times 乘法
