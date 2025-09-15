@@ -53,6 +53,14 @@ git revert commit_id 用一次新的commit来撤销之前的某个commit
 git revert --no-commit commit1..commit2
 ```
 
+git reset --soft HEAD~1 撤销提交，删除最近一个commit
+
+
+
+
+
+
+
 ## 远程仓库
 
 查看使用帮助： git remote --help
