@@ -309,3 +309,20 @@ apple Music取消： 点击头像->管理订阅。
 
 # 多版本java
 
+
+
+# appStore
+
+1364983233@qq.com
+
+Aa001132
+
+# mac词典
+
+[少数派](https://sspai.com/post/43155)
+
+[](https://www.bilibili.com/opus/421455537215631785)
+
+## 字体
+
+[免费下载](https://chinesefonts.org/)
