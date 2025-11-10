@@ -35,7 +35,13 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 
 关于行内公式：`$a<b<c$`
 
-
+3. 多行公式左对齐：用`\begin{aligned}`包裹，且对齐处写`&`
+$$
+\begin{aligned}
+S &= 1 + 2 + 3 + \cdots + n \\
+  &= \frac{n(n+1)}{2}
+\end{aligned}
+$$
 
 ## **括号**
 

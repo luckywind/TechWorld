@@ -282,6 +282,68 @@ official [announcement article](https://blog.google/technology/developers/introd
 提示词
 请检查小红书是否已登录，如果已登录请你发表一篇小红书，核心内容是高思导引刷题技巧，具体内容需要你自己写，你可以用gen_title_pic.py自己生成一个  图片，注意它把图片放哪里了，你需要拷贝到当前目录，然后完成发布
 
+# 生成图片
+
+[参考](https://github.com/gemini-cli-extensions/nanobanana)
+
+`gemini extensions install https://github.com/gemini-cli-extensions/nanobanana`
+
+The image generation failed because a valid API key is not configured. Please set one of the following
+  environment variables: NANOBANANA_GEMINI_API_KEY, NANOBANANA_GOOGLE_API_KEY, GEMINI_API_KEY, or GOOGLE_API_KEY.
+
+  For more details on authentication, you can visit:
+  https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/authentication.md
+
+
+
+## 命令
+
+/generate - 单次或批量图片生成（支持风格/变体选项）
+
+> ```
+> /generate "sunset over mountains" --count=3 --preview
+> ```
+
+/edit - 图片编辑
+
+> ```
+> /edit my_photo.png "add sunglasses to the person"
+> ```
+
+/restore - 图片修复
+
+/icon - 生成多尺寸应用图标、网站图标和界面元素
+
+/pattern - 生成用于背景的无缝图案与纹理
+
+/story - 生成讲述视觉故事或流程的序列图像
+
+/diagram - 生成技术图表、流程图和建筑草图
+
+/nanobanana - 自然语言交互界面
+
+> ```
+> /nanobanana create a logo for my tech startup
+> ```
+
+✅命令选项
+
+--count=N - 生成数量（1-8，默认值：1）
+
+--styles="风格1,风格2" - 指定艺术风格（逗号分隔）
+
+--variations="变体1,变体2" - 特定变体类型
+
+--format=grid|separate - 输出格式（默认：separate/独立文件）
+
+--seed=123 - 随机数种子（用于生成可复现的变体）
+
+--preview - 自动在默认查看器中打开生成图片
+
+
+
+
+
 # 参考
 
 [免费白嫖 Claude Code，国内也能免费使用（保姆级教程）](https://cloud.tencent.com/developer/article/2539379)
