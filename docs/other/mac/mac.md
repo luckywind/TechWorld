@@ -54,6 +54,16 @@ cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 3、再次在系统偏好设置中打开网络页面，在左边框的下方点击加号，接口选择WiFi，服务名称随便写，点击创建，然后点击打开WiFi，链接你的WiFi。应该可以上网了。亲测可行。
 ```
 
+macos升级到Ventura之后设置界面改变操作上有细微的差距，主要就是点击左边侧栏的“网络”，右键“Wi-Fi”，然后“删除服务”，接着点击右下方问好旁边的三个小点，选择“添加服务”，接口那里选“Wi-Fi”，添加成功之后问题就解决了！
+
+## 有线无法上网
+
+1. 连接网线，**雷雳网桥**配置 IP 地址，掩码 255.255.255.0
+
+2. “位置”这里一定要选择自动，**USB LAN** 才会是连接
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20251117214939251.png" alt="image-20251117214939251" style="zoom:50%;" />
+
 # quickTime录制屏内声音
 
 [录屏内声音](https://blog.csdn.net/haifangnihao/article/details/105028491)
@@ -130,7 +140,7 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 [clashX](https://clashx.org/clashx-node/)
 
-#### 忽略某些网站的代理
+### 忽略某些网站的代理
 
 多个域名之间需要用逗号分割，保存后会自动转为、。
 
@@ -152,7 +162,18 @@ http://www.rawinfopages.com/mac/content/mdworker-and-mds-osx-problems-solved-spe
 
 
 
-#### 终端代理
+### 出站模式
+
+- 全局连接：所有请求直接发往代理服务器
+- 规则判断：所有请求根据配置文件规则进行分流
+- 脚本模式：所有请求根据脚本文件规则进行分流
+- 直连连接：所有请求直接发往目的地，即不使用代理
+
+一般选择 `规则判断` 即可。
+
+
+
+### 终端代理
 
 [参考](https://limbopro.com/archives/MacOS_terminal_proxy_setting.html)
 

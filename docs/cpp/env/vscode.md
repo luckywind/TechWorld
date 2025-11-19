@@ -200,3 +200,10 @@ cmd+shift+p 搜索sftp安装后，配置
 remote -SSH
 
 按F1搜索 remote-ssh 连接服务器
+
+1. [服务器离线远程](https://zhuanlan.zhihu.com/p/294933020)
+
+1. Failed to set up dynamic port forwarding connection over SSH to the VS Code Server. (Show log)
+
+https://blog.csdn.net/weixin_54468359/article/details/144004739
+
