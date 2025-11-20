@@ -39,6 +39,12 @@ $\frac{x+y}{y+z}$,  $\displaystyle \frac{x+y}{y+z}$
 
 
 
+
+
+ `\prod` $\prod$
+
+
+
 ## **括号**
 
 使用花括号有两种 [环境](https://katex.org/docs/supported.html?spm=a2c6h.12873639.article-detail.4.19a6874a5uWcox#environments) 可以选择：

@@ -161,10 +161,10 @@ gemini -m gemini-2.5-flash   指定模型
  docs  open full Gemini CLI documentation in your browser
  directory  Manage workspace directories
  editor  set external editor preference
- extensions  list active extensions
- help  for help on gemini-cli
+ extensions 列出扩展
+ help  查看帮助
  ide  manage IDE integration
- init  Analyzes the project and creates a tailored GEMINI.md file.
+ init  分析项目并创建 GEMINI.md file.
  mcp  list configured MCP servers and tools, or authenticate with OAuth-enabled servers
  quit  exit the cli
 
@@ -180,7 +180,7 @@ gemini -m gemini-2.5-flash   指定模型
 
 -y 自动接受所有动作请求
 
--m 模型
+-m 模型  可以用/model 来列出并选择模型
 
 -p 追加提示词
 
@@ -281,6 +281,288 @@ official [announcement article](https://blog.google/technology/developers/introd
 
 提示词
 请检查小红书是否已登录，如果已登录请你发表一篇小红书，核心内容是高思导引刷题技巧，具体内容需要你自己写，你可以用gen_title_pic.py自己生成一个  图片，注意它把图片放哪里了，你需要拷贝到当前目录，然后完成发布
+
+# 扩展
+
+## 生成图片
+
+[nanobanana](https://github.com/gemini-cli-extensions/nanobanana)
+
+A professional Gemini CLI extension for generating and manipulating images using the **Gemini 2.5 Flash Image** model (Nano Banana).
+
+
+
+1. **API Key**: Set one of these environment variables:
+   - `NANOBANANA_GEMINI_API_KEY` (recommended for Gemini API key users who
+     normally authenticate to Gemini CLI using the "Login with Google" option)
+   - `NANOBANANA_GOOGLE_API_KEY` (recommended for Vertex API key users who
+     normally authenticate to Gemini CLI using the "Login with Google" option)
+   - `GEMINI_API_KEY` (fallback)
+   - `GOOGLE_API_KEY` (fallback)
+
+For authentication setup, see the [official Gemini CLI documentation](https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/authentication.md).
+
+2. Activate
+
+Restart the Gemini CLI. The following commands will be available:
+
+- `/generate` - Single or multiple image generation with style/variation options
+- `/edit` - Image editing
+- `/restore` - Image restoration
+- `/icon` - Generate app icons, favicons, and UI elements in multiple sizes
+- `/pattern` - Generate seamless patterns and textures for backgrounds
+- `/story` - Generate sequential images that tell a visual story or process
+- `/diagram` - Generate technical diagrams, flowcharts, and architectural mockups
+- `/nanobanana` - Natural language interface
+
+## 💡 Usage
+
+The extension provides multiple command options for different use cases:
+
+### 🎯 Specific Commands (Recommended)
+
+**Generate Images:**
+
+```bash
+# Single image
+/generate "a watercolor painting of a fox in a snowy forest"
+
+# Multiple variations with preview
+/generate "sunset over mountains" --count=3 --preview
+
+# Style variations
+/generate "mountain landscape" --styles="watercolor,oil-painting" --count=4
+
+# Specific variations with auto-preview
+/generate "coffee shop interior" --variations="lighting,mood" --preview
+```
+
+**Edit Images:**
+
+```bash
+/edit my_photo.png "add sunglasses to the person"
+/edit portrait.jpg "change background to a beach scene" --preview
+```
+
+**Restore Images:**
+
+```bash
+/restore old_family_photo.jpg "remove scratches and improve clarity"
+/restore damaged_photo.png "enhance colors and fix tears" --preview
+```
+
+**Generate Icons:**
+
+```bash
+# App icon in multiple sizes
+/icon "coffee cup logo" --sizes="64,128,256" --type="app-icon" --preview
+
+# Favicon set
+/icon "company logo" --type="favicon" --sizes="16,32,64"
+
+# UI elements
+/icon "settings gear icon" --type="ui-element" --style="minimal"
+```
+
+**Create Patterns:**
+
+```bash
+# Seamless pattern
+/pattern "geometric triangles" --type="seamless" --style="geometric" --preview
+
+# Background texture
+/pattern "wood grain texture" --type="texture" --colors="mono"
+
+# Wallpaper pattern
+/pattern "floral design" --type="wallpaper" --density="sparse"
+```
+
+**Generate Stories:**
+
+```bash
+# Visual story sequence
+/story "a seed growing into a tree" --steps=4 --type="process" --preview
+
+# Step-by-step tutorial
+/story "how to make coffee" --steps=6 --type="tutorial"
+
+# Timeline visualization
+/story "evolution of smartphones" --steps=5 --type="timeline"
+```
+
+**Create Diagrams:**
+
+```bash
+# System flowchart
+/diagram "user login process" --type="flowchart" --style="professional" --preview
+
+# Architecture diagram
+/diagram "microservices architecture" --type="architecture" --complexity="detailed"
+
+# Database schema
+/diagram "e-commerce database design" --type="database" --layout="hierarchical"
+```
+
+### 🌟 Natural Language Command (Flexible)
+
+**Open-ended prompts:**
+
+```bash
+/nanobanana create a logo for my tech startup
+/nanobanana I need 5 different versions of a cat illustration in various art styles
+/nanobanana fix the lighting in sunset.jpg and make it more vibrant
+```
+
+🎨 Advanced Generation Options
+
+**`--count=N`** - Number of variations (1-8, default: 1)
+**`--styles="style1,style2"`** - Comma-separated artistic styles
+**`--variations="var1,var2"`** - Specific variation types  
+**`--format=grid|separate`** - Output format (default: separate)
+**`--seed=123`** - Seed for reproducible variations
+**`--preview`** - Automatically open generated images in default viewer
+
+ Available Styles
+
+- `photorealistic` - Photographic quality images
+- `watercolor` - Watercolor painting style
+- `oil-painting` - Oil painting technique
+- `sketch` - Hand-drawn sketch style
+- `pixel-art` - Retro pixel art style
+- `anime` - Anime/manga art style
+- `vintage` - Vintage/retro aesthetic
+- `modern` - Contemporary/modern style
+- `abstract` - Abstract art style
+- `minimalist` - Clean, minimal design
+
+Available Variations
+
+- `lighting` - Different lighting conditions (dramatic, soft)
+- `angle` - Various viewing angles (above, close-up)
+- `color-palette` - Different color schemes (warm, cool)
+- `composition` - Different layouts (centered, rule-of-thirds)
+- `mood` - Various emotional tones (cheerful, dramatic)
+- `season` - Different seasons (spring, winter)
+- `time-of-day` - Different times (sunrise, sunset)
+
+Advanced Examples
+
+**Style Variations:**
+
+```bash
+/generate "mountain landscape" --styles="watercolor,oil-painting,sketch,photorealistic"
+# Creates the same mountain scene in 4 different artistic styles
+```
+
+**Multiple Variations:**
+
+```bash
+/generate "cozy coffee shop" --variations="lighting,mood" --count=4
+# Generates: dramatic lighting, soft lighting, cheerful mood, dramatic mood versions
+```
+
+**Combined Options:**
+
+```bash
+/generate "friendly robot character" --styles="anime,minimalist" --variations="color-palette"
+# Creates anime and minimalist versions with different color palettes
+```
+
+**Simple Multiple Generation:**
+
+```bash
+/generate "tech startup logo" --count=6
+# Generates 6 different interpretations of the same prompt
+```
+
+## 📖 Visual Storytelling
+
+The `/story` command generates sequential images that tell a visual story or demonstrate a step-by-step process.
+
+### Story Options
+
+**`--steps=N`** - Number of sequential images (2-8, default: 4)
+**`--type="story|process|tutorial|timeline"`** - Sequence type (default: story)
+**`--style="consistent|evolving"`** - Visual consistency across frames (default: consistent)
+**`--layout="separate|grid|comic"`** - Output layout (default: separate)
+**`--transition="smooth|dramatic|fade"`** - Transition style between steps (default: smooth)
+**`--format="storyboard|individual"`** - Output format (default: individual)
+
+### Story Examples
+
+```bash
+# Product development process
+/story "idea to launched product" --steps=5 --type="process" --style="consistent"
+
+# Educational tutorial
+/story "git workflow tutorial" --steps=6 --type="tutorial" --layout="comic"
+
+# Brand evolution timeline
+/story "company logo evolution" --steps=4 --type="timeline" --transition="smooth"
+```
+
+## 📊 Technical Diagrams
+
+The `/diagram` command generates professional technical diagrams, flowcharts, and architectural mockups from simple text descriptions.
+
+### Diagram Options
+
+**`--type="flowchart|architecture|network|database|wireframe|mindmap|sequence"`** - Diagram type (default: flowchart)
+**`--style="professional|clean|hand-drawn|technical"`** - Visual style (default: professional)
+**`--layout="horizontal|vertical|hierarchical|circular"`** - Layout orientation (default: hierarchical)
+**`--complexity="simple|detailed|comprehensive"`** - Level of detail (default: detailed)
+**`--colors="mono|accent|categorical"`** - Color scheme (default: accent)
+**`--annotations="minimal|detailed"`** - Label and annotation level (default: detailed)
+
+### Diagram Types & Use Cases
+
+- **flowchart**: Process flows, decision trees, workflows
+- **architecture**: System architecture, microservices, infrastructure
+- **network**: Network topology, server configurations
+- **database**: Database schemas, entity relationships
+- **wireframe**: UI/UX mockups, page layouts
+- **mindmap**: Concept maps, idea hierarchies
+- **sequence**: Sequence diagrams, API interactions
+
+### 流程图 
+
+```bash
+# Development workflow
+/diagram "CI/CD pipeline with testing stages" --type="flowchart" --complexity="detailed"
+
+# System design
+/diagram "chat application architecture" --type="architecture" --style="technical"
+
+# API documentation
+/diagram "REST API authentication flow" --type="sequence" --layout="vertical"
+
+# Database design
+/diagram "social media database schema" --type="database" --annotations="detailed"
+```
+
+Generated images are saved to `./nanobanana-output/` which is created automatically.
+
+## 🐛 Troubleshooting
+
+1. **"Command not recognized"**: Ensure extension is in `~/.gemini/extensions/nanobanana-extension/` and Gemini CLI is restarted
+
+2. **"No API key found"**: Set `GEMINI_API_KEY` environment variable:
+
+   ```bash
+   export GEMINI_API_KEY="your-api-key-here"
+   ```
+
+   使用ikuuv2梯子到AI Studio创建一个key
+
+3. **"Build failed"**: Ensure Node.js 18+ is installed and run:
+
+   ```bash
+   npm run install-deps && npm run build
+   ```
+
+4. **"Image not found"**: Check that input files are in one of the searched directories (see File Search Locations above)
+
+
 
 # 参考
 

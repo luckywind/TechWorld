@@ -349,3 +349,13 @@ Aa001132
 [免费下载](https://chinesefonts.org/)
 =======
 
+# wps 崩溃
+
+删除配置信息
+
+```shell
+rm -rf ~/Library/Application\ Support/com.kingsoft.*
+rm -rf ~/Library/Preferences/com.kingsoft.*
+rm -rf ~/Library/Caches/com.kingsoft.*
+```
+
