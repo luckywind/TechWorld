@@ -181,10 +181,19 @@ gemini -m gemini-2.5-flash   指定模型
 -y 自动接受所有动作请求
 
 -m 模型  可以用/model 来列出并选择模型
+gemini-2.5-flash  /gemini-2.5-flash-lite gemini-3-pro-preview gemini-2.5-pro
 
--p 追加提示词
 
 
+### 非交互式模式
+
+-p 追加提示词  
+
+gemini  “请介绍你自己”
+
+> COMMIT_MSG=$(gemini "为最近的改动生成一条简洁的Git提交信息")
+
+[参考](https://blog.csdn.net/gitblog_01166/article/details/152032928)
 
 
 
@@ -195,6 +204,12 @@ gemini -m gemini-2.5-flash   指定模型
 `/ide enable/disable/status`可以手动控制是否连接到IDE
 
 ### 示例
+
+gemini "请你发布一篇关于小学分数学习的小红书" -m gemini-2.5-flash
+
+
+
+
 
 例如，修复一个开源项目的bug 的提示词
 
@@ -569,3 +584,13 @@ Generated images are saved to `./nanobanana-output/` which is created automatica
 [免费白嫖 Claude Code，国内也能免费使用（保姆级教程）](https://cloud.tencent.com/developer/article/2539379)
 
 [Gemini CLI: A Guide With Practical Examples](https://www.datacamp.com/tutorial/gemini-cli)
+
+# 问题
+
+## Requested entity was not found
+
+修改模型： -m gemini-2.5-flash
+
+##  Tool "run_shell_command" not found in registry
+
+非交互模式有些工具被禁用了，[参考](https://github.com/google-gemini/gemini-cli/issues/5382)
