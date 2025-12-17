@@ -359,3 +359,8 @@ rm -rf ~/Library/Preferences/com.kingsoft.*
 rm -rf ~/Library/Caches/com.kingsoft.*
 ```
 
+# icloud 备份
+
+icloud 根路径在/Users/chengxingfu/Library/Mobile Documents/com~apple~CloudDocs
+
+备份，重登账号解决卡死问题

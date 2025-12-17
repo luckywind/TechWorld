@@ -31,7 +31,7 @@
 
 😀 隐藏窗口，alt+空格 ， 可在`iTerm2`→`Preferences`→`Keys`-> `Hotkey` 中设置快捷键，方便快速打开或隐藏iTerm2窗口。
 
-
+✅窗口组合： 点击切换到需要组合的 tab，拖动到想要停留的位置，会和前一个 tab 组合
 
 # Profile设置
 

@@ -66,6 +66,10 @@ cmd+k然后cmd+s搜索快捷键 , 把run code的快捷键修改为cmd+r
 
 [对应文档](https://yang-xijie.github.io/LECTURE/vscode-cpp/5_%E5%BC%80%E5%90%AFVSCode%E7%9A%84%E5%A4%A7%E9%97%A8/)
 
+# markdown
+
+配置加粗: markdown all in one
+
 
 
 # 插件
