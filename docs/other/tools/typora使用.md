@@ -101,7 +101,9 @@ $$
 
 https://blog.csdn.net/wirelessqa/article/details/99697618
 
+### 图片默认宽度
 
+[设置typora插入图片的默认大小](https://blog.csdn.net/doubleguy/article/details/120227055)
 
 
 
@@ -217,3 +219,11 @@ enter == 双回车
 ### 导出保留换行
 
 打开偏好设置，Markdown->空行与换行，导出与打印中选择保留空格与换行
+
+### 导出选项
+
+分页、页首、页眉设置
+
+![image-20251230151237725](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20251230151237725.png)
+
+当导出图片总是换行时，说明页面高度不够，修改导出页面高度即可

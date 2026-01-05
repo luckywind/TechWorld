@@ -70,7 +70,7 @@ cmd+k然后cmd+s搜索快捷键 , 把run code的快捷键修改为cmd+r
 
 配置加粗: markdown all in one
 
-
+上传剪贴板图片： cmd+Option+U
 
 # 插件
 
