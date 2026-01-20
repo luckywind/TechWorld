@@ -82,7 +82,9 @@ Session里对Logging打勾，填上记录的目录和文件名
 
 
 
+## 防止会话断开
 
+http://bluebiu.com/blog/iterm2-ssh-session-idle.html
 
 # 上传下载
 
@@ -198,4 +200,10 @@ Action:             Run Coprocess
 Parameters:         /usr/local/bin/iterm2-zmodem rz
 instant: true
 ```
+
+# 替代品
+
+Xterminal 收费
+
+[KingToolbox](https://github.com/kingToolbox/WindTerm/releases) 免费
 

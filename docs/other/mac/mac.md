@@ -361,6 +361,21 @@ rm -rf ~/Library/Caches/com.kingsoft.*
 
 # icloud 备份
 
+- 法一：
+  ```shell
+  cat killcloud.sh
+  killall bird
+  killall cloudd
+  killall fileproviderd
+  sh killcloud.sh
+  ```
+
+- 法二：重登录账号，需要重新下载文件，比较慢。不太推荐
+
 icloud 根路径在/Users/chengxingfu/Library/Mobile Documents/com~apple~CloudDocs
 
 备份，重登账号解决卡死问题
+
+- 听说有个App 专门重启icloud：
+
+这个小工具会帮你搞定： https://ko-fi.com/s/7d6ed016e0
