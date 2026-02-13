@@ -160,6 +160,7 @@ pyenv uninstall py3.9.7 #删除
 和设置python版本一样，也可以给全局、目录、shell配置虚拟环境
 pyenv local venv2	# 本目录及子目录使用基于虚拟环境 venv2
 pyenv shell venv3	# 当前 shell 临时使用基于虚拟环境 venv3
+~/.pyenv/versions/myenv/bin/python script.py #使用虚拟环境Python解释器的完整路径执行脚本
 ```
 
 虚拟环境存储位置`~/.pyenv/versions/py3.9.7`, pycharm就可以选择这个作为项目解释器

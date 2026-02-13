@@ -63,3 +63,38 @@ done
 - 退出码 `0` → 找到至少 1 个匹配内容；
 - 退出码 `1` → 未找到任何匹配内容；
 - 退出码 `2` → 发生错误（比如文件不存在、权限不足）。
+
+# 日志记录
+
+## log_command
+
+```shell
+log_command() {
+    local timestamp
+    timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    local full_command
+    full_command="$*"
+    local exit_code
+
+    echo "[$timestamp] 执行命令>>>: $full_command" | tee -a "$LOG_FILE"
+
+    # Use bash -c to preserve more complex command strings
+    if PATH="$PATH" /bin/bash -c "$full_command" 2>&1 | tee -a "$LOG_FILE"; then
+        exit_code=${PIPESTATUS[0]}
+    else
+        exit_code=${PIPESTATUS[0]}
+    fi
+
+    echo "[$timestamp] 退出码: $exit_code" | tee -a "$LOG_FILE"
+
+    return $exit_code
+}
+```
+
+支持管道命令，例如： `log_command  ethtool $port |grep "Auto-negotiation"`
+
+控制台确实只打印了管道的输出，但是日志里其实记录了完整内容。
+
+# 调试
+
+从set -eux处开始会进入调试模式，它不需要在开头。

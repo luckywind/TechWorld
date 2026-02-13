@@ -1,4 +1,5 @@
 # 将本地仓库链接到远程仓库
+![image-20260209152432719](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260209152432719.png)
 
 假设我们在github上有一个仓库https://github.com/luckywind/myapp-1.git 
 
@@ -45,6 +46,21 @@ git操作概览图
 ![image-20211128103845770](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image/image-20211128103845770.png)
 
 
+
+# 问题
+
+## 关联后无法推送
+
+1. 先删除remote 
+
+2. 配置 SSH Keys到gitlab上
+
+3. 配置git_config
+
+   git config --global user.name "xxx"
+   git config --global user.email "xxx@yusur.tech"
+
+4. 重新add remote 
 
 
 

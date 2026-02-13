@@ -248,6 +248,15 @@ python bin/create.py 输入路径 english 牌组名称 rev 卡片模板名称 --
 
 Anki自身有个插件[AwesomeTTS](https://zhuanlan.zhihu.com/p/74618062)可以给牌组的指定字段批量添加音频，但不支持中文，所以例句如果需要音频，可以把英文例句单独放一个字段，然后利用插件批量配音。
 
+1. 单个卡牌配音：点击要配音的字段，再点📢
+2. 批量配音
+
+
+
+
+
+[真人发音方案](https://zhuanlan.zhihu.com/p/384460620)
+
 ## changelog
 
 1. 38cd61c0f5aaab638d069936c2089b922938ee8d   英文例句和译文未分开
@@ -293,3 +302,12 @@ TypeError: 'NoneType' object is not iterable
 ```
 
 关于这个问题的讨论，[见这篇文章](https://github.com/hellock/icrawler/issues/107)。 解决办法是切换网络，例如切换一个代理。或者换用BingImageCrawler代替。
+
+```python
+class GoogleParser(Parser):
+    def parse(self, response):
+        soup = BeautifulSoup(response.content.decode("utf-8", "ignore"), "lxml")
+        # 这里查不到了
+        image_divs = soup.find_all(name="script")
+```
+
