@@ -52,22 +52,27 @@ Global options:
     -L name|ip,fam *  Specify the local ip|name and address family
     -o send,recv      Set the local send,recv buffer offsets
     -O send,recv      Set the remote send,recv buffer offset
-    -n numcpu         Set the number of processors for CPU util
-    -N                Establish no control connection, do 'send' side only
-    -p port,lport*    Specify netserver port number and/or local port
-    -P 0|1            Don't/Do display test headers
-    -r                Allow confidence to be hit on result only
-    -s seconds        Wait seconds between test setup and test start
-    -S                Set SO_KEEPALIVE on the data connection
+
+> -m 发送缓冲区大小，-M 接收缓冲区大小
+>
+> -R 核心作用是**启用「结果置信度 / 统计信息」输出**，帮你判断测试结果的可靠性，而非单纯给出一个 “平均数值”。
+
+​    -n numcpu         Set the number of processors for CPU util
+​    -N                Establish no control connection, do 'send' side only
+​    -p port,lport*    Specify netserver port number and/or local port
+​    -P 0|1            Don't/Do display test headers
+​    -r                Allow confidence to be hit on result only
+​    -s seconds        Wait seconds between test setup and test start
+​    -S                Set SO_KEEPALIVE on the data connection
  ✅   -t  **必需**。指定测试类型。
-    -T lcpu,rcpu      Request netperf/netserver be bound to local/remote cpu
-    -v verbosity      Specify the verbosity level
-    -W send,recv      Set the number of send,recv buffers
-    -v level          Set the verbosity level (default 1, min 0)
-    -V                Display the netperf version and exit
-    -y local,remote   Set the socket priority
-    -Y local,remote   Set the IP_TOS. Use hexadecimal.
-    -Z passphrase     Set and pass to netserver a passphrase
+​    -T lcpu,rcpu      Request netperf/netserver be bound to local/remote cpu
+​    -v verbosity      Specify the verbosity level
+​    -W send,recv      Set the number of send,recv buffers
+​    -v level          Set the verbosity level (default 1, min 0)
+​    -V                Display the netperf version and exit
+​    -y local,remote   Set the socket priority
+​    -Y local,remote   Set the IP_TOS. Use hexadecimal.
+​    -Z passphrase     Set and pass to netserver a passphrase
 
 ## 使用
 
