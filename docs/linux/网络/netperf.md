@@ -40,7 +40,7 @@ Global options:
     -C [cpu_rate]     Report remote CPU usage
     -d                Increase debugging output
    ✅ -D 以指定间隔显示中间结果，默认单位秒。
-    -f G|M|K|g|m|k    Set the output units
+    ✅-f G|M|K|g|m|k  设置单位，默认 m, 我们设置为 g。  小写是比特，大写是字节
     -F lfill[,rfill]* Pre-fill buffers with data from specified file
     -h                Display this text
    ✅ -H **必需**。指定运行 `netserver`的服务端IP地址。
@@ -55,6 +55,10 @@ Global options:
 
 > -m 发送缓冲区大小，-M 接收缓冲区大小
 >
+> | **`-m`** | 发送消息大小      | `-m <size>`        | 仅设置**发送**缓冲区大小         |
+> | -------- | ----------------- | ------------------ | -------------------------------- |
+> | **`-M`** | 发送+接收消息大小 | `-M <send>,<recv>` | 分别设置**发送和接收**缓冲区大小 |
+>
 > -R 核心作用是**启用「结果置信度 / 统计信息」输出**，帮你判断测试结果的可靠性，而非单纯给出一个 “平均数值”。
 
 ​    -n numcpu         Set the number of processors for CPU util
@@ -64,7 +68,7 @@ Global options:
 ​    -r                Allow confidence to be hit on result only
 ​    -s seconds        Wait seconds between test setup and test start
 ​    -S                Set SO_KEEPALIVE on the data connection
- ✅   -t  **必需**。指定测试类型。
+ ✅   -t  **必需**。指定测试类型。这个要放在--**参数的前面**
 ​    -T lcpu,rcpu      Request netperf/netserver be bound to local/remote cpu
 ​    -v verbosity      Specify the verbosity level
 ​    -W send,recv      Set the number of send,recv buffers
@@ -95,6 +99,21 @@ pkill netserver && pkill netperf
 `sar -n DEV 1`
 
 收包测试： 服务端执行`sar -n DEV 1`
+
+
+
+显示结果中各字段含义如下表所示。
+
+| 字段           | 含义               |
+| :------------- | :----------------- |
+| Socket Size    | 缓冲区大小         |
+| Message Size   | 数据包大小（Byte） |
+| Elapsed Time   | 测试时间（s）      |
+| Message Okay   | 发送成功的报文数   |
+| Message Errors | 发送失败的报文数   |
+| Throughput     | 网络吞吐量（Mbps） |
+
+netperf 的吞吐量单位是 Mbps， 一般我们使用 Gbps，除以 1000 即可。
 
 ## 多进程脚本
 

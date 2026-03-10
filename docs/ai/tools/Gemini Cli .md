@@ -187,11 +187,36 @@ gemini-2.5-flash  /gemini-2.5-flash-lite gemini-3-pro-preview gemini-2.5-pro
 
 ### 非交互式模式
 
--p 追加提示词  
+✅参数列表
 
-gemini  “请介绍你自己”
+选项	描述	示例
+--prompt, -p	以headless模式运行	gemini -p "query"
+--output-format	指定输出格式（text, json）	gemini -p "query" --output-format json
+--model, -m	指定Gemini模型	gemini -p "query" -m gemini-2.5-flash
+--debug, -d	启用调试模式	gemini -p "query" --debug
+--all-files, -a	在上下文中包含所有文件	gemini -p "query" --all-files
+--include-directories	包含其他目录	gemini -p "query" --include-directories src,docs
+--yolo, -y	自动批准所有操作	gemini -p "query" --yolo
+--approval-mode	设置批准模式	gemini -p "query" --approval-mode auto_edit
 
-> COMMIT_MSG=$(gemini "为最近的改动生成一条简洁的Git提交信息")
+使用`--prompt`（或`-p`）标志以headless模式运行：
+
+gemini --prompt "What is machine learning?"
+
+echo "Explain this code" | gemini
+
+cat README.md | gemini --prompt "Summarize this documentation"
+
+保存到文件
+
+gemini -p "Explain Docker" > docker-explanation.txt
+gemini -p "Explain Docker" --output-format json > docker-explanation.json
+
+追加到文件
+
+gemini -p "Add more details" >> docker-explanation.txt
+
+
 
 [参考](https://blog.csdn.net/gitblog_01166/article/details/152032928)
 

@@ -17,6 +17,12 @@ git init
 
 一个本地工程可以有多个远程仓库，默认名字是origin, 也建议用这个
 
+# Gitlab 添加 SSH 密钥
+
+ssh-keygen -t rsa -C "YOUR EMAIL"
+
+**登录GitLab之后: Profile Settings => SSH Keys => Add SSH key**
+
 # push到远程仓库
 
 Git add 

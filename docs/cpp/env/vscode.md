@@ -214,4 +214,4 @@ https://blog.csdn.net/weixin_54468359/article/details/144004739
 
 
 - 免密登录
-  [免密登录](https://zhuanlan.zhihu.com/p/222452460)
+  [免密登录](https://zhuanlan.zhihu.com/p/222452460)： 把公钥追加到 server 的 authoriy文件中，并在本机.ssh/config 里加入IdentityFile的路径（也就是私钥在本机的所在位置）

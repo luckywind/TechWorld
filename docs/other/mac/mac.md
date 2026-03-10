@@ -379,3 +379,9 @@ icloud 根路径在/Users/chengxingfu/Library/Mobile Documents/com~apple~CloudDo
 - 听说有个App 专门重启icloud：
 
 这个小工具会帮你搞定： https://ko-fi.com/s/7d6ed016e0
+
+# 空间整理
+
+brew install ncdu 命令行工具
+
+扫描系统盘：ncdu / --exclude /Volumes
