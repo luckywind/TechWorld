@@ -441,3 +441,11 @@ Interface options:
   --no-confirm-delete        Don't ask confirmation before deletion
   --delete-command CMD       Command to run for file deletion
   --color SCHEME             off / dark / dark-bg
+
+# syncthin 文件同步
+
+Android 手机需要打开软件的 Web GUI 才能接受同步，接受时要选择存储路径。
+
+- 文件夹列：这里列出的是从对端同步过来的文件夹，文件夹 ID 是一样的。
+  也可以新建文件夹，用于同步给其他设备？
+- 设备列：需要同步的设备
