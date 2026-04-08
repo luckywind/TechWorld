@@ -28,6 +28,8 @@ cd ~/Downloads && git clone https://github.com/CodeTips/BaiduNetdiskPlugin-macOS
 cd ~/Downloads && ./BaiduNetdiskPlugin-macOS/Other/Uninstall.sh
 ```
 
+保存同名目录： 不会自动创建目录，相当于目录合并，但是目录内同名文件会重复保存(新文件名添加(1)以区分)
+
 # 通知条持续时间
 
 [修改通知条](https://howchoo.com/mac/how-to-change-the-duration-of-notifications-on-macos)
@@ -304,6 +306,13 @@ https://sysin.org/blog/macos-if-crashes-when-opening/
 
 姓：cheng  名:xing
 
+建议使用**免税州地址**，避免后续产生消费税：没有的AI生成一个，也可以用在线地址生成器：**Fake Name Generator：**https://www.fakenamegenerator.com/
+
+- 街道地址：123 SW 5th Ave
+- 城市：Portland
+- 州：OR
+- 邮编：97204
+
 [数据来源](https://blog9go.com/learning/article/374)
 
 - **切换系统地区**
@@ -330,15 +339,13 @@ apple Music取消： 点击头像->管理订阅。
 
 此 Apple 账号尚未用于 iTunes Store:  需要完善支付方式、地区等信息，参考上一步
 
+
+
+[未验证](https://mp.weixin.qq.com/s/fAhXmXFpIF_RYTfou_ak1w)
+
 # 多版本java
 
 
-
-# appStore
-
-1364983233@qq.com
-
-Aa001132
 
 # mac词典
 
@@ -449,3 +456,16 @@ Android 手机需要打开软件的 Web GUI 才能接受同步，接受时要选
 - 文件夹列：这里列出的是从对端同步过来的文件夹，文件夹 ID 是一样的。
   也可以新建文件夹，用于同步给其他设备？
 - 设备列：需要同步的设备
+
+# 注册 gmail
+
+[注册 Gmail](https://mp.weixin.qq.com/s?__biz=MzY5MTE3ODEyMA==&mid=2247483908&idx=1&sn=f575f25fd2f5deddaf7f7796bdd96434&scene=21&poc_token=HATGyWmjnbaUZrKNKXPXnVGr_l3KDR37og1VyF4i)
+
+# 索引数据管理
+
+sudo mdutil -a -i off #关闭索引
+sudo mdutil -E /   # 清理索引文件
+sudo mdutil -a -i on#开启索引
+
+清理后，节省50G存储
+

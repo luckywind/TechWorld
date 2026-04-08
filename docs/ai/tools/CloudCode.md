@@ -2,9 +2,9 @@
 
 [参考文档](https://cloud.tencent.com/developer/article/2539379)
 
-# 公告
+# 安装
 
-安装 Node.js（已安装可跳过）
+1. 安装 Node.js（已安装可跳过）
 
 确保 Node.js 版本 ≥ 18.0
 
@@ -23,18 +23,40 @@ node --version
 
 
 
-2️⃣ 安装 Claude Code
-
-
+2. 安装 Claude Code
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 claude --version
 ```
 
+下载cc switch， [也可以自己手搓](https://zhuanlan.zhihu.com/p/1984939410752570691)
+
+https:/github.com/farion1231/cc-switch/releases
+
+brew tap farion1231/ccswitch
+brew install --cask cc-switch
+
+3. 添加模型供应商
+  [到魔塔社区](https://www.cnblogs.com/yada/p/19723381)会提供各种开源LLM的服务，并提供每日2000次免费调用额度。modelscope 目前提供 [OpenAI](https://zhida.zhihu.com/search?content_id=262458825&content_type=Article&match_order=1&q=OpenAI&zhida_source=entity) 和 [Anthropic](https://zhida.zhihu.com/search?content_id=262458825&content_type=Article&match_order=1&q=Anthropic&zhida_source=entity) 兼容的 2 套 API，可以使用各种 AI 编程工具，选择 OpenAI
+
+![image-20260402162047944](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260402162047944.png)
+配置模型会记录到~/.claude/settings.json文件中
+
+4. 免登录
+
+~/.claude.json 配置
+```json
+   {
+     "hasCompletedOnboarding": true
+   }
+```
+
+4. 开始使用
 
 
-3️⃣ 开始使用
+
+
 
 
 
@@ -86,3 +108,41 @@ claude
 ```
 
 即可使用 Claude Code
+
+
+
+
+
+
+
+# 使用
+
+## 使用 minimax 模型
+
+![image-20260403085757968](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260403085757968.png)
+
+cc-switch 代理可开可不开
+
+一个/init 指令，余额23.52 元->23.22 元，有点贵，可以包月、包年
+
+## 硅基流动
+
+✅按量计费，每个模型都有独立的计费标准
+
+
+
+问题： 400 thinking type should be enabled or disabled
+
+解决： 在配置里加上一行：   "alwaysThinkingEnabled": false,
+
+vscode 里关闭 Thinking
+
+![image-20260403113035702](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260403113035702.png)
+
+## 魔塔社区
+
+
+
+
+
+https://ccforpms.com/vibe-coding/build-iterate
