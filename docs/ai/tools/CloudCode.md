@@ -146,3 +146,16 @@ vscode 里关闭 Thinking
 
 
 https://ccforpms.com/vibe-coding/build-iterate
+
+## OpenRouter
+
+[免费使用](https://mp.weixin.qq.com/s/yM5S7RSLgASK8bKBDP94KA)
+
+### 问题解决
+
+#### Not logged in · Please run /login  
+
+解决：配置 ANTHROPIC_AUTH_TOKEN，而不是ANTHROPIC_AUTH_KEY，这个教程有错误。
+
+#### Cannot read properties of undefined (reading 'input_tokens')
+
