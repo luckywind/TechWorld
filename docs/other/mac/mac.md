@@ -469,3 +469,8 @@ sudo mdutil -a -i on#开启索引
 
 清理后，节省50G存储
 
+# 装系统
+
+## 老mac强制安装指定版本系统
+
+采用[OpenCore Legacy Patcher](https://dortania.github.io/OpenCore-Legacy-Patcher/) 
