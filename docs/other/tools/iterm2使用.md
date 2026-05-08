@@ -8,7 +8,7 @@
 ✅切换全屏：command + enter
 查找：command + f
 
-向前^Tab
+✅向前^Tab
 
 向后^+shift+Tab
 
@@ -25,7 +25,7 @@
 > 这里上下切换会与分屏软件pane 的快捷键冲突，我取消了pane 的快捷键
 
 ✅查看剪贴板历史：command + shift + h
-	command+; 查看输入过的命令，ctrl+r 搜索历史命令
+	<u>command+; 查看输入过的命令</u>，ctrl+r 搜索历史命令
 
 ✅广播输入： command+alt+i
 

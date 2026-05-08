@@ -156,6 +156,14 @@ awk '{print $'"$column"'}'
 | ORS      |          | 输出的记录分隔符，默认为换行符  output row spliter           |
 | FILENAME |          | 当前输入文件的名字                                           |
 
+指定分隔符：
+
+awk -F '分隔符' '{print $1,$2}'
+
+echo "a,b:c" | awk -F '[,:]' '{print $2,$3}'
+
+
+
 
 
 ```shell
