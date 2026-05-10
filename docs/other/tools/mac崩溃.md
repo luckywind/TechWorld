@@ -245,6 +245,8 @@ Zone info:
   >
   > sudo nvram -d SetApfsTimeout 删除设置
 
+  重启后配置丢了
+
 - Change a compatible SSD
 
 [这里有个参考](https://www.insanelymac.com/forum/topic/358947-possible-solution-loss-mmio-space/)
