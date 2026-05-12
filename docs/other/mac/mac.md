@@ -397,9 +397,11 @@ brew install ncdu 命令行工具
 
 用方向键在文件系统中导航，上下移动光标，左右是进入或退出目录
 
+按 ？调出帮助对话框，按 1 显示快捷键（默认），按 2 显示格式说明，按 3 显示版本信息
+
 按 i 可以查看当前选中项目的信息，按 d 可以删除项目，按 g 可以切换文件占比的显示方式。
 
-
+`ncdu <options> <directory>`
 
 Mode selection:
   -h, --help                 This help message
@@ -449,13 +451,19 @@ Interface options:
   --delete-command CMD       Command to run for file deletion
   --color SCHEME             off / dark / dark-bg
 
-# syncthin 文件同步
+# syncthing 文件同步
 
 Android 手机需要打开软件的 Web GUI 才能接受同步，接受时要选择存储路径。
 
 - 文件夹列：这里列出的是从对端同步过来的文件夹，文件夹 ID 是一样的。
   也可以新建文件夹，用于同步给其他设备？
 - 设备列：需要同步的设备
+
+[参考](https://cloud.tencent.com/developer/article/2543913)
+
+## 使用
+
+启动 syncthing 后，[访问 8384](http://localhost:8384/)端口，
 
 # 注册 gmail
 
