@@ -28,6 +28,12 @@ node --version
 ```bash
 npm install -g @anthropic-ai/claude-code
 claude --version
+这个会偶尔找不到命令，不清楚为什么
+
+更推荐下面这个，它不依赖 node 和 npm
+curl -fsSL https://claude.ai/install.sh | bash
+
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 ```
 
 下载cc switch， [也可以自己手搓](https://zhuanlan.zhihu.com/p/1984939410752570691)
