@@ -108,3 +108,24 @@ log_command() {
 # 调试
 
 从set -eux处开始会进入调试模式，它不需要在开头。
+
+# 其他
+
+## 清理钩子
+
+```shell
+cleanup() {
+    log "清理..."
+    pkill -f "nc.*$SERVER_IP0.*$NC_PORT" 2>/dev/null
+}
+trap cleanup EXIT
+```
+
+`trap` 是 bash 内置的**信号捕获机制**。这句话的意思：无论脚本以什么方式退出，先执行 `cleanup`。
+
+触发 `EXIT` 的情况：
+正常结束 → 执行完 main → 脚本退出 → trap 触发 cleanup
+Ctrl+C   → 用户中断(SIGINT) → 脚本退出 → trap 触发 cleanup
+exit 1   → 脚本内出错退出 → trap 触发 cleanup
+kill 信号 → 脚本被终止 → trap 触发 cleanup（部分信号除外如 SIGKILL）
+

@@ -30,7 +30,7 @@ Options:
 
 netperf -h
 
-Usage: netperf [global options] -- [test options]
+Usage: netperf [全局参数] -- [测试项参数]
 
 Global options:
     -a send,recv      Set the local send,recv buffer alignment
@@ -88,11 +88,11 @@ pkill netserver && pkill netperf
 
 客户端： 
 
-| 测试场景 | 客户端运行命令                                               | SAR 监控指标 |
-| -------- | ------------------------------------------------------------ | ------------ |
-| UDP 64   | netperf -t UDP_STREAM -H <server ip> -l 10000 -- -m 64 -R 1 & | PPS          |
-| TCP 1500 | netperf -t TCP_STREAM -H <server ip> -l 10000 -- -m 1500 -R 1 & | 带宽         |
-| TCP RR   | netperf -t TCP_RR -H <server ip> -l 10000 -- -r 32,128 -R 1 & | PPS          |
+| 测试场景           | 客户端运行命令                                               | SAR 监控指标 |
+| ------------------ | ------------------------------------------------------------ | ------------ |
+| UDP 64             | netperf -t UDP_STREAM -H <server ip> -l 10000 -- -m 64 -R 1 & | PPS          |
+| TCP 1500           | netperf -t TCP_STREAM -H <server ip> -l 10000 -- -m 1500 -R 1 & | 带宽         |
+| TCP RR（乒乓测试） | netperf -t TCP_RR -H <server ip> -l 10000 -- -r 32,128 -R 1 & | PPS          |
 
 发包测试： 客户端观察性能变化，取最大值
 
@@ -100,7 +100,14 @@ pkill netserver && pkill netperf
 
 收包测试： 服务端执行`sar -n DEV 1`
 
+`netperf -H $SERVER_IP0 -l $TEST_DURATION -t TCP_RR -- -r ${REQUEST_SIZE},${RESPONSE_SIZE} -O MEAN_LATENCY`
 
+参数分两段，`--` 是分隔符：
+
+1. -- 前面的是全局参数
+2. --后面的是测试特定参数
+
+-r 定义每次往返的**请求和响应字节数**：
 
 显示结果中各字段含义如下表所示。
 

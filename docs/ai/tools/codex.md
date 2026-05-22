@@ -51,3 +51,13 @@ AGENTS.md 覆盖：
   
 
 # test 和 revie
+
+
+
+
+
+# 使用记录
+
+## 多账号切换
+
+[codex-auth](https://www.npmjs.com/package/codex-auth) ，[相关讨论](https://www.reddit.com/r/codex/comments/1ot9zck/switch_between_multiple_codex_accounts_instantly/?tl=zh-hans)

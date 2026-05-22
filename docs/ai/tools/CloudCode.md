@@ -123,6 +123,18 @@ claude
 
 # 使用
 
+## 命令
+
+/btw ： 临时提问，回答完按按空格或者回车，直接把这一段消除掉，继续主程序。
+
+/rewind： 回退，可以选择回退代码、对话到历史的某个时间(可以选择)
+
+/branch: 对话分叉
+
+/simplify: Claude Code会同时启动三个平行的Agent，分别从代码复用、代码质量、运行效率三个角度审查你的改动。
+
+/remote-control： 它会生成一个URL，手机上打开这个链接整个会话就出现在手机上
+
 ## 使用 minimax 模型
 
 ![image-20260403085757968](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260403085757968.png)
@@ -165,3 +177,24 @@ https://ccforpms.com/vibe-coding/build-iterate
 
 #### Cannot read properties of undefined (reading 'input_tokens')
 
+# 插件
+
+## Codex plugin for Claude Code
+
+1. /codex:review
+   --background  后台 review
+
+2. /codex:status    
+
+3. /codex:cancel
+
+4. /codex:result
+
+5. /codex:rescue  直接向 codex 提交任务
+
+   > /codex:rescue investigate why the tests started failing
+   > /codex:rescue fix the failing test with the smallest safe patch
+   > /codex:rescue --resume apply the top fix from the last run
+   > /codex:rescue --model gpt-5.4-mini --effort medium investigate the flaky integration test
+   > /codex:rescue --model spark fix the issue quickly
+   > /codex:rescue --background investigate the regression
