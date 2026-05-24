@@ -477,8 +477,68 @@ sudo mdutil -a -i on#开启索引
 
 清理后，节省50G存储
 
+
 # 装系统
 
 ## 老mac强制安装指定版本系统
 
 采用[OpenCore Legacy Patcher](https://dortania.github.io/OpenCore-Legacy-Patcher/) 
+
+## 问题
+
+### **   Link Width: x1**
+
+system_profiler SPNVMeDataType
+NVMExpress:
+
+    Generic SSD Controller:
+    
+        INTEL SSDPEKNW010T8:
+    
+          Capacity: 1.02 TB (1,024,209,543,168 bytes)
+          TRIM Support: Yes
+          Model: INTEL SSDPEKNW010T8
+          Revision: 002C
+          Serial Number: BTNH913108NY1P0B
+          Link Width: x1
+          Link Speed: 8.0 GT/s
+          Detachable Drive: No
+          BSD Name: disk0
+          Partition Map Type: GPT (GUID Partition Table)
+          Removable Media: No
+          S.M.A.R.T. status: Verified
+
+这说明：PCIe 通道异常
+
+这是：
+
+```
+Loss of MMIO space
+```
+
+最核心的硬件原因。
+
+```
+Link Width: x4
+```
+
+
+
+# 分区
+
+[guanfangwendang ](https://support.apple.com/zh-cn/guide/disk-utility/dskutl14027/21.0/mac/12.0)
+
+![image-20260501113225730](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260501113225730.png)
+
+显示所有->选择外置磁盘->抹除选择格式ExFAT,方案GUID分区
+
+ExFat格式可以兼容windows、Mac、Linux多种操作系统都可以读写
+
+缺点是它没有完善的磁盘日志系统。读写稳定性没有(windows的)[NTFS](https://zhida.zhihu.com/search?content_id=653071842&content_type=Answer&match_order=1&q=NTFS&zhida_source=entity)或者苹果的[APFS](https://zhida.zhihu.com/search?content_id=653071842&content_type=Answer&match_order=1&q=APFS&zhida_source=entity)这种专门为操作系统设计的磁盘格式那么稳定。如果仅仅是copy数据(学习视频或者音乐)是很方便的，不建议PPT或者word文档直接用这个格式频繁编辑。原因是因为没有完善的日志系统，遭遇系统崩溃或者掉电或者U盘、移动硬盘意外拔出，该文件可能会丢失数据或损坏。
+
+
+
++号灰色：分区格式要选择非exFAT格式
+
+![image-20260501112531737](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260501112531737.png)
+
