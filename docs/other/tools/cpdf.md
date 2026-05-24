@@ -1,0 +1,439 @@
+# 帮助文档
+
+cpdf --help
+Syntax: cpdf [<operation>] <input files> [-o <output file>]
+
+Copyright Coherent Graphics Ltd.
+
+Version AGPLv3-licensed 2.8.1 (28th March 2025)
+
+https://www.coherentpdf.com/
+
+Input names are distinguished by containing a '.' and may be
+followed by a page range specification, for instance "1,2,3"
+or "1-6,9-end" or "even" or "odd" or "reverse".
+
+Operations (See manual for full details):
+
+  -version                            打印 cpdf 版本号 | Print the cpdf version number
+  -o                                  设置输出文件 | Set the output file, if appropriate
+  -i                                  添加输入文件 | Add an input file
+  -png                                从 PNG 文件加载并转换为 PDF | Load from a PNG file, converting to PDF
+  -jpeg                               从 JPEG 文件加载并转换为 PDF | Load from a JPEG file, converting to PDF
+  -jpeg2000                           从 JPEG2000 文件加载并转换为 PDF | Load from a JPEG2000 file, converting to PDF
+  -jbig2                              从 JBIG2 片段加载并转换为 PDF | Load from a JBIG2 fragment, converting to PDF
+  -jbig2-global                       加载 JBIG2 全局流 | Load a JBIG2 global stream
+  -jbig2-global-clear                 清除所有 JBIG2 全局流 | Forget any JBIG2 global stream
+  -idir                               添加整个目录的文件 | Add a directory of files
+  -idir-only-pdfs                     让 -idir 忽略不以 .pdf 结尾的文件 | Have -idir ignore files not ending in .pdf
+  -pw                                 显式提供密码 -pw=<password> | Supply a password explicitly -pw=<password>
+  -stdin                              从标准输入读取输入 | Read input from standard input
+  -stdin-owner                        为 -stdin 提供所有者密码 | Owner password for -stdin
+  -stdin-user                         为 -stdin 提供用户密码 | User password for -stdin
+  -stdout                             将结果发送到标准输出 | Send result to standard output
+  -error-on-malformed                 不尝试读取损坏的文件 | Do not try to read malformed files
+  -range                              显式添加页面范围 | Explicitly add a range
+  -collate                            合并时逐页交叉排列 | Collate ranges when merging
+  -collate-n                          合并时按指定数量分组交叉排列 | Collate ranges in multiples when merging
+  -change-id                          更改文件的 /ID 标签 | Change the file's /ID tag
+  -no-preserve-objstm                 不保留对象流 | Don't preserve object streams
+  -create-objstm                      重新创建对象流 | Create object streams anew
+  -keep-version                       不更改 PDF 版本号 | Don't change the version number
+  -l                                  线性化输出文件 | Linearize output file
+  -keep-l                             如果输入文件已线性化则保持线性化 | Linearize if the input file was linearized
+  -cpdflin                            设置 cpdflin 的位置 | Set location of 'cpdflin'
+  -recrypt                            写入时保留此文件的加密 | Keep this file's encryption when writing
+  -raw                                不处理文本 | Do not process text
+  -stripped                           通过简单的 ASCII 剥离处理文本 | Process text by simple stripping to ASCII
+  -utf8                               通过转换为 UTF8 Unicode 处理文本 | Process text by conversion to UTF8 Unicode
+  -fast                               对于损坏的文档，速度优先于正确性 | Speed over correctness with malformed documents
+  -args                               从文件获取参数 | Get arguments from a file.
+  -args-json                          从 JSON 文件获取参数 | Get arguments from a JSON file.
+  -merge                              将多个文件合并为一个 | Merge a number of files into one
+  -retain-numbering                   合并时不重新编号页面 | Don't renumber pages when merging
+  -merge-add-bookmarks                为每个合并的文件添加书签 | Add bookmarks for each file to merged file
+  -merge-add-bookmarks-use-titles     使用文档标题而非文件名作为书签 | Use title of document rather than filename
+  -process-struct-trees               处理结构树 | Process structure trees
+  -remove-duplicate-fonts             合并时移除重复字体 | Remove duplicate fonts when merging
+  -split                              将文件拆分为单独页面 | Split a file into individual pages
+  -chunk                              设置 -split 的块大小（默认 1） | Set chunk size for -split (default 1)
+  -split-bookmarks                    在指定级别的书签处拆分文件 | Split a file at bookmarks at a given level
+  -split-max                          将文件拆分为指定大小的文件 | Split a file to files of a given size
+  -spray                              按交替页面拆分文件 | Split a file by alternating pages
+  -scale-page                         缩放页面，-scale-page "sx sy" 按 (sx, sy) 比例缩放 | -scale-page "sx sy" scales by (sx, sy)
+  -scale-to-fit                       缩放至适合，-scale-to-fit "x y" 缩放到页面尺寸 (x, y) | -scale-to-fit "x y" scales to page size (x, y)
+  -stretch                            拉伸，-stretch "x y" 不保持宽高比缩放 | -stretch "x y" scales without preserving aspect ratio
+  -center-to-fit                      居中适应，-center-to-fit "x y" 将页面居中到尺寸 (x, y) | -center-to-fit "x y" centers pages on page size (x, y)
+  -scale-contents                     按给定因子缩放内容 | Scale contents by the given factor
+  -scale-to-fit-scale                 设置缩放比例（1.0 = 100%） | -scale-to-fit-scale (1.0 = 100%)
+  -shift                              平移，-shift "dx dy" 平移选定页面 | -shift "dx dy" shifts the chosen pages
+  -shift-boxes                        平移框，-shift-boxes "dx dy" 平移选定页面的框 | -shift-boxes "dx dy" shifts boxes on the chosen pages
+  -rotate                             将页面旋转设置为 0, 90, 180, 270 度 | Set rotation of pages to 0, 90, 180, 270
+  -rotateby                           将页面旋转 90, 180 或 270 度 | Rotate pages by 90, 180 or 270 degrees
+  -rotate-contents                    旋转页面内容 | Rotate contents of pages
+  -upright                            使页面直立 | Make pages upright
+  -prerotate                          在修改页面前先调用 -upright（如需要） | Calls -upright on pages before modifying them, if required
+  -no-warn-rotate                     不对非直立页面的 PDF 发出警告 | Do not warn on pages of PDFs which are not upright
+  -hflip                              水平翻转页面 | Flip pages horizontally
+  -vflip                              垂直翻转页面 | Flip pages vertically
+  -crop                               裁剪指定页面（-cropbox 的同义词） | Crop specified pages (synonym for -cropbox)
+  -cropbox                            裁剪指定页面 | Crop specified pages
+  -artbox                             为指定页面设置艺术框 | Set art box for specified pages
+  -bleedbox                           为指定页面设置出血框 | Set bleed box for specified pages
+  -trimbox                            为指定页面设置裁切框 | Set trim box for specified pages
+  -hard-box                           将指定页面硬裁剪到给定框 | Hard crop specified pages to the given box
+  -show-boxes                         通过向页面添加矩形来显示框 | Show boxes by adding rectangles to pages
+  -trim-marks                         添加裁切标记 | Add trim marks
+  -remove-crop                        移除指定页面的裁剪 | Remove cropping on specified pages
+  -remove-cropbox                     -remove-crop 的同义词 | Synonym for -remove-crop
+  -remove-trimbox                     移除指定页面的裁切框 | Remove trim box on specified pages
+  -remove-bleedbox                    移除指定页面的出血框 | Remove bleed box on specified pages
+  -remove-artbox                      移除指定页面的艺术框 | Remove art box on specified pages
+  -frombox                            设置要从中复制的框 | Set box to copy from
+  -tobox                              设置要复制到的框 | Set box to copy to
+  -mediabox-if-missing                如果源框缺失，则使用媒体框替代 | If copy from box missing, substitute media box
+  -mediabox                           设置指定页面的媒体框 | Set media box on specified pages
+  -encrypt                            加密文档 | Encrypt a document
+  -decrypt                            解密文件 | Decrypt a file
+  -decrypt-force                      即使没有密码也解密文件 | Decrypt a file even without password
+  -no-edit                            禁止编辑 | No edits
+  -no-print                           禁止打印 | No printing
+  -no-copy                            禁止复制 | No copying
+  -no-annot                           禁止注释 | No annotations
+  -no-forms                           禁止填写表单 | No forms
+  -no-extract                         禁止提取内容 | No extracting
+  -no-assemble                        禁止组装 | No assembling
+  -no-hq-print                        禁止高质量打印 | No high quality printing
+  -no-encrypt-metadata                不加密元数据（仅 AES） | Don't encrypt metadata (AES only)
+  -decompress                         解压缩 | Decompress
+  -compress                           压缩流，保留元数据不变 | Compress streams, leaving metadata alone
+  -list-bookmarks                     列出书签 | List Bookmarks
+  -list-bookmarks-json                以 JSON 格式列出书签 | List Bookmarks in JSON format
+  -preserve-actions                   列出书签时保留动作 | Preserve actions when listing bookmarks
+  -remove-bookmarks                   从文件中移除书签 | Remove bookmarks from a file
+  -add-bookmarks                      从给定文件添加书签 | Add bookmarks from the given file
+  -add-bookmarks-json                 从给定 JSON 格式文件添加书签 | Add bookmarks from the given file in JSON format
+  -bookmarks-open-to-level            打开书签到指定级别（0 = 全部关闭） | Open bookmarks to this level (0 = all closed)
+  -presentation                       创建演示文稿 | Make a presentation
+  -trans                              为 -presentation 设置过渡方式 | Set the transition method for -presentation
+  -duration                           为 -presentation 设置显示持续时间 | Set the display duration for -presentation
+  -vertical                           为 Split 和 Blinds 样式设置维度 | Set dimension for Split and Blinds styles
+  -outward                            为 Split 和 Box 样式设置方向 | Set direction for Split and Box styles
+  -direction                          为 Wipe 和 Glitter 样式设置方向 | Set direction for Wipe and Glitter styles
+  -effect-duration                    设置效果持续时间（秒） | Set the effect duration in seconds
+  -stamp-on                           在指定页面上方加盖文件 | Stamp a file on some pages of another
+  -stamp-under                        在指定页面下方加盖文件 | Stamp a file under some pages of another
+  -scale-stamp-to-fit                 缩放戳记以适应页面 | Scale the stamp to fit the page
+  -combine-pages                      通过合并单独页面来合并两个文件 | Combine two files by merging individual pages
+  -add-text                           在指定页面范围上叠加文本 | Superimpose text on the given range of pages
+  -remove-text                        移除之前由 cpdf 添加的文本 | Remove text previously added by cpdf
+  -add-rectangle                      向页面添加矩形 | Add a rectangle to the page
+  -bates                              设置 Bates 编号基数 | Set the base bates number
+  -bates-at-range                     在范围的首页设置 Bates 编号基数 | Set the base bates number at first page in range
+  -bates-pad-to                       用前导零填充 Bates 编号到指定宽度 | Pad the bates number with leading zeroes to width
+  -font                               设置字体 | Set the font
+  -font-size                          设置字体大小 | Set the font size
+  -load-ttf                           使用 TrueType 字体 | Use a TrueType font
+  -embed-std14                        嵌入标准 14 种字体 | Embed standard 14 fonts
+  -color                              设置颜色 | Set the color
+  -opacity                            设置文本不透明度 | Set the text opacity
+  -outline                            对文本使用轮廓模式 | Use outline mode for text
+  -linewidth                          设置轮廓文本的线宽 | Set line width for outline text
+  -pos-center                         设置位置相对于基线中心 | Set position relative to center of baseline
+  -pos-left                           设置位置相对于基线左侧 | Set position relative to left of baseline
+  -pos-right                          设置位置相对于基线右侧 | Set position relative to right of baseline
+  -top                                设置位置相对于页面顶部中心 | Set position relative to center top of page
+  -topleft                            设置位置相对于页面左上角 | Set position relative to top left of page
+  -topright                           设置位置相对于页面右上角 | Set position relative to top right of page
+  -left                               设置位置相对于页面左侧中心 | Set position relative to center left of page
+  -bottomleft                         设置位置相对于页面左下角 | Set position relative to bottom left of page
+  -bottom                             设置位置相对于页面底部中心 | Set position relative to center bottom of page
+  -bottomright                        设置位置相对于页面右下角 | Set position relative to bottom right of page
+  -right                              设置位置相对于页面右侧中心 | Set position relative to center right of page
+  -diagonal                           在页面对角线方向放置文本 | Place text diagonally across page
+  -reverse-diagonal                   从左上角对角放置文本 | Place text diagonally across page from top left
+  -center                             在页面中心放置文本 | Place text in the center of the page
+  -justify-left                       多行文本左对齐 | Justify multiline text left
+  -justify-right                      多行文本右对齐 | Justify multiline text right
+  -justify-center                     多行文本居中对齐 | Justify multiline text center
+  -underneath                         文本戳记位于内容下方 | Text stamp is underneath content
+  -line-spacing                       行间距（1 为正常） | Line spacing (1 is normal)
+  -midline                            将文本调整到中线而非基线 | Adjust text to midline rather than baseline
+  -topline                            将文本调整到顶线而非基线 | Adjust text to topline rather than baseline
+  -relative-to-cropbox                相对于裁切框而非媒体框添加文本 | Add text relative to Crop Box not Media Box
+  -embed-missing-fonts                通过调用 gs 嵌入缺失字体 | Embed missing fonts by calling gs
+  -twoup                              将 2 页放到一页上 | Put 2 pages onto one
+  -twoup-stack                        将 2 页堆叠到一页上（页面尺寸加倍） | Stack 2 pages onto one twice the size
+  -impose                             拼版到给定页面尺寸 | Impose onto given page size
+  -impose-xy                          按 x 列 y 行拼版（零表示无限制） | Impose x by y (zero means unlimited)
+  -impose-columns                     按列而非行拼版 | Impose in columns rather than rows
+  -impose-rtl                         从右到左拼版 | Impose right-to-left
+  -impose-btt                         从下到上拼版 | Impose bottom-to-top
+  -impose-margin                      在整个拼版页面周围添加边距 | Add margin around whole imposed page
+  -impose-spacing                     在每个拼版页面周围添加间距 | Add spacing around each imposed page
+  -impose-linewidth                   拼版分隔线宽度（0=无） | Imposition divider line width (0=none)
+  -chop                               将页面切分为 x 列 y 行 | Chop x by y
+  -chop-h                             水平切分页面 | Chop horizontally
+  -chop-v                             垂直切分页面 | Chop horizontally
+  -chop-columns                       按列而非行切分 | Chop in columns rather than rows
+  -chop-rtl                           从右到左切分 | Chop right-to-left
+  -chop-btt                           从下到上切分 | Chop bottom-to-top
+  -pad-before                         在指定页面之前添加空白页 | Add a blank page before the given pages
+  -pad-after                          在指定页面之后添加空白页 | Add a blank page after the given pages
+  -pad-every                          每隔 n 页添加一个空白页 | Add a blank page after every n pages
+  -pad-with                           使用指定 PDF 代替空白页 | Use a given PDF instead of a blank page
+  -pad-multiple                       将文档填充到 n 的倍数页 | Pad the document to a multiple of n pages
+  -pad-multiple-before                在开头将文档填充到 n 的倍数页 | Pad the document at beginning to a multiple of n pages
+  -list-annotations                   列出注释 | List annotations
+  -list-annotations-json              以 JSON 格式列出注释 | List annotations in JSON format
+  -copy-annotations                   从给定文件复制注释 | Copy annotations from given file
+  -remove-annotations                 移除注释 | Remove annotations
+  -set-annotations                    从 JSON 文件设置注释 | Set annotations from JSON file
+  -list-fonts                         输出字体列表 | Output font list
+  -list-fonts-json                    以 JSON 格式输出字体列表 | Output font list in JSON format
+  -info                               输出文件信息 | Output file information
+  -info-json                          以 JSON 格式输出文件信息 | Output file information in JSON format
+  -page-info                          输出页面信息 | Output page information
+  -page-info-json                     以 JSON 格式输出页面信息 | Output page information in JSON format
+  -set-author                         设置作者 | Set Author
+  -set-title                          设置标题 | Set Title
+  -set-subject                        设置主题 | Set Subject
+  -set-keywords                       设置关键词 | Set Keywords
+  -set-create                         设置创建日期 | Set Creation date
+  -set-modify                         设置修改日期 | Set Modification date
+  -set-creator                        设置创建程序 | Set Creator
+  -set-producer                       设置制作程序 | Set Producer
+  -set-trapped                        标记为已陷印 | Mark as trapped
+  -set-untrapped                      标记为未陷印 | Mark as not trapped
+  -also-set-xmp                       同时设置 XMP 元数据 | Also set XMP metadata
+  -just-set-xmp                       仅设置 XMP 元数据，不设置旧式元数据 | Just set XMP metadata, not old-fashioned metadata
+  -create-metadata                    从头创建 XMP 元数据 | Create XMP metadata from scratch.
+  -set-page-layout                    设置文档打开时的页面布局 | Set page layout upon document opening
+  -set-page-mode                      设置文档打开时的页面模式 | Set page mode upon document opening
+  -set-non-full-screen-page-mode      设置非全屏时的页面模式 | Set non full screen page mode if page mode is FullScreen
+  -open-at-page                       设置初始页面 | Set initial page
+  -open-at-page-fit                   设置初始页面，缩放以适应 | Set initial page, scaling to fit
+  -open-at-page-custom                设置初始页面，自定义缩放 | Set initial page, with custom scaling
+  -set-metadata                       将元数据设置为文件的内容 | Set metadata to the contents of a file
+  -print-metadata                     输出元数据信息 | Output metadata information
+  -remove-metadata                    移除文档元数据 | Remove document metadata
+  -set-metadata-date                  设置 XMP 元数据日期属性 | Set the XMP metadata date property
+  -hide-toolbar                       隐藏查看器的工具栏 | Hide the viewer's toolbar
+  -hide-menubar                       隐藏查看器的菜单栏 | Hide the viewer's menubar
+  -hide-window-ui                     隐藏查看器的滚动条等 UI | Hide the viewer's scroll bars etc.
+  -fit-window                         调整文档窗口以适应页面大小 | Resize document's window to fit size of page
+  -center-window                      将窗口置于屏幕中央 | Position window in the center of screen
+  -display-doc-title                  在标题栏显示文档标题 | Display document's title in the title bar
+  -set-language                       设置文档语言 | Set the document's language
+  -pages                              计算页数 | Count pages
+  -list-attached-files                列出附件 | List attached files
+  -dump-attachments                   将附件转储到磁盘 | Dump attachments to disk
+  -attach-file                        附加文件 | Attach a file
+  -to-page                            将文件附加到指定页面而非文档 | Attach file to given page instead of document
+  -remove-files                       移除嵌入的文档级附件 | Remove embedded attached document-level files
+  -list-images                        列出图像 | List images
+  -list-images-json                   以 JSON 格式列出图像 | List images in JSON format
+  -list-images-used                   列出使用点处的图像 | List images at point of use
+  -list-images-used-json              以 JSON 格式列出使用点处的图像 | List images at point of use in JSON format
+  -image-resolution                   列出低于指定 dpi 的使用点处的图像 | List images at point of use under a given dpi
+  -image-resolution-json              以 JSON 格式列出低于指定 dpi 的使用点处的图像 | List images at point of use under a given dpi
+  -copy-font                          复制命名字体 | Copy a named font
+  -copy-font-page                     设置复制字体来源的页面 | Set the page a copied font is drawn from
+  -copy-font-name                     设置要复制的字体名称 | Set the name of the font to copy
+  -remove-fonts                       移除嵌入字体 | Remove embedded fonts
+  -missing-fonts                      列出缺失字体 | List missing fonts
+  -remove-id                          移除文件的 /ID 标签 | Remove the file's /ID tag
+  -draft                              从文件中移除图像（生成草稿） | Remove images from the file
+  -draft-remove-only                  仅移除指定图像 | Only remove named image
+  -boxes                              为 -draft 选项添加交叉框 | Add crossed boxes to -draft option
+  -remove-all-text                    移除所有文本 | Remove all text
+  -blacktext                          将文档文本变黑 | Blacken document text
+  -blacklines                         将文档线条变黑 | Blacken lines in document
+  -blackfills                         将文档填充变黑 | Blacken fills in document
+  -thinlines                          设置最小线条粗细为指定宽度 | Set minimum line thickness to the given width
+  -remove-clipping                    移除裁剪路径 | Remove clipping paths
+  -clean                              垃圾回收文件 | Garbage-collect a file
+  -set-version                        设置 PDF 版本号 | Set PDF version number
+  -copy-id-from                       将一个文件的 ID 标签复制到另一个 | Copy one file's ID tag to another
+  -print-page-labels                  打印页面标签 | Print page labels
+  -print-page-labels-json             以 JSON 格式打印页面标签 | Print page labels in JSON format
+  -remove-page-labels                 移除页面标签 | Remove page labels
+  -add-page-labels                    添加或替换页面标签 | Add or replace page labels
+  -label-style                        设置标签样式（默认 DecimalArabic） | Set label style (default DecimalArabic)
+  -label-prefix                       设置标签前缀（默认无） | Set label prefix (default none)
+  -label-startval                     设置标签起始值（默认 1） | Set label start value (default 1)
+  -labels-progress                    标签起始值随多个范围递增 | Label start value progresses with multiple ranges
+  -remove-dict-entry                  从所有字典中移除条目 | Remove an entry from all dictionaries
+  -replace-dict-entry                 替换所有字典中的条目 | Remove an entry from all dictionaries
+  -replace-dict-entry-value           -replace-dict-entry 的替换值 | Replacement value for -replace-dict-entry
+  -dict-entry-search                  -remove-dict-entry 和 -replace-dict-entry 的搜索字符串 | Search string for -remove-dict-entry and -replace-dict-entry
+  -print-dict-entry                   打印指定键的字典值 | Print dictionary values of a given key
+  -producer                           更改 /Info 字典中的 /Producer 条目 | Change the /Producer entry in the /Info dictionary
+  -creator                            更改 /Info 字典中的 /Creator 条目 | Change the /Creator entry in the /Info dictionary
+  -list-spot-colors                   列出专色 | List spot colors
+  -create-pdf                         创建新 PDF | Create a new PDF
+  -create-pdf-ua-1                    使用给定标题创建新的 PDF/UA-1 | Create a new PDF/UA-1 with the given title
+  -create-pdf-ua-2                    使用给定标题创建新的 PDF/UA-2 | Create a new PDF/UA-2 with the given title
+  -create-pdf-pages                   新 PDF 的页数 | Number of pages for new PDF
+  -create-pdf-papersize               新 PDF 的纸张尺寸 | Paper size for new PDF
+  -prepend-content                    向页面添加前置内容 | Prepend content to page
+  -postpend-content                   向页面添加后置内容 | Postpend content to page
+  -gs                                 设置 gs 可执行文件路径 | Path to gs executable
+  -gs-malformed                       也尝试用 gs 重建损坏的文件 | Also try to reconstruct malformed files with gs
+  -gs-quiet                           使 gs 进入静默模式 | Make gs go into quiet mode
+  -gs-malformed-force                 详见手册 | See manual for usage.
+  -im                                 设置 magick 可执行文件路径 | Path to magick executable
+  -p2p                                设置 pnmtopng 可执行文件路径 | Path to pnmtopng executable
+  -extract-images                     提取图像到文件 | Extract images to file
+  -dedup                              完全去重提取的图像 | Deduplicate extracted images fully
+  -dedup-perpage                      仅按页面去重提取的图像 | Deduplicate extracted images per page only
+  -process-images                     处理 PDF 中的图像 | Process images within PDF
+  -process-images-info                处理图像时显示信息 | Show info when processing images
+  -jbig2enc                           设置 jbig2enc 可执行文件路径 | Path to jbig2enc executable
+  -jpeg-to-jpeg                       设置现有 JPEG 的 JPEG 质量 | Set JPEG quality for existing JPEGs
+  -jpeg-to-jpeg-scale                 设置 -jpeg-to-jpeg 的百分比缩放 | Set the percentage scale for -jpeg-to-jpeg
+  -jpeg-to-jpeg-dpi                   设置 -jpeg-to-jpeg 的 DPI 目标 | Set the DPI target for -jpeg-to-jpeg
+  -lossless-to-jpeg                   设置现有无损图像的 JPEG 质量 | Set JPEG quality for existing lossless images
+  -1bpp-method                        设置现有图像的 1bpp 压缩方法 | Set 1bpp compression method for existing images
+  -jbig2-lossy-threshold              设置 jbig2enc 有损阈值 | Set jbig2enc lossy threshold
+  -pixel-threshold                    仅处理像素数超过此值的图像 | Only process images with more pixels than this
+  -length-threshold                   仅处理数据长度超过此值的图像 | Only process images with data longer than this
+  -percentage-threshold               仅当有损图像小于此百分比时才替换 | Only substitute lossy image when smaller than this
+  -dpi-threshold                      仅当图像始终高于此 dpi 时才处理 | Only process image when always higher than this dpi
+  -lossless-resample                  将无损图像重采样到原始尺寸的指定比例 | Resample lossless images to given part of original
+  -lossless-resample-dpi              将无损图像重采样到指定 DPI | Resample lossless images to given DPI
+  -resample-interpolate               重采样时插值 | Interpolate when resampling
+  -squeeze                            压缩优化 | Squeeze
+  -squeeze-log-to                     压缩优化日志位置 | Squeeze log location
+  -squeeze-no-pagedata                不重新压缩页面数据 | Don't recompress pages
+  -squeeze-no-recompress              不重新压缩流 | Don't recompress streams
+  -output-json                        将 PDF 文件导出为 JSON 数据 | Export PDF file as JSON data
+  -output-json-parse-content-streams  解析内容流 | Parse content streams
+  -output-json-no-stream-data         跳过流数据以简化输出 | Skip stream data for brevity
+  -output-json-decompress-streams     解压缩流数据 | Skip stream data for brevity
+  -output-json-clean-strings          尽可能将 UTF16BE 字符串转换为 PDFDocEncoding | Convert UTF16BE strings to PDFDocEncoding when possible
+  -j                                  加载 PDF JSON 文件 | Load a PDF JSON file
+  -ocg-list                           列出可选内容组 | List optional content groups
+  -ocg-rename                         重命名可选内容组 | Rename optional content group
+  -ocg-rename-from                    重命名来源（与 -ocg-rename 配合使用） | Rename from (with -ocg-rename)
+  -ocg-rename-to                      重命名目标（与 -ocg-rename 配合使用） | Rename to (with -ocg-rename)
+  -ocg-order-all                      修复 /Order 使所有 OCG 都列出 | Repair /Order so all OCGs listed
+  -ocg-coalesce-on-name               按名称合并 OCG | Coalesce OCGs with like name
+  -stamp-as-xobject                   将文件作为表单 xobject 加盖到另一个文件 | Stamp a file as a form xobject in another
+  -print-font-table                   打印给定字体的 /ToUnicode 表（如果存在） | Print the /ToUnicode table for a given font, if present.
+  -print-font-table-page              为 -print-font-table 设置页面 | Set page for -print-font-table
+  -extract-font                       提取字体 | Extract a font
+  -table-of-contents                  从书签排版生成目录 | Typeset a table of contents from bookmarks
+  -toc-title                          设置（或清空）目录标题 | Set (or clear if empty) the TOC title
+  -toc-no-bookmark                    不将目录添加到书签 | Don't add the table of contents to the bookmarks
+  -toc-dot-leaders                    为目录条目添加点线引导 | Add a dot leader to TOC entries
+  -typeset                            将文本文件排版为 PDF | Typeset a text file as a PDF
+  -subformat                          设置子格式 | Set subformat
+  -title                              设置 PDF/UA 标题 | Set PDF/UA title
+  -composition                        显示 PDF 的组成 | Show composition of PDF
+  -composition-json                   以 JSON 格式显示 PDF 的组成 | Show composition of PDF in JSON format
+  -text-width                         查找一行文本的宽度 | Find width of a line of text
+  -draw                               开始绘图 | Begin drawing
+  -draw-struct-tree                   绘图时构建结构树 | Build structure trees when drawing.
+  -tag                                开始结构项 | Begin structure item
+  -stag                               开始结构分支 | Begin struture branch
+  -end-tag                            结束结构项 | End structure item
+  -end-stag                           结束结构分支 | End structure branch
+  -auto-tags                          自动标记段落和图形 | Auto-tag paragraphs and figures
+  -no-auto-tags                       不自动标记段落和图形 | Don't auto-tag paragraphs and figures
+  -artifact                           开始一个工件 | Begin an artifact
+  -end-artifact End                   an artifact
+  -no-auto-artifacts                  不将未标记内容标记为工件 | Don't mark untagged content as artifacts
+  -eltinfo                            添加元素信息 | Add element information
+  -end-eltinfo                        删除元素信息 | Erase element information
+  -namespace                          设置结构树命名空间 | Set the structure tree namespace
+  -rolemap                            设置角色映射 | Set a role map
+  -rect                               绘制矩形 | Draw rectangle
+  -to                                 移动到 | Move to
+  -line                               添加直线到路径 | Add line to
+  -bez                                添加贝塞尔曲线到路径 | Add Bezier curve to path
+  -bez23                              添加贝塞尔 v-op 到路径 | Add Bezier v-op to path
+  -bez13                              添加贝塞尔 y-op 到路径 | Add Bezier y-op to path
+  -circle                             添加圆到路径 | Add circle to path
+  -strokecol                          设置描边颜色 | Set stroke colour
+  -fillcol                            设置填充颜色 | Set fill colour
+  -stroke                             描边路径 | Stroke path
+  -fill                               填充路径 | Fill path
+  -filleo                             填充路径（奇偶规则） | Fill path, even odd
+  -strokefill                         描边并填充路径 | Stroke and fill path
+  -strokefilleo                       描边并填充路径（奇偶规则） | Stroke and fill path, even odd
+  -clip                               裁剪 | Clip
+  -clipeo                             裁剪（奇偶规则） | Clip, even odd
+  -close                              闭合路径 | Close path
+  -thick                              设置描边粗细 | Set stroke thickness
+  -cap                                设置端点样式 | Set cap
+  -join                               设置连接样式 | Set join
+  -miter                              设置斜接限制 | Set miter limit
+  -dash                               设置虚线模式 | Set dash pattern
+  -push                               压入图形栈 | Push graphics stack
+  -pop                                弹出图形栈 | Pop graphics stack
+  -matrix                             追加到图形矩阵 | Append to graphics matrix
+  -mtrans                             平移图形矩阵 | Translate the graphics matrix
+  -mrot                               旋转图形矩阵 | Rotate the graphics matrix
+  -mscale                             缩放图形矩阵 | Scale the graphics matrix
+  -mshearx                            在 X 方向剪切图形矩阵 | Shear the graphics matrix in X
+  -msheary                            在 Y 方向剪切图形矩阵 | Shear the graphics matrix in Y
+  -xobj-bbox                          为 xobject 指定边界框 | Specify the bounding box for xobjects
+  -xobj                               开始保存一系列图形操作 | Begin saving a sequence of graphics operators
+  -end-xobj                           结束保存一系列图形操作 | End saving a sequence of graphics operators
+  -use                                使用已保存的图形操作序列 | Use a saved sequence of graphics operators
+  -draw-jpeg                          从文件加载 JPEG 并命名 | Load a JPEG from file and name it
+  -draw-png                           从文件加载 PNG 并命名 | Load a PNG from file and name it
+  -image                              绘制已加载的图像 | Draw an image which has already been loaded
+  -fill-opacity                       设置填充不透明度 | Set opacity
+  -stroke-opacity                     设置描边不透明度 | Set stroke opacity
+  -bt                                 开始文本 | Begin text
+  -et                                 结束文本 | End text
+  -text                               绘制文本 | Draw text
+  -stext                              使用 % 特殊字符绘制文本 | Draw text with %specials
+  -para                               添加文本段落 | Add a paragraph of text
+  -paras                              添加文本段落，按换行符分割 | Add paragraphs of text, splitting on newlines
+  -indent                             设置段落缩进 | Set indent for paragraphs
+  -leading                            设置行距 | Set leading
+  -charspace                          设置字符间距 | Set character spacing
+  -wordspace                          设置单词间距 | Set word space
+  -textscale                          设置文本缩放 | Set text scale
+  -rendermode                         设置文本渲染模式 | Set text rendering mode
+  -rise                               设置文本上移 | Set text rise
+  -nl                                 换行 | New line
+  -newpage                            移到新页面 | Move to a fresh page
+  -extract-stream                     提取流 | Extract a stream
+  -extract-stream-decompress          提取并解压缩流 | Extract a stream, decompressing
+  -replace-stream                     替换流 | Replace a stream
+  -replace-stream-with                替换流所用的文件 | File to replace stream with
+  -obj                                打印对象 | Print object
+  -obj-json                           以 JSON 格式打印对象 | Print object in JSON format
+  -replace-obj                        替换对象 | Replace object
+  -remove-obj                         移除对象 | Remove object
+  -json                               以 JSON 格式输出 | Format output as JSON
+  -verify                             验证是否符合标准 | Verify conformance to a standard
+  -verify-single                      验证单个测试 | Verify a single test
+  -mark-as                            标记为符合标准 | Mark as conforming to a standard
+  -remove-mark                        移除符合性标记 | Remove conformance mark
+  -print-struct-tree                  打印结构树 | Print structure tree
+  -extract-struct-tree                以 JSON 格式提取结构树 | Extract structure tree in JSON format
+  -replace-struct-tree                从 JSON 替换结构树 | Replace structure tree from JSON
+  -remove-struct-tree                 移除整个结构树 | Remove entire structure tree
+  -mark-as-artifact                   将整个文件标记为工件 | Mark whole file as artifact
+  -redact                             编辑（涂黑）整页 | Redact entire pages
+  -rasterize                          栅格化页面 | Rasterize pages
+  -rasterize-gray                     灰度栅格化 | Rasterize in grayscale
+  -rasterize-1bpp                     单色栅格化 | Rasterize in monochrome
+  -rasterize-jpeg                     作为 JPEG 栅格化 | Rasterize as JPEG
+  -rasterize-jpeg-gray                作为 JPEG 灰度栅格化 | Rasterize as JPEG in grayscale
+  -rasterize-res                      栅格化分辨率 | Rastierization resolution
+  -rasterize-annots                   栅格化注释 | Rasterize annotations
+  -rasterize-no-antialias             栅格化时不抗锯齿 | Don't antialias when rasterizing
+  -rasterize-downsample               通过降采样抗锯齿 | Antialias by downsampling
+  -rasterize-jpeg-quality             设置 JPEG 质量 | Set JPEG quality
+  -output-image                       将页面输出为图像 | Output pages as images
+  -in                                 以英寸为单位输出尺寸 | Output dimensions in inches
+  -cm                                 以厘米为单位输出尺寸 | Output dimensions in centimetres
+  -mm                                 以毫米为单位输出尺寸 | Output dimensions in millimetres
+  -help                               显示此选项列表 | Display this list of options
+  --help                              显示此选项列表 | Display this list of options
