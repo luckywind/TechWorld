@@ -475,6 +475,8 @@ sudo mdutil -a -i off #关闭索引
 sudo mdutil -E /   # 清理索引文件
 sudo mdutil -a -i on#开启索引
 
+sudo mdutil -s / #查看索引状态
+
 清理后，节省50G存储
 
 

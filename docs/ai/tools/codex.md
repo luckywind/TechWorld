@@ -61,3 +61,5 @@ AGENTS.md 覆盖：
 ## 多账号切换
 
 [codex-auth](https://www.npmjs.com/package/codex-auth) ，[相关讨论](https://www.reddit.com/r/codex/comments/1ot9zck/switch_between_multiple_codex_accounts_instantly/?tl=zh-hans)
+
+[bilibili](https://www.bilibili.com/video/BV1w19KBsE2z/?vd_source=fa2aaef8ece31d2c310d46092c301b46)
