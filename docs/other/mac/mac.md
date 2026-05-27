@@ -451,6 +451,47 @@ Interface options:
   --delete-command CMD       Command to run for file deletion
   --color SCHEME             off / dark / dark-bg
 
+## mole
+
+brew install mole
+
+预览清理内容
+
+mo clean --dry-run
+mo uninstall --dry-run
+mo history
+mo history --json
+mo purge --dry-run
+
+mo clean --dry-run --debug   # Preview + detailed logs
+mo optimize --whitelist      # Manage protected optimization rules
+mo clean --whitelist         # Manage protected caches
+mo purge --paths             # Configure project scan directories
+mo analyze /Volumes          # Analyze external drives only
+
+执行清理
+
+mo                           # Interactive menu
+mo clean                     # 深度清理卸载App残留Deep cleanup + already-uninstalled app leftovers
+mo uninstall                 # 卸载 Remove installed apps + their leftovers
+mo optimize                  # 刷新缓存 Refresh caches & services
+mo analyze                   可视化磁盘分析 # Visual disk explorer (or 'mo analyse')
+mo status                    # Live system health dashboard
+mo purge                     #清理项目构建输出  Clean project build artifacts
+mo installer                 #删除安装文件 Find and remove installer files
+
+mo touchid                   # Configure Touch ID for sudo
+mo completion                # Set up shell tab completion
+mo update                    # Update Mole
+mo update --nightly          # Update to latest unreleased main build, script install only
+mo remove                    # Remove Mole from system
+mo --help                    # Show help
+mo --version                 # Show installed version
+
+
+
+
+
 # syncthing 文件同步
 
 Android 手机需要打开软件的 Web GUI 才能接受同步，接受时要选择存储路径。
