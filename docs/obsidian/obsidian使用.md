@@ -95,3 +95,10 @@ https://github.com/platon-ivanov/obsidian-visually-numbered-headings
 
 有人基于此代码做了修改，得到[效果](https://pkmer.cn/Pkmer-Docs/10-obsidian/obsidian%E5%A4%96%E8%A7%82/css-%E7%89%87%E6%AE%B5/obsidian%E6%A0%B7%E5%BC%8F-%E6%A0%B8%E5%BF%83%E5%A4%A7%E7%BA%B2outline%E6%A0%87%E9%A2%98%E6%98%BE%E7%A4%BA%E8%87%AA%E5%8A%A8%E7%BC%96%E5%8F%B7/)，但不知道怎么改的，估计是修改的源代码，重新编译的。
 
+# 图床
+
+## 问题
+
+1. upload failed, check dev console
+
+使用不带 pro 的插件

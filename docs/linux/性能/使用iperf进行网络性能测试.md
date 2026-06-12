@@ -188,11 +188,12 @@ Usage: iperf [-s|-c host] [options]
   -t, --time      #        **测试时间**(default 10 secs)
   -n, --bytes     #       传输字节量 (instead of -t)[KMG]
   -k, --blockcount #  传输包量 (instead of -t or -n)[KMG]
-  **-l**, --len       #     **读写缓冲区**[KMG]      (default 128 KB for TCP, dynamic or 1 for UDP)
+✅  **-l**, --len       #     **读写缓冲区**[KMG]      (default 128 KB for TCP, dynamic or 1 for UDP)
   --cport                绑定指定端口 (TCP and UDP, default: ephemeral port)
   -P, --parallel  #  **并发流数量**
   **-R**, --reverse          **反向模式** (server sends, client receives)
   -w, --window    #设置套接字缓冲区大小，TCP 模式下为窗口大小；
+
 >  要大-w 8M  -w 16M
 
   -C, --congestion <algo>   set TCP congestion control algorithm (Linux and FreeBSD only)
@@ -430,3 +431,6 @@ iperf3 -c <server_ip> -p 5201 -t 20 &  iperf3 -c <server_ip> -p 5202 -R -t 20
 
 [网络性能测试介绍](https://hhb584520.github.io/kvm_blog/2017/01/01/perf-network.html)
 
+# 问题记录
+
+ping通，但是iperf3报错： 需要检查mac地址是否冲突
