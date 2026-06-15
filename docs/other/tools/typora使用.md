@@ -212,7 +212,7 @@ ubuntu上的picgo的配置
 
 ## 换行
 
-shift + enter == 单回车
+shift + enter == 单回车：  这可以用在表格里换行
 而
 enter == 双回车
 

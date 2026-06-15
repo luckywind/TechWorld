@@ -187,7 +187,9 @@ h1 {
 
 ## Marpit markdown
 
-### 使用水平尺制作幻灯片
+### 分割幻灯片
+
+#### 使用水平分割线
 
 ```markdown
 # Slide 1
@@ -204,7 +206,11 @@ bar
 
 根据 [CommonMark](https://spec.commonmark.org/0.29/#example-28) 规范，破折号标尺前可能需要空行。如果您不想添加空行，可以使用下划线标尺 `___` 、星号标尺 `***` 和包含空格的标尺 `- - -`
 
+#### 使用章节自动分割
 
+headingDivider: 2 
+
+写到 front-matter 里即可
 
 ### [Directives 指令](https://marpit.marp.app/directives)
 
@@ -244,9 +250,9 @@ paginate: true
 
 | Name             | Description                                                  |
 | ---------------- | ------------------------------------------------------------ |
-| `headingDivider` | 标题分割符，自动按照标题进行分页，无需`---`,  取值是标题最大层级 |
+| `headingDivider` | ✅自动按照标题进行分页，无需`---`,  可以填两种类型的值： 第一种，填1-6 的数字，只有级数超过这个值的标题才会分割。第二种，填数组，只会按照这些等级分割 |
 | `lang`           | Set the value of [`lang` attribute](https://developer.mozilla.org/docs/Web/HTML/Global_attributes/lang) for each slide |
-| `style`          | Specify CSS for tweaking theme.                              |
+| `style`          | **设置调整主题的 css 代码**                                  |
 | `theme`          | Specify theme of the slide deck.                             |
 
 按照标题分页：`<!-- headingDivider: 2 -->` 2 级标题分页
@@ -257,7 +263,7 @@ paginate: true
 
 | Name                 | Description                                                  |
 | -------------------- | ------------------------------------------------------------ |
-| `paginate`           | 展示页码 Show page number on the slide if you set `true`.如果我们不想在标题页面出现页码，只需将指令 `paginate` 移到第二页即可。 |
+| `paginate`           | ✅展示页码<br> <!-- paginate: true/false/hold/skip -->  用在局部可以控制当前页是否展示、是否自增页码  <br> 首页不展示页码：<br /> 1. 第二页加<!-- paginate: true --> <br /> 2. front matter 写两行--- paginate: true   _paginate: false --- |
 | `header`             | Specify the content of slide header.                         |
 | `footer`             | Specify the content of slide footer.                         |
 | `class`              | Specify HTML class of slide’s `<section>` element.           |

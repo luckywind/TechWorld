@@ -74,3 +74,6 @@ gpt:
 
 ## 云兔
 
+# 工具使用
+
+[clash verge](https://www.clashverge.dev/guide/quickstart.html)

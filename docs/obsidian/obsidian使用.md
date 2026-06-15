@@ -102,3 +102,19 @@ https://github.com/platon-ivanov/obsidian-visually-numbered-headings
 1. upload failed, check dev console
 
 使用不带 pro 的插件
+
+
+
+
+
+
+
+
+
+# 插件
+
+Claudian
+Editing Toolbar
+Image auto upload
+Marp Slides
+Visually Numbered Headings
