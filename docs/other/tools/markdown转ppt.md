@@ -131,7 +131,9 @@ class 可以指定多个值，用空格分开
 
 背景颜色的基本句式为 `![bg](颜色参数)` ，文字颜色的基本句式为 `![](颜色参数)`
 
-### 调整大小
+### 正文图片
+
+#### 调整大小
 
 ```markdown
 ![width:200px](image.jpg) <!-- Setting width to 200px -->
@@ -242,6 +244,8 @@ paginate: true
 
 #### 指令类型
 
+作用于当前幻灯片的_指令要写到当前标题后面
+
 
 
 ![image-20260612085714228](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260612085714228.png)
@@ -274,6 +278,90 @@ paginate: true
 | `backgroundSize`     | Setting `background-size` style of slide.                    |
 | `color`              | Setting `color` style of slide.                              |
 
+# Awesom-Marp
+
+[注意](https://forum-zh.obsidian.md/t/topic/44135)：
+
+1. css 目录需要放到仓库下， 插件配置 css 目录时写相对目录
+2. 主题后缀 scss 改为 css
+
+![38 种自定义样式](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/38%25E7%25A7%258D%25E8%2587%25AA%25E5%25AE%259A%25E4%25B9%2589%25E6%25A0%25B7%25E5%25BC%258F.png)
+
+## 主题
+
+am_blue.css
+am_brown.css
+am_dark.css
+am_green.css
+am_purple.css
+am_red.css
+am_template.css
+pw_awesome_pku.css
+
+## 列表
+
+<!-- class: cols2_ol_sq fglass -->
+
+有无序：ol/ul,   方圆：sq/ci
+
+## 自定义样式
+
+自定义样式为：<!--_class: ba-biue-->
+
+## 图片对齐
+
+```markdown
+图片水平居中对齐：！[#c1 (./images/a.png)
+图片水平居右对齐：！[#r](./images/a.png)
+图片水平居左对齐：！[#11 (./images/a.png)
+```
+
+## 目录
+
+<!-- _class: toc_b -->
+
+有两种目录样式 toc_a 和 toc_b
+
+## 分栏
+
+```markdown
+<!-- _class: cols-2-64 -->   64分栏  
+<div class=ldiv>  
+
+第一列（左侧栏）的内容在这里
+
+内容可以是普通纯文本，可以是列表，也可以是引用块、链接、图片等
+</div>
+
+<div class=rdiv>
+
+第二列（右侧栏）的内容在这里
+</div>
+```
+
+如果某一栏为图片，可以将 `class=ldiv` 换成 `class=limg`，这样能够实现图片的垂直居中对齐呢（`class=ldiv` 为居上对齐）
+
+## 固定标题行
+
+<!-- _class: fixedtitleA -->
+
+标题固定不会随内容多少上下浮动
+
+## 引用盒子
+
+<!-- _class:  bq-purple -->
+
+## 技巧
+
+1. cover开始 ppt 
+2. npr设置打印隐藏页答案
+
+2. trans过渡页并修改 footer
+
 # 参考
 
-[**AwesomeMarp for University**](https://panwangyuang.com/post/awesomemarp-for-university/)
+Marp 内置的原生主题样式数量少
+
+[Awesome-Marp](https://github.com/favourhong/Awesome-Marp)提供了 6 种主题（分别是深色、绿色、蓝色、红色、紫色和棕色）和 38 种自定义样式。
+
+[**AwesomeMarp for University**](https://panwangyuang.com/post/awesomemarp-for-university/) 根据上述样式给出了模板
