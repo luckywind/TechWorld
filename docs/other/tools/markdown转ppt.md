@@ -324,6 +324,8 @@ pw_awesome_pku.css
 
 ## 分栏
 
+放到标题下面
+
 ```markdown
 <!-- _class: cols-2-64 -->   64分栏  
 <div class=ldiv>  
@@ -341,6 +343,14 @@ pw_awesome_pku.css
 
 如果某一栏为图片，可以将 `class=ldiv` 换成 `class=limg`，这样能够实现图片的垂直居中对齐呢（`class=ldiv` 为居上对齐）
 
+---
+
+上述预览没问题，但在导出ppt时无效，[导出ppt就没效果了](https://github.com/favourhong/Awesome-Marp/issues/37)
+
+✅但是目录的分栏是可以的，<!-- _class: cols2_ul_sq fglass --> ，下面直接列出目录，会自动调整两栏内容
+
+✅图片文字混排分栏可以用marp自带的语法  ![bg right:55% contain](image.png)
+
 ## 固定标题行
 
 <!-- _class: fixedtitleA -->
@@ -351,17 +361,25 @@ pw_awesome_pku.css
 
 <!-- _class:  bq-purple -->
 
+## 导航栏
+
+<!-- _header: \ ***@Awesome Marp*** *关于模板* *封面页* *目录页* *分栏与分列* *引用盒子* **导航栏** *基础知识*-->
+<!-- _class: navbar -->
+
 ## 技巧
 
 1. cover开始 ppt 
 2. npr设置打印隐藏页答案
-
-2. trans过渡页并修改 footer
+3. trans过渡页并修改 footer
 
 # 参考
+
+[Marp 插件](https://samuele-cozzi.github.io/obsidian-marp-slides/12.Configuration.html)
 
 Marp 内置的原生主题样式数量少
 
 [Awesome-Marp](https://github.com/favourhong/Awesome-Marp)提供了 6 种主题（分别是深色、绿色、蓝色、红色、紫色和棕色）和 38 种自定义样式。
 
 [**AwesomeMarp for University**](https://panwangyuang.com/post/awesomemarp-for-university/) 根据上述样式给出了模板
+
+[高仿Beamer模板](https://panwangyuang.com/post/%E9%AB%98%E4%BB%BFbeamer%E6%A8%A1%E6%9D%BF/)
