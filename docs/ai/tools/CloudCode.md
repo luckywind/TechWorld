@@ -123,7 +123,7 @@ claude
 
 # 使用
 
-## 命令
+## /命令
 
 /btw ： 临时提问，回答完按按空格或者回车，直接把这一段消除掉，继续主程序。
 
@@ -135,7 +135,13 @@ claude
 
 /remote-control： 它会生成一个URL，手机上打开这个链接整个会话就出现在手机上
 
-## 使用 minimax 模型
+## yolo 模式
+
+
+
+## 三方模型接入
+
+### 使用 minimax 模型
 
 ![image-20260403085757968](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260403085757968.png)
 
@@ -143,7 +149,7 @@ cc-switch 代理可开可不开
 
 一个/init 指令，余额23.52 元->23.22 元，有点贵，可以包月、包年
 
-## 硅基流动
+### 硅基流动
 
 ✅按量计费，每个模型都有独立的计费标准
 
@@ -157,7 +163,7 @@ vscode 里关闭 Thinking
 
 ![image-20260403113035702](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260403113035702.png)
 
-## 魔塔社区
+### 魔塔社区
 
 
 
@@ -165,7 +171,7 @@ vscode 里关闭 Thinking
 
 https://ccforpms.com/vibe-coding/build-iterate
 
-## OpenRouter
+### OpenRouter
 
 [免费使用](https://mp.weixin.qq.com/s/yM5S7RSLgASK8bKBDP94KA)
 

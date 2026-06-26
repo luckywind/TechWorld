@@ -47,6 +47,10 @@ title分两部分：Name和括号里的Foreground Job
 
 ![image-20250711153002083](https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20250711153002083.png)
 
+这个有点迷，只设置前台 Job Name 就是这样的
+
+<img src="https://piggo-picture.oss-cn-hangzhou.aliyuncs.com/image-20260625103411895.png" alt="image-20260625103411895" style="zoom:50%;" />
+
 ## 记录会话日志
 
 Session里对Logging打勾，填上记录的目录和文件名

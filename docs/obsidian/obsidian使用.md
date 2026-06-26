@@ -26,6 +26,16 @@ B站清单控沙牛大佬的教程[ https://www.bilibili.com/video/BV1H44y1n71k/
 
 
 
+一键从 Obsidian 发布到公众号后台
+
+https://pkmer.cn/Pkmer-Docs/pkmer%E8%AE%BA%E5%9D%9B/7341-%E6%88%91%E5%86%99%E4%BA%86%E4%B8%AA%E6%8F%92%E4%BB%B6%E4%B8%80%E9%94%AE%E4%BB%8E-obsidian-%E5%8F%91%E5%B8%83%E5%88%B0%E5%85%AC%E4%BC%97%E5%8F%B7%E5%90%8E%E5%8F%B0/
+
+
+
+
+
+[批量上传图片](https://github.com/luhui-dev/NotePic-OSS-Obsidian) 不管是本地图片还是远程图片, ⚠️：一定要在编辑模式下上传，否则无法替换链接
+
 # 目录多级编号
 
 ## ai 写的，不大好用
