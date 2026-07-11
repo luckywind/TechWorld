@@ -214,6 +214,10 @@ headingDivider: 2
 
 写到 front-matter 里即可
 
+也可以指定多个分级作为分割
+
+headingDivider: [1, 2]
+
 ### [Directives 指令](https://marpit.marp.app/directives)
 
 Marpit Markdown 具有名为 **“指令”** 的扩展语法，用于支持编写精美的幻灯片。它可以控制幻灯片的模板主题、页码、页眉、页脚、样式等等。编写的指令将被解析为 [YAML](http://yaml.org/) 。
