@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(nmcli help *)",
+      "Bash(nmcli connection *)",
+      "Bash(nmcli device *)",
+      "Bash(nmcli general *)",
+      "Bash(dig -h)"
+    ]
+  }
+}

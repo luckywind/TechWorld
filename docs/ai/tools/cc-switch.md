@@ -68,3 +68,12 @@
 
 
 
+## 模型映射
+
+| 模型槽                                                       | 映射模型            | 说明                                              |
+| ------------------------------------------------------------ | ------------------- | ------------------------------------------------- |
+| ***\*主模型 (Default)\****                                   | deepseek-v4-pro[1m] | 1M 超大上下文，主力推理模型                       |
+| ***\*Opus\****                                               | deepseek-v4-pro[1m] | 对应 Claude Code 的 Opus 模型请求默认，重量级推理 |
+| ***\*Sonnet\****                                             | deepseek-v4-pro[1m] | 对应 Claude Code 的 Sonnet 模型请求，中等复杂度   |
+| ***\*Haiku\****                                              | deepseek-v4-flash   | 轻量快速模型，适合作子代理，轻量级，快速响应      |
+| ***\*子代理模型 (Sub-[agent](https://link.csdn.net/?target=https%3A%2F%2Fgitcode.com%2Fatomgit_atomcode%2Fatomcode%3Futm_source%3Ddevpress_gitcode_keyword%26login%3Dfrom_csdn))\**** | deepseek-v4-flash   | 子任务执行，节省 token                            |
