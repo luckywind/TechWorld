@@ -5,7 +5,8 @@
       "Bash(nmcli connection *)",
       "Bash(nmcli device *)",
       "Bash(nmcli general *)",
-      "Bash(dig -h)"
+      "Bash(dig -h)",
+      "WebFetch(domain:iperf.fr)"
     ]
   }
 }

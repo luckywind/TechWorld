@@ -110,6 +110,294 @@ iperf -c 192.168.1.1  -d -t 60
 
 
 
+# Tuning(性能调优)
+
+[官方文档](https://iperf.fr/iperf-doc.php)中关于 TCP/UDP 调优和组播的核心结论。
+
+## Tuning a TCP connection(TCP 调优)
+
+iperf 最初的设计目的就是 **调优 TCP 连接**，其中最核心的问题就是 **TCP 窗口大小(Window Size)**。它决定了同一时刻网络中能容纳多少数据。如果窗口太小，发送端会频繁空闲等待 ACK，导致吞吐上不去。
+
+💡 **大白话理解：把 TCP 传输想象成一根水管**
+
+先搞懂三个量，把它们对应到水管的物理特征上：
+
+| 网络概念 | 水管比喻 | 含义 |
+|---------|---------|------|
+| **带宽(Bandwidth)** | 水管有多**粗** | 每秒最多能流过多少数据(Mbits/s) |
+| **RTT(往返时延)** | 水管有多**长** | 数据从 A 流到 B、对方回一个"收到"再传回来，要多久(ms) |
+| **TCP 窗口(Window)** | 你一口气**灌进去多少水** | 在没收到任何确认前，最多能连续发出多少数据。✅ **最好能一次把管子灌满，而管子体积就是 BDP** |
+
+关键在 TCP 的**"确认机制(ACK)"**：你每发一批数据，都要等对方回一个"我收到了"，才能继续发。
+
+- **窗口太小** = 每次只灌一点点水，灌完就傻等"收到"的回执，水管大部分时间是空的 → 带宽白白浪费
+- **窗口刚好够大** = 一边灌水，回执在路上飞，你这边持续不停地灌 → 水管始终是满的，带宽用满
+
+> 这就是为什么"窗口大小"是 TCP 调优的**第一杠杆**——窗口够了，带宽才可能用满；窗口不够，别的都白搭。
+
+📌 **理论最优窗口大小 = 带宽延迟积(BDP, Bandwidth Delay Product)**
+
+$$ \text{BDP} = \text{瓶颈带宽} \times \text{往返时延(RTT)} $$
+
+> 示例：45 Mbit/s 的 DS3 链路，RTT 42 ms，理论 BDP ≈ 230 KB。
+> 🌰可以简单计算为45*42/8=236.25
+>
+> 但实测中 buffer 超过 130K 后性能不再提升，说明实际最优值可能低于理论值，需要实测确认。
+
+📌 **核心注意**：很多操作系统的 TCP 窗口有上限(有的低至 64 KB)。iperf 会尝试检测，当**实际窗口和请求窗口不一致时会给出 WARNING**。
+
+💡 **为什么默认窗口常常不够用？**
+
+操作系统为了兼容老旧、低速的网络，默认窗口往往偏小(有的低至 64 KB)。两种链路最容易踩坑：
+
+1. **高速链路**(水管很粗)：窗口小 = 一次灌的水少，水管大部分时间空着。比如 10G 链路用默认 64 KB 窗口，基本跑不满。
+2. **高延迟链路**(水管很长)：窗口小 = 水还在半路，你就停下来等回执了。跨洲链路 RTT 200ms 时尤其明显。
+
+这就是下面案例里，把窗口从默认调到 130K 后，吞吐从 5.2 Mbits/s 涨到 15.7 Mbits/s(**3 倍**)的底层原因。
+
+**案例对比 —— 窗口大小对吞吐的影响:**
+
+| 场景 | 命令 | 结果 |
+|------|------|------|
+| 默认窗口 | `iperf -c node2` | **5.2 Mbits/sec** |
+| 窗口 130K | `iperf -c node2 -w 130k` | **15.7 Mbits/sec**(提升 3 倍) |
+| 单流窗口 300K | `iperf -c node2 -w 300k` | 16.5 Mbits/sec |
+| 双并行流窗口 300K | `iperf -c node2 -w 300k -P 2` | 16.7 + 9.4 = **26.1 Mbits/sec** |
+
+```shell
+# 服务端和客户端都要设置窗口
+iperf -s -w 130k
+iperf -c node2 -w 130k
+# 客户端会打印 WARNING: requested 130 KByte（实际 OS 只给到 129 KB）
+```
+
+📌 **并行流对比法(诊断利器)**：单流和并行流的**总聚合带宽**对比能暴露问题。
+
+> 1️⃣ 如果多流总带宽 > 单流带宽，说明单流受限于窗口大小/单流瓶颈
+>
+> 2️⃣ 官方结论：**"如果总聚合带宽比单流还高，那一定是哪里出了问题 —— 要么 TCP 窗口太小，要么 OS 的 TCP 实现有 bug，要么网络本身有缺陷。"**
+
+**次要看点 —— MTU/MSS:**
+
+用 `-m` 查看实际使用的 MSS。没有开启 Path MTU Discovery 的主机常用 536 字节的 MSS，白白浪费带宽。以太网典型 MSS 约 1460 字节(MTU 1500)。
+
+```shell
+✅$ iperf -c node2 -m  、ip route 也可以看到
+...
+MSS size 1448 bytes (MTU 1500 bytes, ethernet)   # 健康主机
+Read lengths occurring in more than 5% of reads:
+  952 bytes read  219 times (16.2%)
+ 1448 bytes read 1128 times (83.6%)
+
+# 未开启 Path MTU Discovery 的主机
+WARNING: Path MTU Discovery may not be enabled.
+MSS size 536 bytes (MTU 576 bytes, minimum)      # 异常，浪费带宽
+```
+
+✅ **本节总结(可操作结论)**
+
+1. **先算 BDP(理论最优窗口大小)**：`窗口 ≈ 带宽 × RTT`，这是调优的起点。
+
+   > ping 的 avg 就是 RTT
+2. **单流跑不满先查窗口**：大概率是窗口太小，用 `-w` 调大(服务端和客户端都要加)。
+3. **多流对比验根因**：多流总带宽明显高于单流 → 说明是窗口/OS/网络的问题，而不是链路本身不够。
+4. **顺手查 MTU/MSS**：`-m` 看到 MSS 只有 536 字节，就是 Path MTU Discovery 没开，在浪费带宽。
+
+## Tuning a UDP connection(UDP 调优)
+
+iperf 生成**恒定速率(CBR)的 UDP 流**，是一种非常"人为"的流量，类似语音通话。
+
+📌 **用 `-l` 调整数据报大小，使其匹配你的实际应用**。服务端通过数据报内的 ID 编号检测丢失。
+
+📌 **数据报丢失 vs 包丢失**：一个 UDP 数据报可能跨多个 IP 包传输，丢一个 IP 包就会丢掉整个数据报。所以：
+
+> 要测 **包丢失(而非数据报丢失)**，就把数据报设得足够小以塞进单个 IP 包。默认 1470 字节正好适配以太网(MTU 1500)。
+
+📌 **乱序包**也会被检测，但会造成丢包计数歧义。iperf 假设乱序包不是重复包，不计入丢失。
+
+📌 **抖动(Jitter)计算原理**：服务端按 RTP(RFC 1889)持续计算。客户端在每个包里记录 64 位时间戳(秒/微秒)，服务端计算"相对传输时间 = 接收时间 − 发送时间"。**两端时钟无需同步** —— 任何时钟差异都会在抖动计算的差值中被抵消。抖动是连续传输时间差的平滑均值。
+
+**案例对比 —— 数据报大小的影响:**
+
+| 场景 | 命令 | 结果 |
+|------|------|------|
+| 标准(1470B) | `iperf -c node2 -u -b 10m` | 10.0 Mbits/s，抖动 0.243 ms，丢 1/8922 (0.011%) |
+| 大数据报(32K) | `iperf -c node2 -b 10m -l 32k -w 128k` | 抖动最高 5.996 ms，丢 7/401 (1.7%) |
+
+```shell
+# 标准 UDP 测试
+iperf -s -u -i 1
+iperf -c node2 -u -b 10m
+
+# 大数据报(32K) → 一个数据报被拆成 23 个 1500B 的 IP 包
+iperf -s -u -l 32k -w 128k -i 1
+iperf -c node2 -b 10m -l 32k -w 128k
+```
+
+📌 **大数据报为何更差**：32 KB 的数据报会被拆成 **23 个连续背靠背的 1500 字节包，然后一个长停顿**，而不是均匀间隔的单个包。这种**突发性(burstiness)**导致更高的抖动和丢包率。
+
+## Multicast(组播)
+
+📌 **部署**：多个服务器用 `-B`(bind)绑定到组播组地址，客户端连接到组播组地址并用 `-T`(ttl)设置 TTL。
+
+📌 **与普通 TCP/UDP 测试不同**：**组播服务器可以在客户端之后启动**。服务器启动前发送的数据报会显示为第一次报告中的丢失。
+
+**示例:**
+
+```shell
+# 客户端：连组播地址 224.0.67.67，TTL=5
+iperf -c 224.0.67.67 -u --ttl 5 -t 5
+
+# 服务器(node5)：提前启动，0 丢失
+iperf -s -u -B 224.0.67.67 -i 1
+# 结果: 抖动 0.008 ms，收 447 个数据报，0% 丢失
+
+# 服务器(node6)：晚启动，第一段 61/151 丢失(40%)，整体 61/447(14%)
+iperf -s -u -B 224.0.67.67 -i 1
+```
+
+📌 **TTL 默认是 1(链路本地)**，本质是数据包经过的路由跳数，也用于控制作用域(scoping)。
+
+📌 **多对多**：多个服务器监听同一组播地址时，**每个服务器都能收到数据**；多个客户端也可以向同一组播服务器发送。
+
+> 1️⃣ 组播地址范围 224.0.0.0 ~ 239.255.255.255
+>
+> 2️⃣ 服务端 `-B` 绑定组播地址来加入组；客户端 `-T` 控制 TTL/作用域
+>
+> 3️⃣ 晚加入的服务器会有初始丢包，属于预期行为
+
+## iperf3 的 TCP/UDP 调优思路
+
+上面是 iperf2 官方文档的通用调优原理，iperf3 在此基础上多了几个独有抓手。iperf3 默认是**单连接、单向、TCP** 的测试，调优思路按"先排除干扰、再调窗口、再调并发、最后调系统"的顺序展开。
+
+### TCP 调优思路(按优先级)
+
+📌 **1. 先用 `-O` 跳过慢启动，得到真实稳态吞吐**
+
+TCP 有个"慢启动"过程：刚连上时拥塞窗口很小，逐渐爬升到满带宽。iperf3 默认从头计时，慢启动阶段的低速率会拉低平均值。用 `-O N` 忽略前 N 秒：
+
+```shell
+iperf3 -c node2 -O 2      # 忽略前 2 秒，只看稳态
+```
+
+> 这是最容易忽略、但影响最大的一个参数。测短时间(如 -t 5)尤其明显。
+
+📌 **2. 调 TCP 窗口 `-w`(本质是 socket 缓冲区)**
+
+同 iperf2，窗口要 ≥ 带宽延迟积 BDP。iperf3 默认 128 KB，高带宽高延迟链路远远不够。**服务端和客户端都要加**：
+
+```shell
+iperf3 -s -w 8M
+iperf3 -c node2 -w 8M
+```
+
+> 设得再大也会被系统上限截断，此时需要同步调大 sysctl(见下文系统层)。
+
+📌 **3. 多流 `-P` 提升并发**(3.16 后每流一个线程，可吃满多核)
+
+```shell
+iperf3 -c node2 -P 4        # 4 个并行流
+iperf3 -c node2 -P 4 -A 0,1,2,3   # 每个流绑定一个 CPU 核
+```
+
+> 单流跑不满时，多流能压出链路真实上限；但注意多流总带宽远高于单流时，说明是单流窗口/系统问题，不是链路不够(见 iperf2 的并行流对比法)。
+
+📌 **4. 换拥塞控制算法 `-C`(长距离/高延迟链路效果显著)**
+
+默认是 cubic，丢包敏感、大带宽长 RTT 场景下 BBR 往往更优：
+
+```shell
+# 查看当前算法
+sysctl net.ipv4.tcp_congestion_control
+
+# iperf3 指定算法(需要内核已加载该模块)
+iperf3 -c node2 -C bbr
+iperf3 -c node2 -C cubic
+```
+
+> 高带宽长延迟(跨洲、丢包率高)场景优先试 BBR；局域网低延迟场景 cubic 通常已够。
+
+📌 **5. 小包/低延迟场景关 Nagle `-N`**
+
+Nagle 算法会攒小包，交互式或小包吞吐测试时应禁用：
+
+```shell
+iperf3 -c node2 -N          # 禁用 Nagle
+```
+
+📌 **6. 降低 CPU 开销：零拷贝 `-Z`、设 MSS `-M`**
+
+```shell
+iperf3 -c node2 -Z          # 零拷贝发送，降低 CPU 占用(大包高速时推荐)
+iperf3 -c node2 -M 1460     # 固定 MSS，排查 MTU 分片问题
+```
+
+### UDP 调优思路
+
+📌 **1. `-b` 必配，否则默认只发 1M**
+
+UDP 默认带宽是 1 Mbit/s，不设 `-b` 会得到假低结果。用 `-b 0` 可无限速、测链路极限：
+
+```shell
+iperf3 -c node2 -u -b 100M     # 目标 100 Mbit/s
+iperf3 -c node2 -u -b 0        # 不限速，压到丢包为止
+```
+
+📌 **2. `-l` 匹配应用数据报大小，测包丢失要 ≤1470**
+
+测真实**包丢失率**(而非数据报丢失)时，数据报要能塞进单个 IP 包(以太网 ≤1470 字节)。模拟具体应用(如 VoIP 语音)则设成应用的实际载荷大小：
+
+```shell
+iperf3 -c node2 -u -b 10M -l 1470    # 标准包丢失测试
+iperf3 -c node2 -u -b 10M -l 512     # 模拟小包应用
+```
+
+📌 **3. 关注抖动和丢包率，而不是只看带宽**
+
+UDP 测试的核心产出是 **抖动(Jitter)** 和 **丢包率(Lost/Total)**，带宽只是"发了多少"。语音/视频类应用对抖动和丢包更敏感。
+
+📌 **4. 高速率用 64 位计数器 `--udp-counters-64bit`**
+
+极高发包速率下，默认 32 位计数器可能溢出导致丢包统计错误：
+
+```shell
+iperf3 -c node2 -u -b 10G --udp-counters-64bit
+```
+
+### 系统层调优(sysctl，影响所有 TCP)
+
+iperf3 的 `-w` 再大，也受内核 socket 缓冲区上限约束。高带宽长延迟链路要先把系统上限放开：
+
+```shell
+# 查看当前上限
+sysctl net.core.rmem_max net.core.wmem_max
+
+# 放开单 socket 缓冲区上限(如 256MB)
+sysctl -w net.core.rmem_max=268435456
+sysctl -w net.core.wmem_max=268435456
+
+# TCP 自动调优范围(最小值 默认值 最大值)
+sysctl -w net.ipv4.tcp_rmem="4096 87380 268435456"
+sysctl -w net.ipv4.tcp_wmem="4096 65536 268435456"
+
+# 确认窗口缩放已开启(高带宽长延迟必须)
+sysctl net.ipv4.tcp_window_scaling   # 应为 1
+
+# 设置拥塞控制算法(全局)
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+```
+
+> 关键点：**窗口缩放(tcp_window_scaling)必须开着**，否则窗口最大只能 64 KB，高带宽链路永远跑不满。
+
+### 双向测试注意
+
+iperf3 没有 iperf2 的 `-d` 双向同时测试，用 `-R`(反向)分别测两个方向，避免收发流量互相干扰：
+
+```shell
+iperf3 -c node2 -t 20          # 正向：客户端 → 服务器
+iperf3 -c node2 -R -t 20       # 反向：服务器 → 客户端
+```
+
 # [iperf3](https://iperf.fr/)
 
 ## 简介
@@ -158,7 +446,7 @@ Usage: iperf [-s|-c host] [options]
 
 📌通用参数:
   -p, --port      #         server port to listen on/connect to
-  -f, --format    [kmgKMG]  format to report: Kbits, Mbits, KBytes, MBytes
+  -f, --format   [kmgtKMGT] format to report: Kbits, Mbits, Gbits, Tbits
   -i, --interval  #       报告输出间隔，默认1秒，如果是0则只在结束时输出一次
   -F, --file name           服务端：读取的文件， 客户端：写入的文件
   -A, --affinity n/n,m     **设置CPU亲和性**
@@ -182,22 +470,30 @@ Usage: iperf [-s|-c host] [options]
 💛客户端专有参数:
   -c, --client    <host>    run in client mode, connecting to <host>
  ✅ -u, --udp                 UDP 测试
-  -b, --bandwidth  [KMG]目标带宽大小bits/秒 （默认UDP 1M/s， TCP无限）
+  📌-b, --bandwidth  [KMG]目标带宽大小bits/秒 （默认UDP 1M/s， TCP无限）
   --fq-rate #[KMG]          enable fair-queuing based socket pacing in
                             bits/sec (Linux only)
   -t, --time      #        **测试时间**(default 10 secs)
   -n, --bytes     #       传输字节量 (instead of -t)[KMG]
   -k, --blockcount #  传输包量 (instead of -t or -n)[KMG]
-✅  **-l**, --len       #     **读写缓冲区**[KMG]      (default 128 KB for TCP, dynamic or 1 for UDP)
+✅  **-l**, --len       #     **读写缓冲区**[KMG]      (default 128 KB for TCP, dynamic or 1 for UDP)  UDP模式下叫做数据报大小
   --cport                绑定指定端口 (TCP and UDP, default: ephemeral port)
   -P, --parallel  #  **并发流数量**
   **-R**, --reverse          **反向模式** (server sends, client receives)
-  -w, --window    #设置套接字缓冲区大小，TCP 模式下为窗口大小；
+  -w, --window    #设置套接字缓冲区大小上限，TCP 模式下为窗口大小；这个参数会传递给server用
 
+>  默认 128KB
+>
+>  -w 128k   # 128KB（默认） 
+>
+>  -w 1M     # 1MB 
+>
+>  -w 65536  # 直接写字节数也支持
+>
 >  要大-w 8M  -w 16M
 
   -C, --congestion <algo>   set TCP congestion control algorithm (Linux and FreeBSD only)
- 📌 -M, --set-mss   #         set TCP/SCTP maximum segment size (MTU - 40 bytes)
+ 📌 -M, --set-mss   #         set TCP/SCTP maximum segment size (MTU - 40 bytes用于tcp头)
   -N, --no-delay            set TCP/SCTP no delay, disabling Nagle's Algorithm
   -4, --version4            only use IPv4
   -6, --version6            only use IPv6
