@@ -521,6 +521,8 @@ yum reinstall -y --downloadonly --downloaddir=/home/hados/yum-packages ${depende
 
 
 
+ yumdownloader --resolve --alldeps --destdir=dep pciutils
+
 
 
 安装依赖

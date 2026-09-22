@@ -8,3 +8,7 @@
 5. 然后就可以在icloud 项目下执行git 命令了。
 
 [参考](https://www.reddit.com/r/ObsidianMD/comments/1fia8yi/using_git_for_versioning_alongside_cloud_for/?tl=zh-hans)
+
+
+
+💔注意，只能在保存有.git仓库的机器上提交！！！！称为主机，其他机器可以修改文件，等这些修改同步到主机后，再在主机上提交

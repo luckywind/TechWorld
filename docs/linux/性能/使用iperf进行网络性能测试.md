@@ -493,7 +493,7 @@ Usage: iperf [-s|-c host] [options]
 >  要大-w 8M  -w 16M
 
   -C, --congestion <algo>   set TCP congestion control algorithm (Linux and FreeBSD only)
- 📌 -M, --set-mss   #         set TCP/SCTP maximum segment size (MTU - 40 bytes用于tcp头)
+ ✅ -M, --set-mss   #         set TCP/SCTP maximum segment size (MTU - 40 bytes用于tcp头)
   -N, --no-delay            set TCP/SCTP no delay, disabling Nagle's Algorithm
   -4, --version4            only use IPv4
   -6, --version6            only use IPv6

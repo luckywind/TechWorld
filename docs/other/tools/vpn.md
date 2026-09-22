@@ -77,3 +77,18 @@ gpt:
 # 工具使用
 
 [clash verge](https://www.clashverge.dev/guide/quickstart.html)
+
+
+
+
+
+
+
+# 代理知识学习
+
+https://github.com/hoochanlon/fq-book
+
+阅读地址https://hoochanlon.github.io/fq-book/#/qintro/quickstart
+
+
+
