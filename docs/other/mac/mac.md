@@ -457,7 +457,7 @@ brew install mole
 
 预览清理内容
 
-mo clean --dry-run
+✅mo clean --dry-run
 mo uninstall --dry-run
 mo history
 mo history --json
