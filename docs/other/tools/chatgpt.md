@@ -19,3 +19,6 @@ en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
 	status: active
 ```
 
+# 快捷键
+
+[Opt+空格被占用](https://readern.com/posts/fix-shortcut-in-chatgpt/)
