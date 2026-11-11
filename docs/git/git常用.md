@@ -299,11 +299,96 @@ hadosyusur
 
 
 
+# git worktree
 
+[参考](https://zhuanlan.zhihu.com/p/1938293629455152167)
 
+git worktree add [-f] [--detach] [--checkout] [--lock [--reason <string>]]
+                   [-b <new-branch>] <path> [<commit-ish>]
+git worktree list [-v | --porcelain [-z]]
+git worktree lock [--reason <string>] <worktree>
+git worktree move <worktree> <new-path>
+git worktree prune [-n] [-v] [--expire <expire>]
+git worktree remove [-f] <worktree>
+git worktree repair [<path>...]
+git worktree unlock <worktree>
 
+**1. `add` - 添加工作树**
+**核心用法**：在指定路径创建一个新的工作树，并检出指定的提交或分支。如果不指定分支，Git 会自动以路径的最后一级目录名作为新分支名并创建它。使用 `-b` 可显式指定新分支名；使用 `--detach` (或 `-d`) 可创建游离状态（detached HEAD）的临时工作树。
+**示例**：
+```bash
+# 自动创建名为 "hotfix" 的分支，并检出到 ../hotfix 目录
+git worktree add ../hotfix 
 
+# 检出已存在的 "feature-A" 分支到 ../feature-A 目录
+git worktree add ../feature-A feature-A
 
+# 创建一个不关联任何分支的临时工作树（用于实验或测试）
+git worktree add --detach ../temp-test
+```
+
+**2. `list` - 列出工作树**
+**核心用法**：列出当前仓库关联的所有工作树（主工作树 + 链接工作树），显示路径、当前提交、分支状态及是否被锁定/可修剪。
+**示例**：
+```bash
+# 查看标准列表
+git worktree list
+
+# 查看详细/机器可读格式
+git worktree list -v
+```
+
+**3. `lock` - 锁定工作树**
+**核心用法**：锁定某个工作树，防止其管理文件被 `prune` 自动清理。通常用于存放在移动硬盘或网络共享等非始终挂载的目录中的工作树。
+**示例**：
+```bash
+# 锁定工作树并附带原因
+git worktree lock ../hotfix --reason "存放在外部移动硬盘上"
+```
+
+**4. `move` - 移动工作树**
+**核心用法**：将一个链接工作树移动到新的物理路径。注意：不能移动主工作树，也不能移动包含子模块的工作树。
+**示例**：
+```bash
+# 将工作树从 ../hotfix 移动到 /backup/hotfix
+git worktree move ../hotfix /backup/hotfix
+```
+
+**5. `prune` - 修剪失效记录**
+**核心用法**：清理仓库中已失效的工作树管理信息（例如：工作树的物理目录被手动删除了，但 Git 内部还有记录）。
+**示例**：
+```bash
+# 清理失效的工作树记录
+git worktree prune
+
+# 模拟清理（仅显示会被清理的内容，不实际执行）
+git worktree prune -n
+```
+
+**6. `remove` - 删除工作树**
+**核心用法**：安全删除一个链接工作树及其关联文件。前提：工作树必须是“干净”的（无未提交修改、无未跟踪文件）。如果有修改，需加 `-f` 强制删除。不能删除主工作树。
+**示例**：
+```bash
+# 删除干净的工作树
+git worktree remove ../hotfix
+
+# 强制删除有未提交修改的工作树
+git worktree remove -f ../hotfix
+```
+
+**7. `repair` - 修复工作树连接**
+**核心用法**：修复因手动移动物理目录（而非使用 `git worktree move`）导致的主仓库与链接工作树之间的连接断裂问题。
+**示例**：
+```bash
+# 场景A：手动移动了链接工作树，在该链接工作树内执行修复
+cd /new/path/to/worktree
+git worktree repair
+
+# 场景B：手动移动了多个链接工作树，在主仓库内指定新路径进行批量修复
+git worktree repair /new/path/to/worktree1 /new/path/to/worktree2
+```
+
+**8. `unlock` - 解锁工作树**
 
 # 问题解决记录
 
